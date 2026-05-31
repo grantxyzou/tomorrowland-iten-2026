@@ -128,7 +128,9 @@ function DayCard({ d, isToday, dateStr }) {
         </div>
       )}
       {isFlightDay && (
-        <div aria-hidden="true" style={{ position: 'absolute', top: '50%', right: -28, transform: 'translateY(-50%)', width: 260, height: 260, opacity: 0.08, pointerEvents: 'none', zIndex: 0 }}>
+        // Anchored to a fixed top (not 50% of a variable-height card, which made it
+        // slide when Booking Refs expands) and inset fully on-card so it isn't clipped.
+        <div aria-hidden="true" style={{ position: 'absolute', top: 18, right: 16, width: 132, height: 132, opacity: 0.08, pointerEvents: 'none', zIndex: 0 }}>
           <AirCanadaMark color={p.acRed} style={{ width: '100%', height: '100%' }} />
         </div>
       )}
