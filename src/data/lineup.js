@@ -15,7 +15,7 @@
 
 export const LINEUP_STATUS = 'official-partial'; // 'placeholder' | 'official-partial' | 'official'
 
-export const PEOPLE = ['Grant', 'Des', 'Lawrence'];
+export const PEOPLE = ['Grant', 'Desmond', 'Lawrence'];
 
 // Stages in poster order, each colour-matched to the official artwork.
 export const STAGES = {

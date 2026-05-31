@@ -51,7 +51,7 @@ export function useWeather(timezone, dateStr) {
         } else {
           const url = `https://api.open-meteo.com/v1/forecast?` +
             `latitude=${coords.lat}&longitude=${coords.lon}` +
-            `&daily=temperature_2m_max,temperature_2m_min,weathercode,precipitation_probability_max` +
+            `&daily=temperature_2m_max,temperature_2m_min,apparent_temperature_max,weathercode,precipitation_probability_max` +
             `&timezone=${encodeURIComponent(timezone)}` +
             `&forecast_days=16`;
           const res = await fetch(url);
@@ -63,10 +63,11 @@ export function useWeather(timezone, dateStr) {
         const idx = daily.time.indexOf(dateStr);
 
         if (idx === -1) {
-          // Date outside forecast window — show seasonal average for July Belgium
+          // Date outside forecast window — show seasonal average for July
           setData({
             hi: timezone === 'America/Vancouver' ? 22 : 24,
             lo: timezone === 'America/Vancouver' ? 14 : 15,
+            feels: timezone === 'America/Vancouver' ? 21 : 26,
             code: 1,
             precip: 30,
             seasonal: true,
@@ -74,9 +75,11 @@ export function useWeather(timezone, dateStr) {
           });
         } else {
           const code = daily.weathercode[idx];
+          const apparent = daily.apparent_temperature_max?.[idx];
           setData({
             hi: Math.round(daily.temperature_2m_max[idx]),
             lo: Math.round(daily.temperature_2m_min[idx]),
+            feels: apparent != null ? Math.round(apparent) : null,
             code,
             precip: daily.precipitation_probability_max[idx],
             seasonal: false,

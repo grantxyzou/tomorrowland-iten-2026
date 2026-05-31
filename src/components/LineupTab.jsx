@@ -16,7 +16,7 @@ const clashRed  = '#c94040';
 
 const PERSON_COLORS = {
   Grant:   '#e8b84b',  // gold
-  Des:     '#4a7fc1',  // blue
+  Desmond: '#4a7fc1',  // blue
   Lawrence:'#4a9a4a',  // green
 };
 

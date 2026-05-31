@@ -123,7 +123,9 @@ function DayCard({ d, isToday, dateStr }) {
     <div style={{ borderRadius: 8, overflow: 'hidden', border: cardBorder, backgroundColor: cardBg, position: 'relative' }}>
       {/* Watermarks */}
       {isTmrw && (
-        <div aria-hidden="true" style={{ position: 'absolute', top: '50%', right: -36, transform: 'translateY(-50%)', width: 230, height: 230, opacity: 0.07, pointerEvents: 'none', zIndex: 0 }}>
+        // Same fix as the flight card: fixed top anchor (no shift on expand) and
+        // a positive right inset so the mark sits fully on-card, never clipped.
+        <div aria-hidden="true" style={{ position: 'absolute', top: 18, right: 16, width: 132, height: 132, opacity: 0.09, pointerEvents: 'none', zIndex: 0 }}>
           <TomorrowlandMark color={p.tmrwGold} style={{ width: '100%', height: '100%' }} />
         </div>
       )}
@@ -208,9 +210,10 @@ function HeaderContent({ d, isTmrw, isGap, dateStr }) {
 
   return (
     <div style={{ flex: 1, padding: '14px 16px', minWidth: 0 }}>
-      {/* Day of week full */}
-      <div style={{ ...mono, fontSize: 11, letterSpacing: '0.18em', textTransform: 'uppercase', color: labelColor, marginBottom: 4 }}>
-        {d.dayOfWeek}
+      {/* Local time — the date chip already shows the day, so the full
+          day-of-week label here was redundant. */}
+      <div style={{ ...mono, fontSize: 11, letterSpacing: '0.12em', textTransform: 'uppercase', color: labelColor, marginBottom: 4 }}>
+        {localTime ? `${localTime} local` : ' '}
       </div>
 
       {/* City title */}
@@ -229,15 +232,10 @@ function HeaderContent({ d, isTmrw, isGap, dateStr }) {
         <p style={{ fontSize: 11, color: noteColor, marginTop: 4, lineHeight: 1.4 }}>{d.note}</p>
       )}
 
-      {/* Weather + local time row */}
+      {/* Weather row */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginTop: 8, flexWrap: 'wrap' }}>
         {!loading && weather && (
           <WeatherPill weather={weather} wmo={wmo} isTmrw={isTmrw} />
-        )}
-        {localTime && (
-          <span style={{ ...mono, fontSize: 10, color: labelColor, letterSpacing: '0.08em' }}>
-            {localTime} local
-          </span>
         )}
       </div>
     </div>
@@ -248,14 +246,21 @@ function HeaderContent({ d, isTmrw, isGap, dateStr }) {
 function WeatherPill({ weather, wmo, isTmrw }) {
   const bg   = isTmrw ? 'rgba(232,184,75,0.12)' : 'rgba(26,22,20,0.06)';
   const text = isTmrw ? p.tmrwGold : p.muted;
+  const chip = { display: 'inline-flex', alignItems: 'center', gap: 4, backgroundColor: bg, borderRadius: 4, padding: '2px 7px', ...mono, fontSize: 10, color: text, fontWeight: 600 };
 
   return (
-    <div style={{ display: 'inline-flex', alignItems: 'center', gap: 4, backgroundColor: bg, borderRadius: 4, padding: '2px 7px' }}>
-      <span style={{ fontSize: 13 }}>{wmo?.emoji}</span>
-      <span style={{ ...mono, fontSize: 10, color: text, fontWeight: 600 }}>
+    <div style={{ display: 'inline-flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+      <span style={chip}>
+        <span style={{ fontSize: 13 }}>{wmo?.emoji}</span>
         {weather.hi}° / {weather.lo}°
-        {weather.seasonal && <span style={{ opacity: 0.6 }}> avg</span>}
+        {weather.seasonal && <span style={{ opacity: 0.6 }}>&nbsp;avg</span>}
       </span>
+      {weather.feels != null && (
+        <span style={chip}>🌡 Feels {weather.feels}°</span>
+      )}
+      {weather.precip != null && (
+        <span style={chip}>🌧 {weather.precip}% rain</span>
+      )}
     </div>
   );
 }
@@ -382,12 +387,6 @@ function TravelPanel({ travel }) {
 
   return (
     <div style={{ borderTop: `1px solid ${border}`, backgroundColor: bg, padding: '14px 16px', position: 'relative', overflow: 'hidden', zIndex: 1 }}>
-      {/* In-panel AC watermark */}
-      {isFlight && (
-        <div aria-hidden="true" style={{ position: 'absolute', top: -130, right: -28, width: 260, height: 260, opacity: 0.14, pointerEvents: 'none', zIndex: 0 }}>
-          <AirCanadaMark color={p.acRed} style={{ width: '100%', height: '100%' }} />
-        </div>
-      )}
       <div style={{ position: 'relative', zIndex: 1 }}>
         {/* Header row */}
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
@@ -425,7 +424,7 @@ function TravelPanel({ travel }) {
         {/* Fare / cost footer */}
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: 12, paddingTop: 12, borderTop: `1px solid ${innerRule}` }}>
           <span style={{ ...mono, fontSize: 11, color: fareColor }}>{travel.fare}</span>
-          <span style={{ ...mono, fontSize: 12, fontWeight: 700, color: costColor }}>{travel.cost}</span>
+          {travel.cost && <span style={{ ...mono, fontSize: 12, fontWeight: 700, color: costColor }}>{travel.cost}</span>}
         </div>
       </div>
     </div>

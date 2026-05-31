@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { LAST_UPDATED, LAST_UPDATE_NOTE } from './data/trip.js';
+import { useState } from 'react';
+import { LAST_UPDATED } from './data/trip.js';
 import ItineraryTab from './components/ItineraryTab.jsx';
 import LineupTab from './components/LineupTab.jsx';
 
@@ -39,7 +39,7 @@ export default function App() {
               Europe 2026
             </div>
             <div style={{ fontSize: 14, fontWeight: 600, letterSpacing: '-0.01em', marginTop: 2 }}>
-              Grant · Des · Lawrence
+              Grant · Desmond · Lawrence
             </div>
           </div>
           {/* Countdown to departure */}
@@ -53,8 +53,6 @@ export default function App() {
           <span style={{ ...mono, fontSize: 10, color: muted, letterSpacing: '0.12em', textTransform: 'uppercase' }}>
             Updated {formatUpdated(LAST_UPDATED)}
           </span>
-          <span style={{ color: rule }}>·</span>
-          <span style={{ fontSize: 11, color: muted }}>{LAST_UPDATE_NOTE}</span>
         </div>
       </div>
 
