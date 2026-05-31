@@ -1,0 +1,26 @@
+# Dependencies
+node_modules/
+
+# Build output
+dist/
+.vite/
+
+# Logs
+*.log
+npm-debug.log*
+
+# macOS
+.DS_Store
+
+# Editor / local
+.vscode/
+.idea/
+
+# Local Claude memory & backups
+.remember/
+*.zip
+
+# Env
+.env
+.env.local
+.env.*.local
