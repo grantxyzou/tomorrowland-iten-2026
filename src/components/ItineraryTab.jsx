@@ -8,6 +8,7 @@ import { TomorrowlandMark, AirCanadaMark } from './BrandMarks.jsx';
 // ── Palette ──────────────────────────────────────────────────
 const p = {
   accent:       '#a82a13',
+  accentLight:  '#ff6a4d',  // brighter red for small text on the dark date chip (AA on #1a1614)
   gapAccent:    '#7a5814',
   ink:          '#1a1614',
   paper:        '#ede7d8',
@@ -178,7 +179,7 @@ function DayCard({ d, isToday, dateStr }) {
 // ── Date chip ────────────────────────────────────────────────
 function DateChip({ d, isTmrw, isGap }) {
   const bg    = isGap ? p.gapAccent : isTmrw ? p.tmrwChipBg : p.ink;
-  const label = isGap ? '#fff5dc'  : isTmrw ? p.tmrwGold    : p.accent;
+  const label = isGap ? '#fff5dc'  : isTmrw ? p.tmrwGold    : p.accentLight;
   const month = isTmrw ? p.tmrwChipLabel : p.subtle;
 
   return (
@@ -253,7 +254,7 @@ function WeatherPill({ weather, wmo, isTmrw }) {
       <span style={chip}>
         <span style={{ fontSize: 13 }}>{wmo?.emoji}</span>
         {weather.hi}° / {weather.lo}°
-        {weather.seasonal && <span style={{ opacity: 0.6 }}>&nbsp;avg</span>}
+        {weather.seasonal && <span>&nbsp;avg</span>}
       </span>
       {weather.feels != null && (
         <span style={chip}>🌡 Feels {weather.feels}°</span>
