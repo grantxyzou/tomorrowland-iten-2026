@@ -93,7 +93,8 @@ function PhaseDivider({ phase, idx }) {
               : p.muted;
   return (
     <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 12, marginTop: idx === 0 ? 0 : 24 }}>
-      {idx > 0 && <div style={{ flex: 1, height: 1, backgroundColor: p.rule }} />}
+      {/* Lines on both sides so the label is always centred (incl. the first) */}
+      <div style={{ flex: 1, height: 1, backgroundColor: p.rule }} />
       <span style={{ ...mono, fontSize: 10, letterSpacing: '0.25em', textTransform: 'uppercase', fontWeight: 700, color }}>
         {phase}
       </span>
