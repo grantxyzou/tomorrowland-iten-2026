@@ -325,7 +325,7 @@ export default function LineupTab() {
 
       {/* Stage: artist/stage count + expand-all */}
       {view === 'stage' && (
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 24, flexWrap: 'wrap' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8, flexWrap: 'wrap' }}>
           <span style={{ ...mono, fontSize: 10, color: muted }}>
             {browseSets.length}{browseSets.length !== dayCount ? ` / ${dayCount}` : ''} artists · {groups.length} stage{groups.length === 1 ? '' : 's'}
           </span>
