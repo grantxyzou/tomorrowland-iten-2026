@@ -95,20 +95,36 @@ export const LINEUP = {
 };
 
 // ── Derive flat sets[] for the picks / clash engine ──────────
+//
+// DURABILITY RULE — picks must survive lineup edits:
+//   The set id is content-based: `${day}-${stageSlug}-${nameSlug}`.
+//   It is tied to the ARTIST, not their position. So you can freely
+//   ADD, REMOVE, or REORDER artists and every existing pick stays
+//   attached to the right person.
+//   The only edit that orphans a pick is RENAMING that artist (or moving
+//   them to a different stage/day) — because that changes their identity.
+//   If you must rename, do it knowing that one artist's picks reset.
 const slug = (s) => s.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
 
 export const sets = Object.entries(LINEUP).flatMap(([day, stages]) =>
-  Object.entries(stages).flatMap(([stage, entries]) =>
-    entries.map((entry, i) => {
+  Object.entries(stages).flatMap(([stage, entries]) => {
+    const stageSlug = slug(stage);
+    const seen = {};
+    return entries.map((entry) => {
       const e = typeof entry === 'string' ? { name: entry } : entry;
+      const base = `${day}-${stageSlug}-${slug(e.name)}`;
+      // Disambiguate the rare same-name-in-same-stage case so ids stay unique
+      // and stable (the first keeps the clean id; dupes get a numeric suffix).
+      seen[base] = (seen[base] || 0) + 1;
+      const id = seen[base] > 1 ? `${base}-${seen[base]}` : base;
       return {
-        id: `${day}-${slug(stage)}-${i}`,
+        id,
         name: e.name,
         stage,
         day,
         start: e.start ?? null,
         end: e.end ?? null,
       };
-    })
-  )
+    });
+  })
 );
