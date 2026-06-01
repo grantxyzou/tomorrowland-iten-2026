@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { Analytics } from '@vercel/analytics/react';
 import { LAST_UPDATED } from './data/trip.js';
 import ItineraryTab from './components/ItineraryTab.jsx';
 import LineupTab from './components/LineupTab.jsx';
@@ -94,6 +95,7 @@ export default function App() {
         {activeTab === 'itinerary' && <ItineraryTab />}
         {activeTab === 'lineup'    && <LineupTab    />}
       </main>
+      <Analytics />
     </div>
   );
 }
