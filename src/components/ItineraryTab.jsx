@@ -1,5 +1,5 @@
 import React, { useEffect, useRef } from 'react';
-import { ArrowDown, Check, Plane, Car, Clock, Bed, AlertCircle, ChevronDown } from 'lucide-react';
+import { ArrowDown, Check, Plane, Car, Clock, Bed, ChevronDown } from 'lucide-react';
 import { days } from '../data/trip.js';
 import { useWeather } from '../hooks/useWeather.js';
 import { useLocalTime } from '../hooks/useLocalTime.js';
@@ -38,7 +38,6 @@ const p = {
   // Elemental dots
   tmlBlue:  '#4a7fc1', tmlRed: '#c94040', tmlGreen: '#4a9a4a', tmlYellow: '#e8b84b',
 };
-const sans = { fontFamily: '"Space Grotesk", -apple-system, system-ui, sans-serif' };
 const mono = { fontFamily: '"JetBrains Mono", ui-monospace, monospace' };
 
 // Format date as YYYY-MM-DD for weather API
@@ -160,7 +159,7 @@ function DayCard({ d, isToday, dateStr }) {
 
       {/* Lodging */}
       {d.lodging && (
-        <LodgingPanel lodging={d.lodging} isTmrw={isTmrw} isGap={isGap} />
+        <LodgingPanel lodging={d.lodging} isTmrw={isTmrw} />
       )}
 
       {/* Schedule */}
@@ -302,7 +301,7 @@ function BookingRefs({ refs, isTmrw, isFlightDay }) {
 }
 
 // ── Lodging panel ────────────────────────────────────────────
-function LodgingPanel({ lodging, isTmrw, isGap }) {
+function LodgingPanel({ lodging, isTmrw }) {
   const bg     = isTmrw ? p.tmrwPanel : lodging.isGap ? '#e8dcbf' : p.calloutBg;
   const border = isTmrw ? p.tmrwPanelBorder : p.ruleSubtle;
   const icon   = lodging.isGap ? p.gapAccent : isTmrw ? p.tmrwGold : p.accent;
