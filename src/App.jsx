@@ -33,7 +33,7 @@ export default function App() {
     <div style={{ minHeight: '100dvh', backgroundColor: paper, color: ink }}>
 
       {/* ── Top bar ─────────────────────────────────────────── */}
-      <header style={{ backgroundColor: ink, color: paper, padding: '12px 16px', position: 'sticky', top: 0, zIndex: 50 }}>
+      <header style={{ backgroundColor: ink, color: paper, padding: '12px 16px', paddingTop: 'calc(12px + env(safe-area-inset-top))', position: 'sticky', top: 0, zIndex: 50 }}>
         <div style={{ maxWidth: 680, margin: '0 auto', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
           <div>
             <div style={{ ...mono, fontSize: 10, letterSpacing: '0.2em', textTransform: 'uppercase', color: '#938b81' }}>
@@ -58,18 +58,23 @@ export default function App() {
       </div>
 
       {/* ── Tab bar ─────────────────────────────────────────── */}
-      <nav style={{ backgroundColor: paper, borderBottom: `1px solid ${rule}`, position: 'sticky', top: 53, zIndex: 40 }}>
+      <nav role="tablist" aria-label="Sections" style={{ backgroundColor: paper, borderBottom: `1px solid ${rule}`, position: 'sticky', top: 53, zIndex: 40 }}>
         <div style={{ maxWidth: 680, margin: '0 auto', display: 'flex', overflowX: 'auto' }} className="no-scrollbar">
           {TABS.map(tab => {
             const active = activeTab === tab.id;
             return (
               <button
                 key={tab.id}
+                role="tab"
+                id={`tab-${tab.id}`}
+                aria-selected={active}
+                aria-controls="tabpanel"
                 onClick={() => setActiveTab(tab.id)}
                 style={{
                   ...mono,
                   flex: 1,
                   padding: '12px 16px',
+                  minHeight: 44,
                   fontSize: 11,
                   fontWeight: active ? 700 : 500,
                   letterSpacing: '0.18em',
@@ -91,7 +96,12 @@ export default function App() {
       </nav>
 
       {/* ── Tab content ─────────────────────────────────────── */}
-      <main style={{ maxWidth: 680, margin: '0 auto', padding: '24px 16px 64px' }}>
+      <main
+        id="tabpanel"
+        role="tabpanel"
+        aria-labelledby={`tab-${activeTab}`}
+        style={{ maxWidth: 680, margin: '0 auto', padding: '24px max(16px, env(safe-area-inset-right)) calc(64px + env(safe-area-inset-bottom)) max(16px, env(safe-area-inset-left))' }}
+      >
         {activeTab === 'itinerary' && <ItineraryTab />}
         {activeTab === 'lineup'    && <LineupTab    />}
       </main>

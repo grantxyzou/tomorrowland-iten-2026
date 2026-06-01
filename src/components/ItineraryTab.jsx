@@ -279,7 +279,9 @@ function BookingRefs({ refs, isTmrw, isFlightDay }) {
     <div style={{ borderTop: `1px solid ${border}`, backgroundColor: bg, position: 'relative', zIndex: 1 }}>
       <button
         onClick={() => setOpen(o => !o)}
-        style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '8px 16px', background: 'none', border: 'none', cursor: 'pointer' }}
+        aria-expanded={open}
+        aria-label="Booking references"
+        style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '11px 16px', minHeight: 44, background: 'none', border: 'none', cursor: 'pointer' }}
       >
         <span style={{ ...mono, fontSize: 10, letterSpacing: '0.18em', textTransform: 'uppercase', color: label, fontWeight: 600 }}>
           Booking Refs
@@ -332,7 +334,7 @@ function LodgingPanel({ lodging, isTmrw }) {
       <div style={{ fontSize: 13, fontWeight: 600, color: name }}>{lodging.name}</div>
       <div style={{ fontSize: 11, color: sub, marginTop: 2 }}>{lodging.address}</div>
       {lodging.phone && (
-        <a href={`tel:${lodging.phone}`} style={{ ...mono, fontSize: 10, color: icon, marginTop: 3, display: 'inline-block', textDecoration: 'none' }}>
+        <a href={`tel:${lodging.phone}`} aria-label={`Call ${lodging.name}`} style={{ ...mono, fontSize: 11, color: icon, display: 'inline-flex', alignItems: 'center', minHeight: 44, textDecoration: 'none' }}>
           {lodging.phone}
         </a>
       )}

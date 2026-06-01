@@ -53,9 +53,9 @@ function timesOverlap(a, b) {
 function ArtistRow({ set, myColor, myPick, others, isClash, showStage, onToggle }) {
   const stageColor = STAGES[set.stage]?.color || tmrwGold;
   return (
-    <button onClick={onToggle}
+    <button onClick={onToggle} aria-pressed={myPick} aria-label={`${set.name}, ${set.stage}`}
       style={{
-        width: '100%', textAlign: 'left', cursor: 'pointer',
+        width: '100%', textAlign: 'left', cursor: 'pointer', minHeight: 44,
         display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10,
         padding: '10px 14px', border: 'none', borderTop: `1px solid ${rule}55`,
         borderLeft: myPick ? `5px solid ${myColor}` : '5px solid transparent',
@@ -224,7 +224,7 @@ export default function LineupTab() {
             return (
               <button key={person} onClick={() => setActivePerson(person)}
                 style={{
-                  padding: '6px 16px', borderRadius: 4, border: `2px solid ${color}`,
+                  padding: '6px 16px', minHeight: 44, borderRadius: 4, border: `2px solid ${color}`,
                   backgroundColor: active ? color : 'transparent', color: active ? ink : color,
                   fontWeight: 700, fontSize: 13, cursor: 'pointer', transition: 'all 0.15s',
                   display: 'flex', alignItems: 'center', gap: 6,
@@ -244,7 +244,7 @@ export default function LineupTab() {
           return (
             <button key={day.id} onClick={() => setActiveDay(day.id)}
               style={{
-                flex: 1, padding: '8px 0', borderRadius: 4, cursor: 'pointer',
+                flex: 1, padding: '8px 0', minHeight: 44, borderRadius: 4, cursor: 'pointer',
                 border: `1px solid ${active ? tmrwGold : rule}`,
                 backgroundColor: active ? tmrwBg : 'transparent', color: active ? tmrwGold : muted,
                 ...mono, fontSize: 11, fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase',
@@ -263,7 +263,7 @@ export default function LineupTab() {
           return (
             <button key={v.id} onClick={() => setView(v.id)}
               style={{
-                flex: 1, padding: '9px 0', cursor: 'pointer', border: 'none',
+                flex: 1, padding: '9px 0', minHeight: 44, cursor: 'pointer', border: 'none',
                 borderLeft: i === 0 ? 'none' : `1px solid ${rule}`,
                 backgroundColor: active ? ink : 'transparent', color: active ? paper : muted,
                 ...mono, fontSize: 11, fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase',
@@ -281,16 +281,17 @@ export default function LineupTab() {
           <div style={{ position: 'relative', marginBottom: 10 }}>
             <span style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', fontSize: 13, color: muted, pointerEvents: 'none' }}>⌕</span>
             <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search artists…"
-              style={{ width: '100%', boxSizing: 'border-box', padding: '11px 36px 11px 30px', borderRadius: 8, border: `1px solid ${rule}`, backgroundColor: '#fff', color: ink, fontSize: 15, ...sans, outline: 'none' }} />
+              type="search" inputMode="search" aria-label="Search artists"
+              style={{ width: '100%', boxSizing: 'border-box', padding: '11px 36px 11px 30px', minHeight: 44, borderRadius: 8, border: `1px solid ${rule}`, backgroundColor: '#fff', color: ink, fontSize: 16, ...sans }} />
             {search && (
               <button onClick={() => setSearch('')} aria-label="Clear search"
-                style={{ position: 'absolute', right: 8, top: '50%', transform: 'translateY(-50%)', border: 'none', background: 'none', color: muted, fontSize: 16, cursor: 'pointer', lineHeight: 1, padding: 4 }}>×</button>
+                style={{ position: 'absolute', right: 2, top: '50%', transform: 'translateY(-50%)', border: 'none', background: 'none', color: muted, fontSize: 18, cursor: 'pointer', lineHeight: 1, width: 40, height: 40, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>×</button>
             )}
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 16, flexWrap: 'wrap' }}>
             <button onClick={() => setMyPicksOnly(o => !o)}
               style={{
-                padding: '6px 12px', borderRadius: 999, cursor: 'pointer',
+                padding: '6px 12px', minHeight: 44, borderRadius: 999, cursor: 'pointer',
                 border: `1.5px solid ${myPicksOnly ? myColor : rule}`,
                 backgroundColor: myPicksOnly ? myColor : 'transparent', color: myPicksOnly ? ink : muted,
                 ...mono, fontSize: 10, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase',
@@ -302,7 +303,7 @@ export default function LineupTab() {
             </span>
             {view === 'stage' && !forceOpen && (
               <button onClick={() => setOpenStages(openStages.size >= groups.length ? new Set() : new Set(STAGE_ORDER))}
-                style={{ marginLeft: 'auto', border: 'none', background: 'none', color: tmrwGold, ...mono, fontSize: 10, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', cursor: 'pointer' }}>
+                style={{ marginLeft: 'auto', minHeight: 44, padding: '0 4px', border: 'none', background: 'none', color: tmrwGold, ...mono, fontSize: 10, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', cursor: 'pointer' }}>
                 {openStages.size >= groups.length ? 'Collapse all' : 'Expand all'}
               </button>
             )}
@@ -329,14 +330,15 @@ export default function LineupTab() {
             const picked = stageSets.filter(s => picks[s.id]?.[activePerson]).length;
             return (
               <section key={stage} style={{ borderRadius: 10, border: `1px solid ${rule}`, overflow: 'hidden', backgroundColor: paper }}>
-                <button onClick={() => !forceOpen && toggleStage(stage)}
-                  style={{ width: '100%', textAlign: 'left', cursor: forceOpen ? 'default' : 'pointer', display: 'flex', alignItems: 'center', gap: 10, padding: '12px 14px', border: 'none', borderLeft: `5px solid ${color}`, background: 'none' }}>
-                  <span style={{ ...mono, fontSize: 12, fontWeight: 700, color: ink, letterSpacing: '0.04em', textTransform: 'uppercase', flex: 1 }}>{stage}</span>
+                <button onClick={() => !forceOpen && toggleStage(stage)} aria-expanded={open}
+                  aria-label={`${stage}, ${stageSets.length} artists${picked > 0 ? `, ${picked} of your picks` : ''}`}
+                  style={{ width: '100%', textAlign: 'left', cursor: forceOpen ? 'default' : 'pointer', display: 'flex', alignItems: 'center', gap: 10, padding: '12px 14px', minHeight: 44, border: 'none', borderLeft: `5px solid ${color}`, background: 'none' }}>
+                  <span aria-hidden="true" style={{ ...mono, fontSize: 12, fontWeight: 700, color: ink, letterSpacing: '0.04em', textTransform: 'uppercase', flex: 1 }}>{stage}</span>
                   {picked > 0 && (
-                    <span style={{ ...mono, fontSize: 10, fontWeight: 700, color: ink, backgroundColor: myColor, borderRadius: 999, padding: '2px 7px' }}>★ {picked}</span>
+                    <span aria-hidden="true" style={{ ...mono, fontSize: 10, fontWeight: 700, color: ink, backgroundColor: myColor, borderRadius: 999, padding: '2px 7px' }}>★ {picked}</span>
                   )}
-                  <span style={{ ...mono, fontSize: 11, color: muted }}>{stageSets.length}</span>
-                  <span style={{ fontSize: 11, color: muted, transform: open ? 'rotate(90deg)' : 'none', transition: 'transform 0.18s' }}>▶</span>
+                  <span aria-hidden="true" style={{ ...mono, fontSize: 11, color: muted }}>{stageSets.length}</span>
+                  <span aria-hidden="true" style={{ fontSize: 11, color: muted, transform: open ? 'rotate(90deg)' : 'none', transition: 'transform 0.18s' }}>▶</span>
                 </button>
                 {open && (
                   <div style={{ borderTop: `1px solid ${rule}` }}>
@@ -409,7 +411,7 @@ export default function LineupTab() {
 
       {/* Reset picks */}
       <button onClick={() => { if (prompt("This clears EVERYONE's picks. Type RESET to confirm.") === 'RESET') resetPicks(); }}
-        style={{ marginTop: 24, width: '100%', padding: '10px', border: `1px solid ${rule}`, borderRadius: 6, background: 'none', color: muted, ...mono, fontSize: 10, letterSpacing: '0.15em', textTransform: 'uppercase', cursor: 'pointer' }}>
+        style={{ marginTop: 24, width: '100%', padding: '10px', minHeight: 44, border: `1px solid ${rule}`, borderRadius: 6, background: 'none', color: muted, ...mono, fontSize: 10, letterSpacing: '0.15em', textTransform: 'uppercase', cursor: 'pointer' }}>
         Reset all picks
       </button>
     </div>
