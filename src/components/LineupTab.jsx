@@ -225,7 +225,7 @@ export default function LineupTab() {
       <div style={{ marginBottom: 16 }}>
         {/* Field label (left) + sync status (right) above the dropdown */}
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, marginBottom: 6 }}>
-          <span id="who-label" style={{ ...mono, fontSize: 10, color: muted, letterSpacing: '0.18em', textTransform: 'uppercase' }}>Who's picking</span>
+          <span id="who-label" style={{ ...mono, fontSize: 10, color: muted, letterSpacing: '0.18em', textTransform: 'uppercase' }}>I'm</span>
           <span title={status === 'error' ? 'Offline — showing last synced picks' : 'Synced with the crew'}
             style={{ ...mono, fontSize: 9, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', display: 'inline-flex', alignItems: 'center', gap: 4, color: status === 'error' ? '#a82a13' : status === 'ready' ? '#276627' : muted }}>
             <span style={{ width: 6, height: 6, borderRadius: '50%', backgroundColor: status === 'error' ? '#a82a13' : status === 'ready' ? '#276627' : muted, display: 'inline-block' }} />
@@ -234,11 +234,11 @@ export default function LineupTab() {
         </div>
 
         <button onClick={() => setWhoOpen(o => !o)} aria-expanded={whoOpen} aria-haspopup="listbox"
-          aria-labelledby="who-label" aria-label={`You're picking as ${activePerson}. Tap to change.`}
+          aria-label={`I'm ${activePerson}. Tap to change who's using this device.`}
           style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, minHeight: 48, padding: '10px 14px', borderRadius: 8, border: `1px solid ${rule}`, backgroundColor: '#fff', color: myInk, ...sans, fontSize: 14, fontWeight: 700, cursor: 'pointer' }}>
           <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
             <span aria-hidden="true" style={{ width: 10, height: 10, borderRadius: '50%', backgroundColor: myInk }} />
-            You're {activePerson}
+            {activePerson}
           </span>
           <span aria-hidden="true" style={{ fontSize: 18, lineHeight: 1, color: muted, transform: whoOpen ? 'rotate(180deg)' : 'none', transition: 'transform 0.15s' }}>▾</span>
         </button>
