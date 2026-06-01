@@ -1,5 +1,6 @@
 import { useState, useEffect, useMemo } from 'react';
 import { sets, STAGES, PEOPLE, LINEUP_STATUS } from '../data/lineup.js';
+import { usePicks } from '../hooks/usePicks.js';
 
 const mono = { fontFamily: '"JetBrains Mono", ui-monospace, monospace' };
 const sans = { fontFamily: '"Space Grotesk", -apple-system, system-ui, sans-serif' };
@@ -33,15 +34,7 @@ const VIEWS = [
 ];
 
 const STAGE_ORDER = Object.keys(STAGES);
-const LS_KEY = 'tml2026_picks';
-
-function loadPicks() {
-  try { return JSON.parse(localStorage.getItem(LS_KEY) || '{}'); }
-  catch { return {}; }
-}
-function savePicks(picks) {
-  localStorage.setItem(LS_KEY, JSON.stringify(picks));
-}
+const ME_KEY = 'tml2026_me'; // remembers which person this device is
 
 const hasTime  = (s) => Boolean(s.start && s.end);
 const timeLabel = (s) => (hasTime(s) ? `${s.start} – ${s.end}` : 'Set time TBA');
@@ -103,26 +96,26 @@ function ArtistRow({ set, myColor, myPick, others, isClash, showStage, onToggle 
 
 export default function LineupTab() {
   const [activeDay, setActiveDay]       = useState('fri');
-  const [activePerson, setActivePerson] = useState('Grant');
+  const [activePerson, setActivePerson] = useState(() => {
+    try { const me = localStorage.getItem(ME_KEY); return PEOPLE.includes(me) ? me : 'Grant'; }
+    catch { return 'Grant'; }
+  });
   const [view, setView]                 = useState('stage');
-  const [picks, setPicks]               = useState(loadPicks);
   const [search, setSearch]             = useState('');
   const [myPicksOnly, setMyPicksOnly]   = useState(false);
   const [openStages, setOpenStages]     = useState(() => new Set());
 
-  useEffect(() => { savePicks(picks); }, [picks]);
+  // Shared picks, synced to the server in near-real-time.
+  const { picks, status, togglePick, resetPicks } = usePicks();
+
+  // Remember which person this device is, so you don't re-pick each visit.
+  useEffect(() => { try { localStorage.setItem(ME_KEY, activePerson); } catch {} }, [activePerson]);
 
   const q = search.trim().toLowerCase();
   const myColor = PERSON_COLORS[activePerson];
   const forceOpen = q.length > 0 || myPicksOnly;
   const dayHasTimes = useMemo(() => sets.some(s => s.day === activeDay && hasTime(s)), [activeDay]);
 
-  function togglePick(setId, person) {
-    setPicks(prev => {
-      const cur = prev[setId] || {};
-      return { ...prev, [setId]: { ...cur, [person]: !cur[person] } };
-    });
-  }
   function toggleStage(stage) {
     setOpenStages(prev => {
       const next = new Set(prev);
@@ -216,7 +209,14 @@ export default function LineupTab() {
 
       {/* Person selector */}
       <div style={{ marginBottom: 16 }}>
-        <div style={{ ...mono, fontSize: 10, color: muted, letterSpacing: '0.18em', textTransform: 'uppercase', marginBottom: 8 }}>Who's picking</div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
+          <span style={{ ...mono, fontSize: 10, color: muted, letterSpacing: '0.18em', textTransform: 'uppercase' }}>Who's picking</span>
+          <span title={status === 'error' ? 'Offline — showing last synced picks' : 'Synced with the crew'}
+            style={{ ...mono, fontSize: 9, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', display: 'inline-flex', alignItems: 'center', gap: 4, color: status === 'error' ? '#c94040' : status === 'ready' ? '#4a9a4a' : muted }}>
+            <span style={{ width: 6, height: 6, borderRadius: '50%', backgroundColor: status === 'error' ? '#c94040' : status === 'ready' ? '#4a9a4a' : muted, display: 'inline-block' }} />
+            {status === 'error' ? 'Offline' : status === 'ready' ? 'Live' : 'Syncing'}
+          </span>
+        </div>
         <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
           {PEOPLE.map(person => {
             const active = activePerson === person;
@@ -408,7 +408,7 @@ export default function LineupTab() {
       )}
 
       {/* Reset picks */}
-      <button onClick={() => { if (confirm('Clear all picks for everyone?')) { setPicks({}); savePicks({}); } }}
+      <button onClick={() => { if (confirm('Clear all picks for everyone?')) resetPicks(); }}
         style={{ marginTop: 24, width: '100%', padding: '10px', border: `1px solid ${rule}`, borderRadius: 6, background: 'none', color: muted, ...mono, fontSize: 10, letterSpacing: '0.15em', textTransform: 'uppercase', cursor: 'pointer' }}>
         Reset all picks
       </button>
