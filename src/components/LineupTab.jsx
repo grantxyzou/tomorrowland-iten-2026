@@ -123,14 +123,16 @@ export default function LineupTab() {
 
   // Shared picks, synced to the server in near-real-time.
   const { picks, status, togglePick, clearMine, restoreMine } = usePicks();
-  const [undo, setUndo] = useState(null); // { person, setIds } after a clear
+  // Unified bottom-screen toast. { msg, action?: { label, run }, duration }
+  const [toast, setToast] = useState(null);
+  const notify = (msg, opts) => setToast({ msg, duration: 2500, ...opts });
 
-  // Auto-dismiss the undo toast.
+  // Auto-dismiss the toast.
   useEffect(() => {
-    if (!undo) return;
-    const t = setTimeout(() => setUndo(null), 6000);
+    if (!toast) return;
+    const t = setTimeout(() => setToast(null), toast.duration || 3000);
     return () => clearTimeout(t);
-  }, [undo]);
+  }, [toast]);
 
   // Remember which person this device is, so you don't re-pick each visit.
   useEffect(() => { try { localStorage.setItem(ME_KEY, activePerson); } catch {} }, [activePerson]);
@@ -230,14 +232,6 @@ export default function LineupTab() {
 
   return (
     <div style={{ ...sans }}>
-      {/* Party mode — big, dark, "where do I go next" view for the night */}
-      <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 12 }}>
-        <button onClick={() => setParty(true)}
-          style={{ minHeight: 40, padding: '0 14px', borderRadius: 999, border: `1px solid ${rule}`, backgroundColor: '#fff', color: ink, ...mono, fontSize: 11, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: 6 }}>
-          <span aria-hidden="true">🌙</span> Party mode
-        </button>
-      </div>
-
       {/* One-time tip — slim and dismissible, not a dominant panel */}
       {LINEUP_STATUS !== 'official' && !tipDismissed && (
         <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 16, backgroundColor: 'rgba(26,10,46,0.05)', borderRadius: 8, padding: '6px 6px 6px 12px' }}>
@@ -250,55 +244,6 @@ export default function LineupTab() {
             style={{ flexShrink: 0, width: 36, height: 36, border: 'none', background: 'none', color: muted, fontSize: 18, lineHeight: 1, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>×</button>
         </div>
       )}
-
-      {/* Identity (this device) — a full-width dropdown. Each person uses
-          their own phone, so "who am I" is set once. */}
-      <div style={{ marginBottom: 16 }}>
-        {/* Sync status, right-aligned above the dropdown */}
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 8, marginBottom: 6 }}>
-          <span title={status === 'error' ? 'Offline — showing last synced picks' : 'Synced with the crew'}
-            style={{ ...mono, fontSize: 9, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', display: 'inline-flex', alignItems: 'center', gap: 4, color: status === 'error' ? '#a82a13' : status === 'ready' ? '#276627' : muted }}>
-            <span style={{ width: 6, height: 6, borderRadius: '50%', backgroundColor: status === 'error' ? '#a82a13' : status === 'ready' ? '#276627' : muted, display: 'inline-block' }} />
-            {status === 'error' ? 'Offline' : status === 'ready' ? 'Live' : 'Syncing'}
-          </span>
-        </div>
-
-        <button onClick={() => setWhoOpen(o => !o)} aria-expanded={whoOpen} aria-haspopup="listbox"
-          aria-label={`I'm ${activePerson}. Tap to change who's using this device.`}
-          style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, minHeight: 48, padding: '10px 14px', borderRadius: 8, border: `1px solid ${rule}`, backgroundColor: '#fff', color: myInk, ...sans, fontSize: 14, fontWeight: 700, cursor: 'pointer' }}>
-          <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
-            <span aria-hidden="true" style={{ width: 10, height: 10, borderRadius: '50%', backgroundColor: myInk }} />
-            {activePerson}
-          </span>
-          <span aria-hidden="true" style={{ fontSize: 18, lineHeight: 1, color: muted, transform: whoOpen ? 'rotate(180deg)' : 'none', transition: 'transform 0.15s' }}>▾</span>
-        </button>
-
-        {whoOpen && (
-          <div role="listbox" aria-label="Switch person" style={{ marginTop: 6, border: `1px solid ${rule}`, borderRadius: 8, overflow: 'hidden', backgroundColor: '#fff' }}>
-            {PEOPLE.map((person, i) => {
-              const active = activePerson === person;
-              const ink2 = PERSON_INK[person];
-              return (
-                <button key={person} role="option" aria-selected={active}
-                  onClick={() => { setActivePerson(person); setWhoOpen(false); }}
-                  style={{
-                    width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8,
-                    minHeight: 48, padding: '10px 14px', border: 'none',
-                    borderTop: i === 0 ? 'none' : `1px solid ${rule}55`,
-                    backgroundColor: active ? `${ink2}14` : 'transparent', color: ink2,
-                    ...sans, fontSize: 14, fontWeight: 700, cursor: 'pointer', textAlign: 'left',
-                  }}>
-                  <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
-                    <span aria-hidden="true" style={{ width: 10, height: 10, borderRadius: '50%', backgroundColor: ink2 }} />
-                    {person}
-                  </span>
-                  {active && <span aria-hidden="true">✓</span>}
-                </button>
-              );
-            })}
-          </div>
-        )}
-      </div>
 
       {/* Day selector — borderless underline tabs (no box), date + festival day */}
       <div style={{ display: 'flex', gap: 4, marginBottom: 16, borderBottom: `1px solid ${rule}` }}>
@@ -322,8 +267,62 @@ export default function LineupTab() {
         })}
       </div>
 
-      {/* View switcher — a "view by", not a filter: same day, different lens */}
-      <div style={{ ...mono, fontSize: 10, color: muted, letterSpacing: '0.18em', textTransform: 'uppercase', marginBottom: 6 }}>View by</div>
+      {/* Identity dropdown + Party mode — one line. Each person uses their
+          own phone, so "who am I" is set once. */}
+      <div style={{ display: 'flex', alignItems: 'stretch', gap: 8, marginBottom: 16 }}>
+        <div style={{ position: 'relative', flex: 1, minWidth: 0 }}>
+          <button onClick={() => setWhoOpen(o => !o)} aria-expanded={whoOpen} aria-haspopup="listbox"
+            aria-label={`I'm ${activePerson}. Tap to change who's using this device.`}
+            style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, minHeight: 48, padding: '10px 14px', borderRadius: 8, border: `1px solid ${rule}`, backgroundColor: '#fff', color: myInk, ...sans, fontSize: 14, fontWeight: 700, cursor: 'pointer' }}>
+            <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8, minWidth: 0 }}>
+              <span aria-hidden="true" style={{ width: 10, height: 10, borderRadius: '50%', backgroundColor: myInk, flexShrink: 0 }} />
+              <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{activePerson}</span>
+            </span>
+            <span aria-hidden="true" style={{ fontSize: 18, lineHeight: 1, color: muted, transform: whoOpen ? 'rotate(180deg)' : 'none', transition: 'transform 0.15s', flexShrink: 0 }}>▾</span>
+          </button>
+
+          {whoOpen && (
+            <div role="listbox" aria-label="Switch person" style={{ position: 'absolute', top: 'calc(100% + 6px)', left: 0, right: 0, zIndex: 30, border: `1px solid ${rule}`, borderRadius: 8, overflow: 'hidden', backgroundColor: '#fff', boxShadow: '0 8px 24px rgba(0,0,0,0.14)' }}>
+              {PEOPLE.map((person, i) => {
+                const active = activePerson === person;
+                const ink2 = PERSON_INK[person];
+                return (
+                  <button key={person} role="option" aria-selected={active}
+                    onClick={() => { setActivePerson(person); setWhoOpen(false); }}
+                    style={{
+                      width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8,
+                      minHeight: 48, padding: '10px 14px', border: 'none',
+                      borderTop: i === 0 ? 'none' : `1px solid ${rule}55`,
+                      backgroundColor: active ? `${ink2}14` : 'transparent', color: ink2,
+                      ...sans, fontSize: 14, fontWeight: 700, cursor: 'pointer', textAlign: 'left',
+                    }}>
+                    <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
+                      <span aria-hidden="true" style={{ width: 10, height: 10, borderRadius: '50%', backgroundColor: ink2 }} />
+                      {person}
+                    </span>
+                    {active && <span aria-hidden="true">✓</span>}
+                  </button>
+                );
+              })}
+            </div>
+          )}
+        </div>
+
+        <button onClick={() => setParty(true)} aria-label="Enter party mode"
+          style={{ flexShrink: 0, minHeight: 48, padding: '0 16px', borderRadius: 8, border: `1px solid ${tmrwBg}`, backgroundColor: tmrwBg, color: tmrwGold, ...mono, fontSize: 11, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: 6, whiteSpace: 'nowrap' }}>
+          <span aria-hidden="true">🌙</span> Party mode
+        </button>
+      </div>
+
+      {/* View by + live sync status — one line */}
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, marginBottom: 6 }}>
+        <span style={{ ...mono, fontSize: 10, color: muted, letterSpacing: '0.18em', textTransform: 'uppercase' }}>View by</span>
+        <span title={status === 'error' ? 'Offline — showing last synced picks' : 'Synced with the crew'}
+          style={{ ...mono, fontSize: 9, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', display: 'inline-flex', alignItems: 'center', gap: 4, color: status === 'error' ? '#a82a13' : status === 'ready' ? '#276627' : muted }}>
+          <span style={{ width: 6, height: 6, borderRadius: '50%', backgroundColor: status === 'error' ? '#a82a13' : status === 'ready' ? '#276627' : muted, display: 'inline-block' }} />
+          {status === 'error' ? 'Offline' : status === 'ready' ? 'Live' : 'Syncing'}
+        </span>
+      </div>
       <div role="tablist" aria-label="View" style={{ display: 'flex', marginBottom: 16, border: `1px solid ${rule}`, borderRadius: 8, overflow: 'hidden' }}>
         {VIEWS.map((v, i) => {
           const active = view === v.id;
@@ -417,7 +416,7 @@ export default function LineupTab() {
                 {open && (
                   <div style={{ borderTop: `1px solid ${rule}` }}>
                     {stageSets.map(set => <ArtistRow key={set.id} {...rowProps(set)} showStage={false} />)}
-                    {picked > 0 && <StageSpotify stage={stage} pickedSets={pickedSets} person={activePerson} />}
+                    {picked > 0 && <StageSpotify stage={stage} pickedSets={pickedSets} onCopied={notify} />}
                   </div>
                 )}
               </section>
@@ -494,14 +493,15 @@ export default function LineupTab() {
       )}
 
       {/* Spotify — build a playlist prompt from this person's picks */}
-      <SpotifyExport person={activePerson} mySets={mySets} />
+      <SpotifyExport person={activePerson} mySets={mySets} onCopied={notify} />
 
       {/* Reset — clears only the active person's picks; quiet line button */}
       <div style={{ marginTop: 28, textAlign: 'center' }}>
         <button onClick={() => {
             if (confirm(`Clear all of ${activePerson}'s picks for the trip? You can undo right after.`)) {
-              const ids = clearMine(activePerson);
-              if (ids.length) setUndo({ person: activePerson, setIds: ids });
+              const person = activePerson;
+              const ids = clearMine(person);
+              if (ids.length) notify(`Cleared ${person}'s picks`, { duration: 6000, action: { label: 'Undo', run: () => restoreMine(person, ids) } });
             }
           }}
           style={{ minHeight: 44, padding: '0 8px', border: 'none', background: 'none', color: muted, ...mono, fontSize: 10, letterSpacing: '0.1em', textTransform: 'uppercase', cursor: 'pointer', textDecoration: 'underline', textUnderlineOffset: 3 }}>
@@ -509,14 +509,16 @@ export default function LineupTab() {
         </button>
       </div>
 
-      {/* Undo toast */}
-      {undo && (
+      {/* Bottom-screen toast — copy confirmations, undo, etc. */}
+      {toast && (
         <div role="status" style={{ position: 'fixed', left: 16, right: 16, bottom: 'calc(16px + env(safe-area-inset-bottom))', maxWidth: 648, margin: '0 auto', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, padding: '12px 16px', borderRadius: 10, backgroundColor: ink, color: paper, zIndex: 60, boxShadow: '0 6px 20px rgba(0,0,0,0.28)' }}>
-          <span style={{ ...sans, fontSize: 13 }}>Cleared {undo.person}'s picks</span>
-          <button onClick={() => { restoreMine(undo.person, undo.setIds); setUndo(null); }}
-            style={{ minHeight: 44, padding: '0 6px', border: 'none', background: 'none', color: tmrwGold, ...mono, fontSize: 12, fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', cursor: 'pointer' }}>
-            Undo
-          </button>
+          <span style={{ ...sans, fontSize: 13 }}>{toast.msg}</span>
+          {toast.action && (
+            <button onClick={() => { toast.action.run(); setToast(null); }}
+              style={{ minHeight: 44, padding: '0 6px', border: 'none', background: 'none', color: tmrwGold, ...mono, fontSize: 12, fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', cursor: 'pointer', flexShrink: 0 }}>
+              {toast.action.label}
+            </button>
+          )}
         </div>
       )}
     </div>
@@ -588,7 +590,7 @@ async function copyToClipboard(text) {
   }
 }
 
-function SpotifyExport({ person, mySets }) {
+function SpotifyExport({ person, mySets, onCopied }) {
   const [copied, setCopied]     = useState(false);
   const [showText, setShowText] = useState(false);
   const prompt = useMemo(() => buildSpotifyPrompt(mySets), [mySets]);
@@ -598,6 +600,7 @@ function SpotifyExport({ person, mySets }) {
     await copyToClipboard(prompt);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
+    onCopied?.(`Copied ${person}'s Spotify prompt`);
   }
 
   if (!count) return null;
@@ -630,7 +633,7 @@ function SpotifyExport({ person, mySets }) {
 }
 
 // Compact, per-stage variant — lives in the foot of each open stage accordion.
-function StageSpotify({ stage, pickedSets }) {
+function StageSpotify({ stage, pickedSets, onCopied }) {
   const [copied, setCopied]     = useState(false);
   const [showText, setShowText] = useState(false);
   const prompt = useMemo(() => buildSpotifyPrompt(pickedSets, stage), [pickedSets, stage]);
@@ -640,6 +643,7 @@ function StageSpotify({ stage, pickedSets }) {
     await copyToClipboard(prompt);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
+    onCopied?.(`Copied ${stage} Spotify prompt`);
   }
 
   return (
