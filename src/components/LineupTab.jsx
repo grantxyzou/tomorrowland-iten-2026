@@ -121,7 +121,15 @@ export default function LineupTab() {
   });
 
   // Shared picks, synced to the server in near-real-time.
-  const { picks, status, togglePick, resetPicks } = usePicks();
+  const { picks, status, togglePick, clearMine, restoreMine } = usePicks();
+  const [undo, setUndo] = useState(null); // { person, setIds } after a clear
+
+  // Auto-dismiss the undo toast.
+  useEffect(() => {
+    if (!undo) return;
+    const t = setTimeout(() => setUndo(null), 6000);
+    return () => clearTimeout(t);
+  }, [undo]);
 
   // Remember which person this device is, so you don't re-pick each visit.
   useEffect(() => { try { localStorage.setItem(ME_KEY, activePerson); } catch {} }, [activePerson]);
@@ -461,11 +469,29 @@ export default function LineupTab() {
         </div>
       )}
 
-      {/* Reset picks */}
-      <button onClick={() => { if (prompt("This clears EVERYONE's picks. Type RESET to confirm.") === 'RESET') resetPicks(); }}
-        style={{ marginTop: 24, width: '100%', padding: '10px', minHeight: 44, border: `1px solid ${rule}`, borderRadius: 6, background: 'none', color: muted, ...mono, fontSize: 10, letterSpacing: '0.15em', textTransform: 'uppercase', cursor: 'pointer' }}>
-        Reset all picks
-      </button>
+      {/* Reset — clears only the active person's picks; quiet line button */}
+      <div style={{ marginTop: 28, textAlign: 'center' }}>
+        <button onClick={() => {
+            if (confirm(`Clear all of ${activePerson}'s picks for the trip? You can undo right after.`)) {
+              const ids = clearMine(activePerson);
+              if (ids.length) setUndo({ person: activePerson, setIds: ids });
+            }
+          }}
+          style={{ minHeight: 44, padding: '0 8px', border: 'none', background: 'none', color: muted, ...mono, fontSize: 10, letterSpacing: '0.1em', textTransform: 'uppercase', cursor: 'pointer', textDecoration: 'underline', textUnderlineOffset: 3 }}>
+          Reset {activePerson}'s selections
+        </button>
+      </div>
+
+      {/* Undo toast */}
+      {undo && (
+        <div role="status" style={{ position: 'fixed', left: 16, right: 16, bottom: 'calc(16px + env(safe-area-inset-bottom))', maxWidth: 648, margin: '0 auto', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, padding: '12px 16px', borderRadius: 10, backgroundColor: ink, color: paper, zIndex: 60, boxShadow: '0 6px 20px rgba(0,0,0,0.28)' }}>
+          <span style={{ ...sans, fontSize: 13 }}>Cleared {undo.person}'s picks</span>
+          <button onClick={() => { restoreMine(undo.person, undo.setIds); setUndo(null); }}
+            style={{ minHeight: 44, padding: '0 6px', border: 'none', background: 'none', color: tmrwGold, ...mono, fontSize: 12, fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', cursor: 'pointer' }}>
+            Undo
+          </button>
+        </div>
+      )}
     </div>
   );
 }

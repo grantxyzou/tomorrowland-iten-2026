@@ -52,6 +52,18 @@ export default async function handler(req, res) {
         return res.status(200).json({ ok: true });
       }
 
+      // Clear all of ONE person's picks (used by the per-person reset).
+      // Only touches that person's fields — never the rest of the crew's.
+      if (body.action === 'clearMine') {
+        if (!PEOPLE.includes(body.person)) {
+          return res.status(400).json({ error: 'invalid person' });
+        }
+        const flat = (await redis.hgetall(HASH_KEY)) || {};
+        const fields = Object.keys(flat).filter(f => f.endsWith(`${SEP}${body.person}`));
+        if (fields.length) await redis.hdel(HASH_KEY, ...fields);
+        return res.status(200).json({ ok: true, cleared: fields.length });
+      }
+
       // Toggle one (set, person) flag.
       const { setId, person, picked } = body;
       if (typeof setId !== 'string' || !setId || setId.includes(SEP)) {

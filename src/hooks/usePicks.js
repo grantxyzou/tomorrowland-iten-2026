@@ -91,16 +91,50 @@ export function usePicks() {
       });
   }, []);
 
-  const resetPicks = useCallback(() => {
-    pendingRef.current.clear();
-    setPicks({});
-    try { localStorage.setItem(CACHE_KEY, '{}'); } catch {}
+  // Set/unset a person's flag on a batch of sets, optimistically, with the
+  // pending guard so a mid-flight poll can't undo it. Used by clear + undo.
+  const bulkSet = useCallback((person, setIds, desired) => {
+    setIds.forEach(id => pendingRef.current.set(`${id}${SEP}${person}`, desired));
+    setPicks(prev => {
+      const copy = {};
+      for (const id of Object.keys(prev)) copy[id] = { ...prev[id] };
+      for (const id of setIds) {
+        if (desired) (copy[id] ||= {})[person] = true;
+        else if (copy[id]) { delete copy[id][person]; if (!Object.keys(copy[id]).length) delete copy[id]; }
+      }
+      return copy;
+    });
+  }, []);
+
+  // Clear ALL of one person's picks. Returns the setIds cleared (for undo).
+  const clearMine = useCallback((person) => {
+    const setIds = Object.keys(picksRef.current).filter(id => picksRef.current[id]?.[person]);
+    if (!setIds.length) return [];
+    bulkSet(person, setIds, false);
     fetch(API, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ action: 'reset', confirm: 'RESET' }),
-    }).catch(() => {});
-  }, []);
+      body: JSON.stringify({ action: 'clearMine', person }),
+    })
+      .then(r => { if (!r.ok) throw new Error('bad status'); })
+      .finally(() => setIds.forEach(id => pendingRef.current.delete(`${id}${SEP}${person}`)));
+    return setIds;
+  }, [bulkSet]);
+
+  // Undo a clear: re-add the person's flags on the given sets.
+  const restoreMine = useCallback((person, setIds) => {
+    if (!setIds?.length) return;
+    bulkSet(person, setIds, true);
+    setIds.forEach(id => {
+      fetch(API, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ setId: id, person, picked: true }),
+      })
+        .then(r => { if (!r.ok) throw new Error('bad status'); })
+        .finally(() => pendingRef.current.delete(`${id}${SEP}${person}`));
+    });
+  }, [bulkSet]);
 
   // Initial load + polling + refetch on tab focus.
   useEffect(() => {
@@ -116,5 +150,5 @@ export function usePicks() {
     };
   }, [fetchPicks]);
 
-  return { picks, status, togglePick, resetPicks };
+  return { picks, status, togglePick, clearMine, restoreMine };
 }
