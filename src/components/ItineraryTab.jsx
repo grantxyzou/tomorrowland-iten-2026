@@ -247,10 +247,12 @@ function HeaderContent({ d, isTmrw, isGap, dateStr }) {
 function WeatherPill({ weather, wmo, isTmrw }) {
   const bg   = isTmrw ? 'rgba(232,184,75,0.12)' : 'rgba(26,22,20,0.06)';
   const text = isTmrw ? p.tmrwGold : p.muted;
-  const chip = { display: 'inline-flex', alignItems: 'center', gap: 4, backgroundColor: bg, borderRadius: 4, padding: '2px 7px', ...mono, fontSize: 10, color: text, fontWeight: 600 };
+  // display:flex (not inline-flex) so each chip stretches to fill its grid
+  // cell; the grid gives every chip an equal width regardless of content.
+  const chip = { display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 4, backgroundColor: bg, borderRadius: 4, padding: '3px 7px', ...mono, fontSize: 10, color: text, fontWeight: 600, whiteSpace: 'nowrap' };
 
   return (
-    <div style={{ display: 'inline-flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(110px, 1fr))', gap: 6, width: '100%' }}>
       <span style={chip}>
         <span style={{ fontSize: 13 }}>{wmo?.emoji}</span>
         {weather.hi}° / {weather.lo}°
