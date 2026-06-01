@@ -115,6 +115,9 @@ export default function LineupTab() {
   const [search, setSearch]             = useState('');
   const [openStages, setOpenStages]     = useState(() => new Set());
   const [whoOpen, setWhoOpen]           = useState(false);
+  const [tipDismissed, setTipDismissed] = useState(() => {
+    try { return localStorage.getItem('tml2026_tip') === '1'; } catch { return false; }
+  });
 
   // Shared picks, synced to the server in near-real-time.
   const { picks, status, togglePick, resetPicks } = usePicks();
@@ -204,16 +207,16 @@ export default function LineupTab() {
 
   return (
     <div style={{ ...sans }}>
-      {/* Status notice */}
-      {LINEUP_STATUS !== 'official' && (
-        <div style={{ backgroundColor: tmrwBg, border: `1px dashed ${tmrwGold}`, borderRadius: 8, padding: '12px 16px', marginBottom: 20, display: 'flex', alignItems: 'flex-start', gap: 10 }}>
-          <span style={{ fontSize: 18 }}>🎵</span>
-          <div>
-            <div style={{ ...mono, fontSize: 11, color: tmrwGold, fontWeight: 700, letterSpacing: '0.15em', textTransform: 'uppercase' }}>Lineup · Set times TBA</div>
-            <div style={{ fontSize: 12, color: bodyMuted, marginTop: 3, lineHeight: 1.4 }}>
-              Tap an artist to add them to your picks. Times aren’t announced yet — the Time view and clash detection switch on automatically once they drop.
-            </div>
-          </div>
+      {/* One-time tip — slim and dismissible, not a dominant panel */}
+      {LINEUP_STATUS !== 'official' && !tipDismissed && (
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 16, backgroundColor: 'rgba(26,10,46,0.05)', borderRadius: 8, padding: '6px 6px 6px 12px' }}>
+          <span aria-hidden="true" style={{ fontSize: 13 }}>🎵</span>
+          <span style={{ fontSize: 12, color: muted, lineHeight: 1.35, flex: 1 }}>
+            Tap an artist to add it to your picks. Set times TBA.
+          </span>
+          <button onClick={() => { setTipDismissed(true); try { localStorage.setItem('tml2026_tip', '1'); } catch {} }}
+            aria-label="Dismiss tip"
+            style={{ flexShrink: 0, width: 36, height: 36, border: 'none', background: 'none', color: muted, fontSize: 18, lineHeight: 1, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>×</button>
         </div>
       )}
 
