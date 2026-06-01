@@ -267,31 +267,34 @@ export default function LineupTab() {
         )}
       </div>
 
-      {/* Day selector */}
-      <div style={{ display: 'flex', gap: 8, marginBottom: 12 }}>
-        {DAYS.map(day => {
+      {/* Day selector — date + festival-day number */}
+      <div style={{ display: 'flex', gap: 8, marginBottom: 16 }}>
+        {DAYS.map((day, i) => {
           const active = activeDay === day.id;
           return (
             <button key={day.id} onClick={() => { setActiveDay(day.id); setWhoOpen(false); }}
+              aria-label={`Day ${i + 1}, ${day.label}`}
               style={{
-                flex: 1, padding: '8px 0', minHeight: 44, borderRadius: 4, cursor: 'pointer',
+                flex: 1, padding: '6px 0', minHeight: 48, borderRadius: 4, cursor: 'pointer',
                 border: `1px solid ${active ? tmrwGold : rule}`,
                 backgroundColor: active ? tmrwBg : 'transparent', color: active ? tmrwGold : muted,
-                ...mono, fontSize: 11, fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase',
-                transition: 'all 0.15s',
+                ...mono, fontWeight: 700, textTransform: 'uppercase', transition: 'all 0.15s',
+                display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 3,
               }}>
-              {day.label}
+              <span aria-hidden="true" style={{ fontSize: 8, letterSpacing: '0.16em', opacity: active ? 1 : 0.85 }}>Day {i + 1}</span>
+              <span aria-hidden="true" style={{ fontSize: 12, letterSpacing: '0.1em' }}>{day.label}</span>
             </button>
           );
         })}
       </div>
 
-      {/* View switcher */}
-      <div style={{ display: 'flex', marginBottom: 16, border: `1px solid ${rule}`, borderRadius: 8, overflow: 'hidden' }}>
+      {/* View switcher — a "view by", not a filter: same day, different lens */}
+      <div style={{ ...mono, fontSize: 10, color: muted, letterSpacing: '0.18em', textTransform: 'uppercase', marginBottom: 6 }}>View</div>
+      <div role="tablist" aria-label="View" style={{ display: 'flex', marginBottom: 16, border: `1px solid ${rule}`, borderRadius: 8, overflow: 'hidden' }}>
         {VIEWS.map((v, i) => {
           const active = view === v.id;
           return (
-            <button key={v.id} onClick={() => { setView(v.id); setWhoOpen(false); }}
+            <button key={v.id} role="tab" aria-selected={active} onClick={() => { setView(v.id); setWhoOpen(false); }}
               style={{
                 flex: 1, padding: '9px 0', minHeight: 44, cursor: 'pointer', border: 'none',
                 borderLeft: i === 0 ? 'none' : `1px solid ${rule}`,
