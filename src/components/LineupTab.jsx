@@ -408,7 +408,7 @@ export default function LineupTab() {
       )}
 
       {/* Reset picks */}
-      <button onClick={() => { if (confirm('Clear all picks for everyone?')) resetPicks(); }}
+      <button onClick={() => { if (prompt("This clears EVERYONE's picks. Type RESET to confirm.") === 'RESET') resetPicks(); }}
         style={{ marginTop: 24, width: '100%', padding: '10px', border: `1px solid ${rule}`, borderRadius: 6, background: 'none', color: muted, ...mono, fontSize: 10, letterSpacing: '0.15em', textTransform: 'uppercase', cursor: 'pointer' }}>
         Reset all picks
       </button>

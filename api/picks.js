@@ -41,8 +41,13 @@ export default async function handler(req, res) {
     if (req.method === 'POST') {
       const body = typeof req.body === 'string' ? JSON.parse(req.body || '{}') : (req.body || {});
 
-      // Reset everyone's picks.
+      // Reset everyone's picks — guarded. A full wipe requires the explicit
+      // phrase, so a stray script or accidental call can't nuke the crew's
+      // data. The check runs BEFORE any delete.
       if (body.action === 'reset') {
+        if (body.confirm !== 'RESET') {
+          return res.status(400).json({ error: 'reset requires confirm: "RESET"' });
+        }
         await redis.del(HASH_KEY);
         return res.status(200).json({ ok: true });
       }
