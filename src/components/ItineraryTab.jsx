@@ -89,7 +89,7 @@ export default function ItineraryTab() {
 // ── Phase divider ────────────────────────────────────────────
 function PhaseDivider({ phase, idx }) {
   const color = phase.includes('OPEN') ? p.gapAccent
-              : phase === 'TOMORROWLAND' ? p.tmrwGold
+              : phase === 'TOMORROWLAND' ? '#7a5d10' // dark gold — passes AA on light paper
               : p.muted;
   return (
     <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 12, marginTop: idx === 0 ? 0 : 24 }}>

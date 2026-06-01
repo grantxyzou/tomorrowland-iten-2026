@@ -15,11 +15,22 @@ const muted     = '#5c544c';
 const rule      = '#cabda4';
 const clashRed  = '#c94040';
 
+// Bright identity colours — used on DARK backgrounds (picked rows on the
+// purple card), where they have ample contrast.
 const PERSON_COLORS = {
   Grant:   '#e8b84b',  // gold
   Desmond: '#4a7fc1',  // blue
   Lawrence:'#4a9a4a',  // green
 };
+
+// Darkened variants for use as text/border/fill on the LIGHT paper background.
+// Each passes WCAG AA: >=4.5:1 as text and white text >=4.5:1 when used as a fill.
+const PERSON_INK = {
+  Grant:   '#7a5d10',  // dark gold  (5.0:1 on paper)
+  Desmond: '#2f5c9e',  // dark blue  (5.4:1)
+  Lawrence:'#276627',  // dark green (5.6:1)
+};
+const goldInk = '#7a5d10'; // accessible gold for labels on light paper
 
 const DAYS = [
   { id: 'fri', label: 'Fri 17' },
@@ -78,7 +89,7 @@ function ArtistRow({ set, myColor, myPick, others, isClash, showStage, onToggle 
       </div>
       <div style={{ display: 'flex', alignItems: 'center', gap: 4, flexShrink: 0 }}>
         {others.map(p => (
-          <span key={p} title={p} style={{ width: 8, height: 8, borderRadius: '50%', backgroundColor: PERSON_COLORS[p], display: 'inline-block' }} />
+          <span key={p} title={p} style={{ width: 8, height: 8, borderRadius: '50%', backgroundColor: myPick ? PERSON_COLORS[p] : PERSON_INK[p], display: 'inline-block' }} />
         ))}
         <span style={{
           width: 22, height: 22, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', marginLeft: 2,
@@ -113,6 +124,7 @@ export default function LineupTab() {
 
   const q = search.trim().toLowerCase();
   const myColor = PERSON_COLORS[activePerson];
+  const myInk = PERSON_INK[activePerson];
   const forceOpen = q.length > 0 || myPicksOnly;
   const dayHasTimes = useMemo(() => sets.some(s => s.day === activeDay && hasTime(s)), [activeDay]);
 
@@ -212,25 +224,25 @@ export default function LineupTab() {
         <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
           <span style={{ ...mono, fontSize: 10, color: muted, letterSpacing: '0.18em', textTransform: 'uppercase' }}>Who's picking</span>
           <span title={status === 'error' ? 'Offline — showing last synced picks' : 'Synced with the crew'}
-            style={{ ...mono, fontSize: 9, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', display: 'inline-flex', alignItems: 'center', gap: 4, color: status === 'error' ? '#c94040' : status === 'ready' ? '#4a9a4a' : muted }}>
-            <span style={{ width: 6, height: 6, borderRadius: '50%', backgroundColor: status === 'error' ? '#c94040' : status === 'ready' ? '#4a9a4a' : muted, display: 'inline-block' }} />
+            style={{ ...mono, fontSize: 9, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', display: 'inline-flex', alignItems: 'center', gap: 4, color: status === 'error' ? '#a82a13' : status === 'ready' ? '#276627' : muted }}>
+            <span style={{ width: 6, height: 6, borderRadius: '50%', backgroundColor: status === 'error' ? '#a82a13' : status === 'ready' ? '#276627' : muted, display: 'inline-block' }} />
             {status === 'error' ? 'Offline' : status === 'ready' ? 'Live' : 'Syncing'}
           </span>
         </div>
         <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
           {PEOPLE.map(person => {
             const active = activePerson === person;
-            const color  = PERSON_COLORS[person];
+            const ink2 = PERSON_INK[person]; // accessible on the light paper bg
             return (
               <button key={person} onClick={() => setActivePerson(person)}
                 style={{
-                  padding: '6px 16px', minHeight: 44, borderRadius: 4, border: `2px solid ${color}`,
-                  backgroundColor: active ? color : 'transparent', color: active ? ink : color,
+                  padding: '6px 16px', minHeight: 44, borderRadius: 4, border: `2px solid ${ink2}`,
+                  backgroundColor: active ? ink2 : 'transparent', color: active ? '#fff' : ink2,
                   fontWeight: 700, fontSize: 13, cursor: 'pointer', transition: 'all 0.15s',
                   display: 'flex', alignItems: 'center', gap: 6,
                 }}>
                 {person}
-                <span style={{ ...mono, fontSize: 10, opacity: 0.8 }}>{totalPicks[person]}</span>
+                <span style={{ ...mono, fontSize: 11 }}>{totalPicks[person]}</span>
               </button>
             );
           })}
@@ -292,8 +304,8 @@ export default function LineupTab() {
             <button onClick={() => setMyPicksOnly(o => !o)}
               style={{
                 padding: '6px 12px', minHeight: 44, borderRadius: 999, cursor: 'pointer',
-                border: `1.5px solid ${myPicksOnly ? myColor : rule}`,
-                backgroundColor: myPicksOnly ? myColor : 'transparent', color: myPicksOnly ? ink : muted,
+                border: `1.5px solid ${myPicksOnly ? myInk : rule}`,
+                backgroundColor: myPicksOnly ? myInk : 'transparent', color: myPicksOnly ? '#fff' : muted,
                 ...mono, fontSize: 10, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase',
               }}>
               ★ {activePerson}'s picks
@@ -303,7 +315,7 @@ export default function LineupTab() {
             </span>
             {view === 'stage' && !forceOpen && (
               <button onClick={() => setOpenStages(openStages.size >= groups.length ? new Set() : new Set(STAGE_ORDER))}
-                style={{ marginLeft: 'auto', minHeight: 44, padding: '0 4px', border: 'none', background: 'none', color: tmrwGold, ...mono, fontSize: 10, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', cursor: 'pointer' }}>
+                style={{ marginLeft: 'auto', minHeight: 44, padding: '0 4px', border: 'none', background: 'none', color: goldInk, ...mono, fontSize: 10, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', cursor: 'pointer' }}>
                 {openStages.size >= groups.length ? 'Collapse all' : 'Expand all'}
               </button>
             )}
@@ -335,7 +347,7 @@ export default function LineupTab() {
                   style={{ width: '100%', textAlign: 'left', cursor: forceOpen ? 'default' : 'pointer', display: 'flex', alignItems: 'center', gap: 10, padding: '12px 14px', minHeight: 44, border: 'none', borderLeft: `5px solid ${color}`, background: 'none' }}>
                   <span aria-hidden="true" style={{ ...mono, fontSize: 12, fontWeight: 700, color: ink, letterSpacing: '0.04em', textTransform: 'uppercase', flex: 1 }}>{stage}</span>
                   {picked > 0 && (
-                    <span aria-hidden="true" style={{ ...mono, fontSize: 10, fontWeight: 700, color: ink, backgroundColor: myColor, borderRadius: 999, padding: '2px 7px' }}>★ {picked}</span>
+                    <span aria-hidden="true" style={{ ...mono, fontSize: 10, fontWeight: 700, color: '#fff', backgroundColor: myInk, borderRadius: 999, padding: '2px 7px' }}>★ {picked}</span>
                   )}
                   <span aria-hidden="true" style={{ ...mono, fontSize: 11, color: muted }}>{stageSets.length}</span>
                   <span aria-hidden="true" style={{ fontSize: 11, color: muted, transform: open ? 'rotate(90deg)' : 'none', transition: 'transform 0.18s' }}>▶</span>
@@ -396,7 +408,7 @@ export default function LineupTab() {
           </div>
 
           {/* All three */}
-          <CrewSection title={`Everyone (${PEOPLE.length}/3)`} accent={tmrwGold} items={crew.all3} emptyText="No artist all three of you picked yet." picks={picks} />
+          <CrewSection title={`Everyone (${PEOPLE.length}/3)`} accent={goldInk} items={crew.all3} emptyText="No artist all three of you picked yet." picks={picks} />
           {/* Two of three */}
           <CrewSection title="Two of you" accent={muted} items={crew.two} emptyText="No two-way overlaps yet." picks={picks} showWho />
 
@@ -421,7 +433,7 @@ export default function LineupTab() {
 function CrewSection({ title, accent, items, emptyText, showWho }) {
   return (
     <div>
-      <div style={{ ...mono, fontSize: 10, color: accent === tmrwGold ? tmrwGold : muted, letterSpacing: '0.18em', textTransform: 'uppercase', marginBottom: 8 }}>{title}</div>
+      <div style={{ ...mono, fontSize: 10, color: accent, letterSpacing: '0.18em', textTransform: 'uppercase', marginBottom: 8 }}>{title}</div>
       {items.length === 0 ? (
         <div style={{ ...mono, fontSize: 11, color: muted, padding: '10px 12px', border: `1px solid ${rule}`, borderRadius: 8 }}>{emptyText}</div>
       ) : (
@@ -439,10 +451,10 @@ function CrewSection({ title, accent, items, emptyText, showWho }) {
                 </div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 4, flexShrink: 0 }}>
                   {(showWho ? pickers : []).map(p => (
-                    <span key={p} title={p} style={{ ...mono, fontSize: 9, fontWeight: 700, color: ink, backgroundColor: PERSON_COLORS[p], borderRadius: 3, padding: '2px 5px' }}>{p[0]}</span>
+                    <span key={p} title={p} style={{ ...mono, fontSize: 9, fontWeight: 700, color: '#fff', backgroundColor: PERSON_INK[p], borderRadius: 3, padding: '2px 5px' }}>{p[0]}</span>
                   ))}
                   {!showWho && PEOPLE.map(p => (
-                    <span key={p} title={p} style={{ width: 9, height: 9, borderRadius: '50%', backgroundColor: PERSON_COLORS[p], display: 'inline-block' }} />
+                    <span key={p} title={p} style={{ width: 9, height: 9, borderRadius: '50%', backgroundColor: PERSON_INK[p], display: 'inline-block' }} />
                   ))}
                 </div>
               </div>
