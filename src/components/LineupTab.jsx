@@ -115,6 +115,7 @@ export default function LineupTab() {
   const [search, setSearch]             = useState('');
   const [myPicksOnly, setMyPicksOnly]   = useState(false);
   const [openStages, setOpenStages]     = useState(() => new Set());
+  const [whoOpen, setWhoOpen]           = useState(false);
 
   // Shared picks, synced to the server in near-real-time.
   const { picks, status, togglePick, resetPicks } = usePicks();
@@ -219,34 +220,42 @@ export default function LineupTab() {
         </div>
       )}
 
-      {/* Person selector */}
+      {/* Identity (this device) + sync status — one compact line.
+          Each person uses their own phone, so "who am I" is set once. */}
       <div style={{ marginBottom: 16 }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
-          <span style={{ ...mono, fontSize: 10, color: muted, letterSpacing: '0.18em', textTransform: 'uppercase' }}>Who's picking</span>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+          <button onClick={() => setWhoOpen(o => !o)} aria-expanded={whoOpen}
+            aria-label={`You're picking as ${activePerson}. Tap to change.`}
+            style={{ display: 'inline-flex', alignItems: 'center', gap: 8, minHeight: 44, padding: '6px 14px', borderRadius: 999, border: `2px solid ${myInk}`, background: 'transparent', color: myInk, ...sans, fontSize: 13, fontWeight: 700, cursor: 'pointer' }}>
+            <span aria-hidden="true" style={{ width: 10, height: 10, borderRadius: '50%', backgroundColor: myInk }} />
+            You're {activePerson}
+            <span aria-hidden="true" style={{ fontSize: 10, transform: whoOpen ? 'rotate(180deg)' : 'none', transition: 'transform 0.15s' }}>▾</span>
+          </button>
           <span title={status === 'error' ? 'Offline — showing last synced picks' : 'Synced with the crew'}
             style={{ ...mono, fontSize: 9, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', display: 'inline-flex', alignItems: 'center', gap: 4, color: status === 'error' ? '#a82a13' : status === 'ready' ? '#276627' : muted }}>
             <span style={{ width: 6, height: 6, borderRadius: '50%', backgroundColor: status === 'error' ? '#a82a13' : status === 'ready' ? '#276627' : muted, display: 'inline-block' }} />
             {status === 'error' ? 'Offline' : status === 'ready' ? 'Live' : 'Syncing'}
           </span>
         </div>
-        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-          {PEOPLE.map(person => {
-            const active = activePerson === person;
-            const ink2 = PERSON_INK[person]; // accessible on the light paper bg
-            return (
-              <button key={person} onClick={() => setActivePerson(person)}
-                style={{
-                  padding: '6px 16px', minHeight: 44, borderRadius: 4, border: `2px solid ${ink2}`,
-                  backgroundColor: active ? ink2 : 'transparent', color: active ? '#fff' : ink2,
-                  fontWeight: 700, fontSize: 13, cursor: 'pointer', transition: 'all 0.15s',
-                  display: 'flex', alignItems: 'center', gap: 6,
-                }}>
-                {person}
-                <span style={{ ...mono, fontSize: 11 }}>{totalPicks[person]}</span>
-              </button>
-            );
-          })}
-        </div>
+        {whoOpen && (
+          <div role="group" aria-label="Switch person" style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginTop: 10 }}>
+            {PEOPLE.map(person => {
+              const active = activePerson === person;
+              const ink2 = PERSON_INK[person];
+              return (
+                <button key={person} aria-pressed={active}
+                  onClick={() => { setActivePerson(person); setWhoOpen(false); }}
+                  style={{
+                    padding: '6px 16px', minHeight: 44, borderRadius: 4, border: `2px solid ${ink2}`,
+                    backgroundColor: active ? ink2 : 'transparent', color: active ? '#fff' : ink2,
+                    fontWeight: 700, fontSize: 13, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6,
+                  }}>
+                  {person}
+                </button>
+              );
+            })}
+          </div>
+        )}
       </div>
 
       {/* Day selector */}
@@ -254,7 +263,7 @@ export default function LineupTab() {
         {DAYS.map(day => {
           const active = activeDay === day.id;
           return (
-            <button key={day.id} onClick={() => setActiveDay(day.id)}
+            <button key={day.id} onClick={() => { setActiveDay(day.id); setWhoOpen(false); }}
               style={{
                 flex: 1, padding: '8px 0', minHeight: 44, borderRadius: 4, cursor: 'pointer',
                 border: `1px solid ${active ? tmrwGold : rule}`,
@@ -273,7 +282,7 @@ export default function LineupTab() {
         {VIEWS.map((v, i) => {
           const active = view === v.id;
           return (
-            <button key={v.id} onClick={() => setView(v.id)}
+            <button key={v.id} onClick={() => { setView(v.id); setWhoOpen(false); }}
               style={{
                 flex: 1, padding: '9px 0', minHeight: 44, cursor: 'pointer', border: 'none',
                 borderLeft: i === 0 ? 'none' : `1px solid ${rule}`,
@@ -287,40 +296,42 @@ export default function LineupTab() {
         })}
       </div>
 
-      {/* Filters (stage + time views) */}
+      {/* Search — only when browsing to pick (Stage view) */}
+      {view === 'stage' && (
+        <div style={{ position: 'relative', marginBottom: 10 }}>
+          <span style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', fontSize: 13, color: muted, pointerEvents: 'none' }}>⌕</span>
+          <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search artists…"
+            type="search" inputMode="search" aria-label="Search artists"
+            style={{ width: '100%', boxSizing: 'border-box', padding: '11px 36px 11px 30px', minHeight: 44, borderRadius: 8, border: `1px solid ${rule}`, backgroundColor: '#fff', color: ink, fontSize: 16, ...sans }} />
+          {search && (
+            <button onClick={() => setSearch('')} aria-label="Clear search"
+              style={{ position: 'absolute', right: 2, top: '50%', transform: 'translateY(-50%)', border: 'none', background: 'none', color: muted, fontSize: 18, cursor: 'pointer', lineHeight: 1, width: 40, height: 40, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>×</button>
+          )}
+        </div>
+      )}
+
+      {/* Filter row — Stage + Time (the my-picks toggle is the key control for "my plan") */}
       {view !== 'crew' && (
-        <>
-          <div style={{ position: 'relative', marginBottom: 10 }}>
-            <span style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', fontSize: 13, color: muted, pointerEvents: 'none' }}>⌕</span>
-            <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search artists…"
-              type="search" inputMode="search" aria-label="Search artists"
-              style={{ width: '100%', boxSizing: 'border-box', padding: '11px 36px 11px 30px', minHeight: 44, borderRadius: 8, border: `1px solid ${rule}`, backgroundColor: '#fff', color: ink, fontSize: 16, ...sans }} />
-            {search && (
-              <button onClick={() => setSearch('')} aria-label="Clear search"
-                style={{ position: 'absolute', right: 2, top: '50%', transform: 'translateY(-50%)', border: 'none', background: 'none', color: muted, fontSize: 18, cursor: 'pointer', lineHeight: 1, width: 40, height: 40, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>×</button>
-            )}
-          </div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 16, flexWrap: 'wrap' }}>
-            <button onClick={() => setMyPicksOnly(o => !o)}
-              style={{
-                padding: '6px 12px', minHeight: 44, borderRadius: 999, cursor: 'pointer',
-                border: `1.5px solid ${myPicksOnly ? myInk : rule}`,
-                backgroundColor: myPicksOnly ? myInk : 'transparent', color: myPicksOnly ? '#fff' : muted,
-                ...mono, fontSize: 10, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase',
-              }}>
-              ★ {activePerson}'s picks
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 16, flexWrap: 'wrap' }}>
+          <button onClick={() => setMyPicksOnly(o => !o)} aria-pressed={myPicksOnly}
+            style={{
+              padding: '6px 12px', minHeight: 44, borderRadius: 999, cursor: 'pointer',
+              border: `1.5px solid ${myPicksOnly ? myInk : rule}`,
+              backgroundColor: myPicksOnly ? myInk : 'transparent', color: myPicksOnly ? '#fff' : muted,
+              ...mono, fontSize: 10, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase',
+            }}>
+            ★ {activePerson}'s picks
+          </button>
+          <span style={{ ...mono, fontSize: 10, color: muted }}>
+            {shownCount}{shownCount !== dayCount ? ` / ${dayCount}` : ''} artists{view === 'stage' ? ` · ${groups.length} stage${groups.length === 1 ? '' : 's'}` : ''}
+          </span>
+          {view === 'stage' && !forceOpen && (
+            <button onClick={() => setOpenStages(openStages.size >= groups.length ? new Set() : new Set(STAGE_ORDER))}
+              style={{ marginLeft: 'auto', minHeight: 44, padding: '0 4px', border: 'none', background: 'none', color: goldInk, ...mono, fontSize: 10, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', cursor: 'pointer' }}>
+              {openStages.size >= groups.length ? 'Collapse all' : 'Expand all'}
             </button>
-            <span style={{ ...mono, fontSize: 10, color: muted }}>
-              {shownCount}{shownCount !== dayCount ? ` / ${dayCount}` : ''} artists{view === 'stage' ? ` · ${groups.length} stage${groups.length === 1 ? '' : 's'}` : ''}
-            </span>
-            {view === 'stage' && !forceOpen && (
-              <button onClick={() => setOpenStages(openStages.size >= groups.length ? new Set() : new Set(STAGE_ORDER))}
-                style={{ marginLeft: 'auto', minHeight: 44, padding: '0 4px', border: 'none', background: 'none', color: goldInk, ...mono, fontSize: 10, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', cursor: 'pointer' }}>
-                {openStages.size >= groups.length ? 'Collapse all' : 'Expand all'}
-              </button>
-            )}
-          </div>
-        </>
+          )}
+        </div>
       )}
 
       {/* Empty state (stage + time) */}
@@ -380,6 +391,15 @@ export default function LineupTab() {
       {/* ── CREW VIEW ── */}
       {view === 'crew' && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+          {/* Per-person totals (moved here from the identity row) */}
+          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+            {PEOPLE.map(person => (
+              <div key={person} style={{ flex: 1, minWidth: 90, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, padding: '8px 12px', borderRadius: 8, border: `1px solid ${rule}`, borderLeft: `4px solid ${PERSON_INK[person]}` }}>
+                <span style={{ ...sans, fontSize: 12, fontWeight: 700, color: PERSON_INK[person] }}>{person}</span>
+                <span style={{ ...mono, fontSize: 14, fontWeight: 700, color: ink }}>{totalPicks[person]}</span>
+              </div>
+            ))}
+          </div>
           {/* Clash overview */}
           <div>
             <div style={{ ...mono, fontSize: 10, color: muted, letterSpacing: '0.18em', textTransform: 'uppercase', marginBottom: 8 }}>⚡ Clashes</div>
