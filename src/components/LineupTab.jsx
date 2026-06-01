@@ -220,37 +220,48 @@ export default function LineupTab() {
         </div>
       )}
 
-      {/* Identity (this device) + sync status — one compact line.
-          Each person uses their own phone, so "who am I" is set once. */}
+      {/* Identity (this device) — a full-width dropdown. Each person uses
+          their own phone, so "who am I" is set once. */}
       <div style={{ marginBottom: 16 }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
-          <button onClick={() => setWhoOpen(o => !o)} aria-expanded={whoOpen}
-            aria-label={`You're picking as ${activePerson}. Tap to change.`}
-            style={{ display: 'inline-flex', alignItems: 'center', gap: 8, minHeight: 44, padding: '6px 14px', borderRadius: 999, border: `2px solid ${myInk}`, background: 'transparent', color: myInk, ...sans, fontSize: 13, fontWeight: 700, cursor: 'pointer' }}>
-            <span aria-hidden="true" style={{ width: 10, height: 10, borderRadius: '50%', backgroundColor: myInk }} />
-            You're {activePerson}
-            <span aria-hidden="true" style={{ fontSize: 10, transform: whoOpen ? 'rotate(180deg)' : 'none', transition: 'transform 0.15s' }}>▾</span>
-          </button>
+        {/* Sync status — moved out of the control, right-aligned above it */}
+        <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 6 }}>
           <span title={status === 'error' ? 'Offline — showing last synced picks' : 'Synced with the crew'}
             style={{ ...mono, fontSize: 9, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', display: 'inline-flex', alignItems: 'center', gap: 4, color: status === 'error' ? '#a82a13' : status === 'ready' ? '#276627' : muted }}>
             <span style={{ width: 6, height: 6, borderRadius: '50%', backgroundColor: status === 'error' ? '#a82a13' : status === 'ready' ? '#276627' : muted, display: 'inline-block' }} />
             {status === 'error' ? 'Offline' : status === 'ready' ? 'Live' : 'Syncing'}
           </span>
         </div>
+
+        <button onClick={() => setWhoOpen(o => !o)} aria-expanded={whoOpen} aria-haspopup="listbox"
+          aria-label={`You're picking as ${activePerson}. Tap to change.`}
+          style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, minHeight: 48, padding: '10px 14px', borderRadius: 8, border: `1px solid ${rule}`, backgroundColor: '#fff', color: myInk, ...sans, fontSize: 14, fontWeight: 700, cursor: 'pointer' }}>
+          <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
+            <span aria-hidden="true" style={{ width: 10, height: 10, borderRadius: '50%', backgroundColor: myInk }} />
+            You're {activePerson}
+          </span>
+          <span aria-hidden="true" style={{ fontSize: 11, color: muted, transform: whoOpen ? 'rotate(180deg)' : 'none', transition: 'transform 0.15s' }}>▾</span>
+        </button>
+
         {whoOpen && (
-          <div role="group" aria-label="Switch person" style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginTop: 10 }}>
-            {PEOPLE.map(person => {
+          <div role="listbox" aria-label="Switch person" style={{ marginTop: 6, border: `1px solid ${rule}`, borderRadius: 8, overflow: 'hidden', backgroundColor: '#fff' }}>
+            {PEOPLE.map((person, i) => {
               const active = activePerson === person;
               const ink2 = PERSON_INK[person];
               return (
-                <button key={person} aria-pressed={active}
+                <button key={person} role="option" aria-selected={active}
                   onClick={() => { setActivePerson(person); setWhoOpen(false); }}
                   style={{
-                    padding: '6px 16px', minHeight: 44, borderRadius: 4, border: `2px solid ${ink2}`,
-                    backgroundColor: active ? ink2 : 'transparent', color: active ? '#fff' : ink2,
-                    fontWeight: 700, fontSize: 13, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6,
+                    width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8,
+                    minHeight: 48, padding: '10px 14px', border: 'none',
+                    borderTop: i === 0 ? 'none' : `1px solid ${rule}55`,
+                    backgroundColor: active ? `${ink2}14` : 'transparent', color: ink2,
+                    ...sans, fontSize: 14, fontWeight: 700, cursor: 'pointer', textAlign: 'left',
                   }}>
-                  {person}
+                  <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
+                    <span aria-hidden="true" style={{ width: 10, height: 10, borderRadius: '50%', backgroundColor: ink2 }} />
+                    {person}
+                  </span>
+                  {active && <span aria-hidden="true">✓</span>}
                 </button>
               );
             })}
