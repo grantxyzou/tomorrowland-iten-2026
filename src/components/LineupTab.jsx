@@ -115,6 +115,7 @@ export default function LineupTab() {
   const [search, setSearch]             = useState('');
   const [openStages, setOpenStages]     = useState(() => new Set());
   const [whoOpen, setWhoOpen]           = useState(false);
+  const [searchOpen, setSearchOpen]     = useState(false);
   const [tipDismissed, setTipDismissed] = useState(() => {
     try { return localStorage.getItem('tml2026_tip') === '1'; } catch { return false; }
   });
@@ -300,10 +301,10 @@ export default function LineupTab() {
           return (
             <button key={v.id} role="tab" aria-selected={active} onClick={() => { setView(v.id); setWhoOpen(false); }}
               style={{
-                flex: 1, padding: '9px 0', minHeight: 44, cursor: 'pointer', border: 'none',
+                flex: 1, padding: '7px 0', minHeight: 40, cursor: 'pointer', border: 'none',
                 borderLeft: i === 0 ? 'none' : `1px solid ${rule}`,
                 backgroundColor: active ? ink : 'transparent', color: active ? paper : muted,
-                ...mono, fontSize: 11, fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase',
+                ...mono, fontSize: 10, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase',
                 transition: 'all 0.15s',
               }}>
               {v.label}{v.id === 'crew' && (crew.all3.length + crew.two.length > 0) ? ` ·${crew.all3.length + crew.two.length}` : ''}
@@ -312,33 +313,33 @@ export default function LineupTab() {
         })}
       </div>
 
-      {/* Search — only when browsing to pick (Stage view) */}
+      {/* Stage: count · search toggle · expand-all (search is two-state) */}
       {view === 'stage' && (
-        <div style={{ position: 'relative', marginBottom: 10 }}>
-          <span style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', fontSize: 13, color: muted, pointerEvents: 'none' }}>⌕</span>
-          <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search artists…"
-            type="search" inputMode="search" aria-label="Search artists"
-            style={{ width: '100%', boxSizing: 'border-box', padding: '11px 36px 11px 30px', minHeight: 44, borderRadius: 8, border: `1px solid ${rule}`, backgroundColor: '#fff', color: ink, fontSize: 16, ...sans }} />
-          {search && (
-            <button onClick={() => setSearch('')} aria-label="Clear search"
-              style={{ position: 'absolute', right: 2, top: '50%', transform: 'translateY(-50%)', border: 'none', background: 'none', color: muted, fontSize: 18, cursor: 'pointer', lineHeight: 1, width: 40, height: 40, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>×</button>
+        <>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: searchOpen ? 10 : 8, flexWrap: 'wrap' }}>
+            <span style={{ ...mono, fontSize: 10, color: muted }}>
+              {browseSets.length}{browseSets.length !== dayCount ? ` / ${dayCount}` : ''} artists · {groups.length} stage{groups.length === 1 ? '' : 's'}
+            </span>
+            <button onClick={() => setSearchOpen(o => !o)} aria-expanded={searchOpen} aria-label="Search artists"
+              style={{ marginLeft: 'auto', width: 40, height: 40, display: 'flex', alignItems: 'center', justifyContent: 'center', border: 'none', background: 'none', color: searchOpen ? ink : muted, fontSize: 17, cursor: 'pointer' }}>⌕</button>
+            {!forceOpen && (
+              <button onClick={() => setOpenStages(openStages.size >= groups.length ? new Set() : new Set(STAGE_ORDER))}
+                style={{ minHeight: 40, padding: '0 4px', border: 'none', background: 'none', color: goldInk, ...mono, fontSize: 10, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', cursor: 'pointer' }}>
+                {openStages.size >= groups.length ? 'Collapse all' : 'Expand all'}
+              </button>
+            )}
+          </div>
+          {searchOpen && (
+            <div style={{ position: 'relative', marginBottom: 12 }}>
+              <span style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', fontSize: 13, color: muted, pointerEvents: 'none' }}>⌕</span>
+              <input autoFocus value={search} onChange={e => setSearch(e.target.value)} placeholder="Search artists…"
+                type="search" inputMode="search" aria-label="Search artists"
+                style={{ width: '100%', boxSizing: 'border-box', padding: '10px 38px 10px 30px', minHeight: 44, borderRadius: 8, border: `1px solid ${rule}`, backgroundColor: '#fff', color: ink, fontSize: 16, ...sans }} />
+              <button onClick={() => { setSearch(''); setSearchOpen(false); }} aria-label="Close search"
+                style={{ position: 'absolute', right: 2, top: '50%', transform: 'translateY(-50%)', border: 'none', background: 'none', color: muted, fontSize: 18, lineHeight: 1, cursor: 'pointer', width: 40, height: 40, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>×</button>
+            </div>
           )}
-        </div>
-      )}
-
-      {/* Stage: artist/stage count + expand-all */}
-      {view === 'stage' && (
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8, flexWrap: 'wrap' }}>
-          <span style={{ ...mono, fontSize: 10, color: muted }}>
-            {browseSets.length}{browseSets.length !== dayCount ? ` / ${dayCount}` : ''} artists · {groups.length} stage{groups.length === 1 ? '' : 's'}
-          </span>
-          {!forceOpen && (
-            <button onClick={() => setOpenStages(openStages.size >= groups.length ? new Set() : new Set(STAGE_ORDER))}
-              style={{ marginLeft: 'auto', minHeight: 44, padding: '0 4px', border: 'none', background: 'none', color: goldInk, ...mono, fontSize: 10, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', cursor: 'pointer' }}>
-              {openStages.size >= groups.length ? 'Collapse all' : 'Expand all'}
-            </button>
-          )}
-        </div>
+        </>
       )}
 
       {/* Time: "[name]'s plan" header */}
