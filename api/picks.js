@@ -54,14 +54,33 @@ export default async function handler(req, res) {
 
       // Clear all of ONE person's picks (used by the per-person reset).
       // Only touches that person's fields — never the rest of the crew's.
+      // Stashes a 24h backup first so any clear is recoverable server-side.
       if (body.action === 'clearMine') {
         if (!PEOPLE.includes(body.person)) {
           return res.status(400).json({ error: 'invalid person' });
         }
         const flat = (await redis.hgetall(HASH_KEY)) || {};
         const fields = Object.keys(flat).filter(f => f.endsWith(`${SEP}${body.person}`));
-        if (fields.length) await redis.hdel(HASH_KEY, ...fields);
+        if (fields.length) {
+          await redis.set(`picks_trash:${body.person}`, JSON.stringify(fields), { ex: 86400 });
+          await redis.hdel(HASH_KEY, ...fields);
+        }
         return res.status(200).json({ ok: true, cleared: fields.length });
+      }
+
+      // Restore the last clear for one person (server-side undo / safety net).
+      if (body.action === 'restoreTrash') {
+        if (!PEOPLE.includes(body.person)) {
+          return res.status(400).json({ error: 'invalid person' });
+        }
+        const raw = await redis.get(`picks_trash:${body.person}`);
+        const fields = Array.isArray(raw) ? raw : (raw ? JSON.parse(raw) : []);
+        if (fields.length) {
+          const obj = {};
+          for (const f of fields) obj[f] = '1';
+          await redis.hset(HASH_KEY, obj);
+        }
+        return res.status(200).json({ ok: true, restored: fields.length });
       }
 
       // Toggle one (set, person) flag.
