@@ -113,7 +113,6 @@ export default function LineupTab() {
   });
   const [view, setView]                 = useState('stage');
   const [search, setSearch]             = useState('');
-  const [myPicksOnly, setMyPicksOnly]   = useState(false);
   const [openStages, setOpenStages]     = useState(() => new Set());
   const [whoOpen, setWhoOpen]           = useState(false);
 
@@ -126,8 +125,9 @@ export default function LineupTab() {
   const q = search.trim().toLowerCase();
   const myColor = PERSON_COLORS[activePerson];
   const myInk = PERSON_INK[activePerson];
-  const forceOpen = q.length > 0 || myPicksOnly;
+  const forceOpen = q.length > 0;
   const dayHasTimes = useMemo(() => sets.some(s => s.day === activeDay && hasTime(s)), [activeDay]);
+  const dayLabel = DAYS.find(d => d.id === activeDay)?.label || '';
 
   function toggleStage(stage) {
     setOpenStages(prev => {
@@ -137,32 +137,29 @@ export default function LineupTab() {
     });
   }
 
-  // Filtered day sets (search + my-picks), shared by stage & time views.
-  const filtered = useMemo(() => {
-    return sets.filter(s => {
-      if (s.day !== activeDay) return false;
-      if (q && !s.name.toLowerCase().includes(q)) return false;
-      if (myPicksOnly && !picks[s.id]?.[activePerson]) return false;
-      return true;
-    });
-  }, [activeDay, q, myPicksOnly, picks, activePerson]);
-
+  // STAGE (browse) — every artist for the day, search-filtered. Your picks
+  // highlight inline for whoever the "I'm ___" dropdown says you are.
+  const browseSets = useMemo(() =>
+    sets.filter(s => s.day === activeDay && (!q || s.name.toLowerCase().includes(q))),
+    [activeDay, q]
+  );
   const groups = useMemo(() =>
     STAGE_ORDER
-      .map(stage => ({ stage, sets: filtered.filter(s => s.stage === stage) }))
+      .map(stage => ({ stage, sets: browseSets.filter(s => s.stage === stage) }))
       .filter(g => g.sets.length > 0),
-    [filtered]
+    [browseSets]
   );
 
+  // TIME (my plan) — the dropdown person's picks for the day, in time order.
+  // No separate "my picks" filter: the dropdown IS the lens.
   const timeline = useMemo(() => {
-    const arr = [...filtered];
+    const arr = sets.filter(s => s.day === activeDay && picks[s.id]?.[activePerson]);
     if (dayHasTimes) arr.sort((a, b) => sortKey(a) - sortKey(b) || a.name.localeCompare(b.name));
     else arr.sort((a, b) => a.name.localeCompare(b.name));
     return arr;
-  }, [filtered, dayHasTimes]);
+  }, [activeDay, picks, activePerson, dayHasTimes]);
 
   const dayCount = useMemo(() => sets.filter(s => s.day === activeDay).length, [activeDay]);
-  const shownCount = filtered.length;
 
   // Clash detection — dormant until set times exist.
   const clashes = useMemo(() => {
@@ -322,22 +319,13 @@ export default function LineupTab() {
         </div>
       )}
 
-      {/* Filter row — Stage + Time (the my-picks toggle is the key control for "my plan") */}
-      {view !== 'crew' && (
+      {/* Stage: artist/stage count + expand-all */}
+      {view === 'stage' && (
         <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 16, flexWrap: 'wrap' }}>
-          <button onClick={() => setMyPicksOnly(o => !o)} aria-pressed={myPicksOnly}
-            style={{
-              padding: '6px 12px', minHeight: 44, borderRadius: 999, cursor: 'pointer',
-              border: `1.5px solid ${myPicksOnly ? myInk : rule}`,
-              backgroundColor: myPicksOnly ? myInk : 'transparent', color: myPicksOnly ? '#fff' : muted,
-              ...mono, fontSize: 10, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase',
-            }}>
-            ★ {activePerson}'s picks
-          </button>
           <span style={{ ...mono, fontSize: 10, color: muted }}>
-            {shownCount}{shownCount !== dayCount ? ` / ${dayCount}` : ''} artists{view === 'stage' ? ` · ${groups.length} stage${groups.length === 1 ? '' : 's'}` : ''}
+            {browseSets.length}{browseSets.length !== dayCount ? ` / ${dayCount}` : ''} artists · {groups.length} stage{groups.length === 1 ? '' : 's'}
           </span>
-          {view === 'stage' && !forceOpen && (
+          {!forceOpen && (
             <button onClick={() => setOpenStages(openStages.size >= groups.length ? new Set() : new Set(STAGE_ORDER))}
               style={{ marginLeft: 'auto', minHeight: 44, padding: '0 4px', border: 'none', background: 'none', color: goldInk, ...mono, fontSize: 10, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', cursor: 'pointer' }}>
               {openStages.size >= groups.length ? 'Collapse all' : 'Expand all'}
@@ -346,13 +334,26 @@ export default function LineupTab() {
         </div>
       )}
 
-      {/* Empty state (stage + time) */}
-      {view !== 'crew' && filtered.length === 0 && (
+      {/* Time: "[name]'s plan" header */}
+      {view === 'time' && timeline.length > 0 && (
+        <div style={{ ...mono, fontSize: 10, color: muted, letterSpacing: '0.18em', textTransform: 'uppercase', marginBottom: 12 }}>
+          {activePerson}'s plan · {timeline.length} pick{timeline.length === 1 ? '' : 's'}
+        </div>
+      )}
+
+      {/* Empty: Stage (no search match) */}
+      {view === 'stage' && groups.length === 0 && (
         <div style={{ textAlign: 'center', padding: '40px 16px', color: muted }}>
           <div style={{ fontSize: 28, marginBottom: 8 }}>🔍</div>
-          <div style={{ fontSize: 14 }}>
-            {myPicksOnly ? `${activePerson} hasn't picked anyone this day yet.` : `No artists match "${search}".`}
-          </div>
+          <div style={{ fontSize: 14 }}>No artists match "{search}".</div>
+        </div>
+      )}
+
+      {/* Empty: Time (no picks yet) */}
+      {view === 'time' && timeline.length === 0 && (
+        <div style={{ textAlign: 'center', padding: '40px 16px', color: muted }}>
+          <div style={{ fontSize: 28, marginBottom: 8 }}>🎧</div>
+          <div style={{ fontSize: 14 }}>{activePerson} hasn't picked anyone for {dayLabel} yet.<br />Add some from the Stage tab.</div>
         </div>
       )}
 
@@ -387,7 +388,7 @@ export default function LineupTab() {
       )}
 
       {/* ── TIME VIEW ── */}
-      {view === 'time' && filtered.length > 0 && (
+      {view === 'time' && timeline.length > 0 && (
         <div>
           {!dayHasTimes && (
             <div style={{ ...mono, fontSize: 11, color: muted, lineHeight: 1.5, marginBottom: 12, padding: '10px 12px', border: `1px solid ${rule}`, borderRadius: 8 }}>
