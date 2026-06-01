@@ -32,6 +32,11 @@ const PERSON_INK = {
 };
 const goldInk = '#7a5d10'; // accessible gold for labels on light paper
 
+// Spotify accents: bright brand green for the decorative dot, a darkened
+// variant for buttons so white text clears WCAG AA (~6:1).
+const spotifyDot = '#1DB954';
+const spotifyInk = '#0d5c2f';
+
 const DAYS = [
   { id: 'fri', label: 'Fri 17' },
   { id: 'sat', label: 'Sat 18' },
@@ -564,59 +569,78 @@ function CrewSection({ title, accent, items, emptyText, showWho }) {
 // ── Spotify prompt ───────────────────────────────────────────
 // Builds a STATIC text prompt (no AI, no API) from a person's picks. The user
 // copies it and pastes it into Spotify's AI Playlist box in the mobile app.
-function buildSpotifyPrompt(mySets, stage) {
-  const names = [...new Set(mySets.map(s => s.name))]
+
+// Real, playable artist names: deduped, TBA placeholders dropped, sorted.
+function artistNames(mySets) {
+  return [...new Set(mySets.map(s => s.name))]
     .filter(n => !/^to be announced$/i.test(n.trim()))
     .sort((a, b) => a.localeCompare(b));
+}
+
+function buildSpotifyPrompt(mySets, stage) {
   const scope = stage ? `from the ${stage} stage ` : '';
   return (
     `Make me a Tomorrowland 2026 playlist ${scope}featuring these artists, with 1–2 of each artist's most popular tracks. ` +
     `Order it to build energy from a warm-up to peak time. Genre: electronic / dance / festival. ` +
     `If an artist is a B2B or F2F pairing, include tracks from each name; skip anyone you can't find.\n\n` +
-    `Artists: ${names.join(', ')}.`
+    `Artists: ${artistNames(mySets).join(', ')}.`
   );
 }
 
+// Returns true only if the text actually made it to the clipboard.
 async function copyToClipboard(text) {
   try {
     await navigator.clipboard.writeText(text);
-  } catch {
-    // Fallback for browsers without the async clipboard API.
+    return true;
+  } catch { /* fall through to the legacy path */ }
+  try {
     const ta = document.createElement('textarea');
     ta.value = text; ta.style.position = 'fixed'; ta.style.opacity = '0';
     document.body.appendChild(ta); ta.focus(); ta.select();
-    try { document.execCommand('copy'); } catch {}
+    const ok = document.execCommand('copy');
     document.body.removeChild(ta);
+    return ok;
+  } catch { return false; }
+}
+
+// Shared copy state + handler for both Spotify prompt UIs. Only confirms on a
+// real copy; on failure it nudges the user to the Preview text instead.
+function usePromptCopy(prompt, onCopied, successMsg) {
+  const [copied, setCopied]     = useState(false);
+  const [showText, setShowText] = useState(false);
+  async function copy() {
+    const ok = await copyToClipboard(prompt);
+    if (!ok) {
+      setShowText(true);
+      onCopied?.('Couldn’t copy — select the text below');
+      return;
+    }
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+    onCopied?.(successMsg);
   }
+  return { copied, showText, setShowText, copy };
 }
 
 function SpotifyExport({ person, mySets, onCopied }) {
-  const [copied, setCopied]     = useState(false);
-  const [showText, setShowText] = useState(false);
+  const count  = useMemo(() => artistNames(mySets).length, [mySets]);
   const prompt = useMemo(() => buildSpotifyPrompt(mySets), [mySets]);
-  const count  = mySets.length;
+  const { copied, showText, setShowText, copy } = usePromptCopy(prompt, onCopied, `Copied ${person}'s Spotify prompt`);
 
-  async function copy() {
-    await copyToClipboard(prompt);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
-    onCopied?.(`Copied ${person}'s Spotify prompt`);
-  }
-
-  if (!count) return null;
+  if (!count) return null; // nothing playable (e.g. only TBA slots picked)
 
   return (
     <section style={{ marginTop: 28, border: `1px solid ${rule}`, borderRadius: 10, padding: 14, backgroundColor: paper }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
-        <span aria-hidden="true" style={{ width: 10, height: 10, borderRadius: '50%', backgroundColor: '#1DB954', display: 'inline-block' }} />
+        <span aria-hidden="true" style={{ width: 10, height: 10, borderRadius: '50%', backgroundColor: spotifyDot, display: 'inline-block' }} />
         <span style={{ ...mono, fontSize: 10, color: muted, letterSpacing: '0.16em', textTransform: 'uppercase' }}>Spotify playlist</span>
       </div>
       <p style={{ fontSize: 14, color: ink, lineHeight: 1.45, margin: '0 0 12px' }}>
-        Build a playlist from <strong>{person}'s {count}</strong> pick{count === 1 ? '' : 's'}. Copy the prompt, then paste it into Spotify's AI Playlist (Premium, in the mobile app).
+        Build a playlist from <strong>{person}'s {count}</strong> artist{count === 1 ? '' : 's'}. Copy the prompt, then paste it into Spotify's AI Playlist (Premium, in the mobile app).
       </p>
       <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-        <button onClick={copy} aria-live="polite"
-          style={{ minHeight: 44, padding: '0 18px', border: 'none', borderRadius: 8, backgroundColor: '#0d5c2f', color: '#fff', ...sans, fontSize: 14, fontWeight: 700, cursor: 'pointer' }}>
+        <button onClick={copy}
+          style={{ minHeight: 44, padding: '0 18px', border: 'none', borderRadius: 8, backgroundColor: spotifyInk, color: '#fff', ...sans, fontSize: 14, fontWeight: 700, cursor: 'pointer' }}>
           {copied ? 'Copied ✓' : 'Copy prompt'}
         </button>
         <button onClick={() => setShowText(s => !s)} aria-expanded={showText}
@@ -634,27 +658,21 @@ function SpotifyExport({ person, mySets, onCopied }) {
 
 // Compact, per-stage variant — lives in the foot of each open stage accordion.
 function StageSpotify({ stage, pickedSets, onCopied }) {
-  const [copied, setCopied]     = useState(false);
-  const [showText, setShowText] = useState(false);
+  const n = useMemo(() => artistNames(pickedSets).length, [pickedSets]);
   const prompt = useMemo(() => buildSpotifyPrompt(pickedSets, stage), [pickedSets, stage]);
-  const n = pickedSets.length;
+  const { copied, showText, setShowText, copy } = usePromptCopy(prompt, onCopied, `Copied ${stage} Spotify prompt`);
 
-  async function copy() {
-    await copyToClipboard(prompt);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
-    onCopied?.(`Copied ${stage} Spotify prompt`);
-  }
+  if (!n) return null; // only TBA slots picked here — nothing to build
 
   return (
     <div style={{ borderTop: `1px solid ${rule}`, padding: '10px 14px', backgroundColor: 'rgba(26,10,46,0.04)' }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
-        <span aria-hidden="true" style={{ width: 8, height: 8, borderRadius: '50%', backgroundColor: '#1DB954', display: 'inline-block' }} />
+        <span aria-hidden="true" style={{ width: 8, height: 8, borderRadius: '50%', backgroundColor: spotifyDot, display: 'inline-block' }} />
         <span style={{ ...mono, fontSize: 10, color: muted, letterSpacing: '0.12em', textTransform: 'uppercase', flex: 1, minWidth: 110 }}>
-          {stage} playlist · {n} pick{n === 1 ? '' : 's'}
+          {stage} playlist · {n} artist{n === 1 ? '' : 's'}
         </span>
-        <button onClick={copy} aria-live="polite"
-          style={{ minHeight: 40, padding: '0 14px', border: 'none', borderRadius: 8, backgroundColor: '#0d5c2f', color: '#fff', ...sans, fontSize: 12, fontWeight: 700, cursor: 'pointer' }}>
+        <button onClick={copy}
+          style={{ minHeight: 40, padding: '0 14px', border: 'none', borderRadius: 8, backgroundColor: spotifyInk, color: '#fff', ...sans, fontSize: 12, fontWeight: 700, cursor: 'pointer' }}>
           {copied ? 'Copied ✓' : 'Copy prompt'}
         </button>
         <button onClick={() => setShowText(s => !s)} aria-expanded={showText}
@@ -687,10 +705,17 @@ function normSpan(s) {
 }
 
 function PartyMode({ activePerson, setActivePerson, activeDay, setActiveDay, picks, onExit }) {
+  // The clock only shows HH:MM, so tick once per minute (aligned to the
+  // boundary) instead of every second — far less re-rendering / battery use.
   const [now, setNow] = useState(() => new Date());
   useEffect(() => {
-    const id = setInterval(() => setNow(new Date()), 1000);
-    return () => clearInterval(id);
+    let timer;
+    const schedule = () => {
+      setNow(new Date());
+      timer = setTimeout(schedule, 60000 - (Date.now() % 60000));
+    };
+    timer = setTimeout(schedule, 60000 - (Date.now() % 60000));
+    return () => clearTimeout(timer);
   }, []);
 
   const bg = '#0a0610', surf = '#171022', line = '#2c2040';
@@ -704,18 +729,20 @@ function PartyMode({ activePerson, setActivePerson, activeDay, setActiveDay, pic
     return arr;
   }, [activeDay, activePerson, picks, dayHasTimes]);
 
-  // Live current / next, only meaningful once set times exist.
+  // Live current / next, only meaningful once set times exist. A person can
+  // have overlapping picks (a clash), so "on now" is a list, not a single set.
   let nowMin = now.getHours() * 60 + now.getMinutes();
   if (nowMin < 360) nowMin += 1440;
-  let current = null, nextUp = null;
+  const currents = [];
+  let nextUp = null;
   if (dayHasTimes) {
     for (const s of plan) {
       const [st, en] = normSpan(s);
-      if (nowMin >= st && nowMin < en) { current = s; }
-      else if (st > nowMin && (!nextUp || st < normSpan(nextUp)[0])) { nextUp = s; }
+      if (nowMin >= st && nowMin < en) currents.push(s);
+      else if (st > nowMin && (!nextUp || st < normSpan(nextUp)[0])) nextUp = s;
     }
   }
-  const later = plan.filter(s => s !== current && s !== nextUp);
+  const later = plan.filter(s => !currents.includes(s) && s !== nextUp);
   const dayLabel = DAYS.find(d => d.id === activeDay)?.label || '';
 
   const card = (s, badge, badgeColor, big) => {
@@ -808,9 +835,9 @@ function PartyMode({ activePerson, setActivePerson, activeDay, setActiveDay, pic
           </div>
         ) : (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-            {current && card(current, '▶ On now', clashRed, true)}
+            {currents.map((s, i) => card(s, i === 0 ? (currents.length > 1 ? '▶ On now (clash)' : '▶ On now') : '▶ Also now', clashRed, true))}
             {nextUp && card(nextUp, '↑ Up next', gold, true)}
-            {!current && !nextUp && (
+            {!currents.length && !nextUp && (
               <div style={{ ...mono, fontSize: 13, color: dim, textAlign: 'center', padding: '8px 0' }}>
                 Nothing live right now — your full plan for {dayLabel}:
               </div>
