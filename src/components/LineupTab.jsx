@@ -267,29 +267,30 @@ export default function LineupTab() {
         )}
       </div>
 
-      {/* Day selector — date + festival-day number */}
-      <div style={{ display: 'flex', gap: 8, marginBottom: 16 }}>
+      {/* Day selector — borderless underline tabs (no box), date + festival day */}
+      <div style={{ display: 'flex', gap: 4, marginBottom: 16, borderBottom: `1px solid ${rule}` }}>
         {DAYS.map((day, i) => {
           const active = activeDay === day.id;
           return (
             <button key={day.id} onClick={() => { setActiveDay(day.id); setWhoOpen(false); }}
-              aria-label={`Day ${i + 1}, ${day.label}`}
+              aria-label={`Day ${i + 1}, ${day.label}`} aria-current={active ? 'true' : undefined}
               style={{
-                flex: 1, padding: '6px 0', minHeight: 48, borderRadius: 4, cursor: 'pointer',
-                border: `1px solid ${active ? tmrwGold : rule}`,
-                backgroundColor: active ? tmrwBg : 'transparent', color: active ? tmrwGold : muted,
+                flex: 1, padding: '6px 0 9px', minHeight: 48, cursor: 'pointer',
+                border: 'none', background: 'none', marginBottom: -1,
+                borderBottom: `2px solid ${active ? goldInk : 'transparent'}`,
+                color: active ? ink : muted,
                 ...mono, fontWeight: 700, textTransform: 'uppercase', transition: 'all 0.15s',
                 display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 3,
               }}>
-              <span aria-hidden="true" style={{ fontSize: 8, letterSpacing: '0.16em', opacity: active ? 1 : 0.85 }}>Day {i + 1}</span>
-              <span aria-hidden="true" style={{ fontSize: 12, letterSpacing: '0.1em' }}>{day.label}</span>
+              <span aria-hidden="true" style={{ fontSize: 8, letterSpacing: '0.16em', color: active ? goldInk : muted }}>Day {i + 1}</span>
+              <span aria-hidden="true" style={{ fontSize: 13, letterSpacing: '0.1em' }}>{day.label}</span>
             </button>
           );
         })}
       </div>
 
       {/* View switcher — a "view by", not a filter: same day, different lens */}
-      <div style={{ ...mono, fontSize: 10, color: muted, letterSpacing: '0.18em', textTransform: 'uppercase', marginBottom: 6 }}>View</div>
+      <div style={{ ...mono, fontSize: 10, color: muted, letterSpacing: '0.18em', textTransform: 'uppercase', marginBottom: 6 }}>View by</div>
       <div role="tablist" aria-label="View" style={{ display: 'flex', marginBottom: 16, border: `1px solid ${rule}`, borderRadius: 8, overflow: 'hidden' }}>
         {VIEWS.map((v, i) => {
           const active = view === v.id;
