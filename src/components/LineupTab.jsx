@@ -224,9 +224,8 @@ export default function LineupTab() {
       {/* Identity (this device) — a full-width dropdown. Each person uses
           their own phone, so "who am I" is set once. */}
       <div style={{ marginBottom: 16 }}>
-        {/* Field label (left) + sync status (right) above the dropdown */}
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, marginBottom: 6 }}>
-          <span id="who-label" style={{ ...mono, fontSize: 10, color: muted, letterSpacing: '0.18em', textTransform: 'uppercase' }}>I'm</span>
+        {/* Sync status, right-aligned above the dropdown */}
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 8, marginBottom: 6 }}>
           <span title={status === 'error' ? 'Offline — showing last synced picks' : 'Synced with the crew'}
             style={{ ...mono, fontSize: 9, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', display: 'inline-flex', alignItems: 'center', gap: 4, color: status === 'error' ? '#a82a13' : status === 'ready' ? '#276627' : muted }}>
             <span style={{ width: 6, height: 6, borderRadius: '50%', backgroundColor: status === 'error' ? '#a82a13' : status === 'ready' ? '#276627' : muted, display: 'inline-block' }} />
@@ -412,12 +411,12 @@ export default function LineupTab() {
       {/* ── CREW VIEW ── */}
       {view === 'crew' && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-          {/* Per-person totals (moved here from the identity row) */}
+          {/* Per-person totals — colour-filled tags, one per crew member */}
           <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
             {PEOPLE.map(person => (
-              <div key={person} style={{ flex: 1, minWidth: 90, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, padding: '8px 12px', borderRadius: 8, border: `1px solid ${rule}`, borderLeft: `4px solid ${PERSON_INK[person]}` }}>
-                <span style={{ ...sans, fontSize: 12, fontWeight: 700, color: PERSON_INK[person] }}>{person}</span>
-                <span style={{ ...mono, fontSize: 14, fontWeight: 700, color: ink }}>{totalPicks[person]}</span>
+              <div key={person} style={{ flex: 1, minWidth: 90, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, padding: '8px 12px', borderRadius: 8, backgroundColor: PERSON_INK[person] }}>
+                <span style={{ ...sans, fontSize: 12, fontWeight: 700, color: '#fff' }}>{person}</span>
+                <span style={{ ...mono, fontSize: 14, fontWeight: 700, color: '#fff' }}>{totalPicks[person]}</span>
               </div>
             ))}
           </div>
