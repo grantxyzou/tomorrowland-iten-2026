@@ -116,6 +116,7 @@ export default function LineupTab() {
   const [openStages, setOpenStages]     = useState(() => new Set());
   const [whoOpen, setWhoOpen]           = useState(false);
   const [searchOpen, setSearchOpen]     = useState(false);
+  const [party, setParty]               = useState(false);
   const [tipDismissed, setTipDismissed] = useState(() => {
     try { return localStorage.getItem('tml2026_tip') === '1'; } catch { return false; }
   });
@@ -206,6 +207,10 @@ export default function LineupTab() {
     [picks]
   );
 
+  // The active person's full selection across all three days — feeds both the
+  // Spotify prompt and Party mode.
+  const mySets = useMemo(() => sets.filter(s => picks[s.id]?.[activePerson]), [picks, activePerson]);
+
   const rowProps = (set) => ({
     set, myColor,
     myPick: picks[set.id]?.[activePerson] || false,
@@ -214,8 +219,25 @@ export default function LineupTab() {
     onToggle: () => togglePick(set.id, activePerson),
   });
 
+  // Party mode takes over the whole screen — render it instead of the planner.
+  if (party) return (
+    <PartyMode
+      activePerson={activePerson} setActivePerson={setActivePerson}
+      activeDay={activeDay} setActiveDay={setActiveDay}
+      picks={picks} onExit={() => setParty(false)}
+    />
+  );
+
   return (
     <div style={{ ...sans }}>
+      {/* Party mode — big, dark, "where do I go next" view for the night */}
+      <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 12 }}>
+        <button onClick={() => setParty(true)}
+          style={{ minHeight: 40, padding: '0 14px', borderRadius: 999, border: `1px solid ${rule}`, backgroundColor: '#fff', color: ink, ...mono, fontSize: 11, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+          <span aria-hidden="true">🌙</span> Party mode
+        </button>
+      </div>
+
       {/* One-time tip — slim and dismissible, not a dominant panel */}
       {LINEUP_STATUS !== 'official' && !tipDismissed && (
         <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 16, backgroundColor: 'rgba(26,10,46,0.05)', borderRadius: 8, padding: '6px 6px 6px 12px' }}>
@@ -378,7 +400,8 @@ export default function LineupTab() {
           {groups.map(({ stage, sets: stageSets }) => {
             const color = STAGES[stage]?.color || tmrwGold;
             const open  = forceOpen || openStages.has(stage);
-            const picked = stageSets.filter(s => picks[s.id]?.[activePerson]).length;
+            const pickedSets = stageSets.filter(s => picks[s.id]?.[activePerson]);
+            const picked = pickedSets.length;
             return (
               <section key={stage} style={{ borderRadius: 10, border: `1px solid ${rule}`, overflow: 'hidden', backgroundColor: paper }}>
                 <button onClick={() => !forceOpen && toggleStage(stage)} aria-expanded={open}
@@ -394,6 +417,7 @@ export default function LineupTab() {
                 {open && (
                   <div style={{ borderTop: `1px solid ${rule}` }}>
                     {stageSets.map(set => <ArtistRow key={set.id} {...rowProps(set)} showStage={false} />)}
+                    {picked > 0 && <StageSpotify stage={stage} pickedSets={pickedSets} person={activePerson} />}
                   </div>
                 )}
               </section>
@@ -469,6 +493,9 @@ export default function LineupTab() {
         </div>
       )}
 
+      {/* Spotify — build a playlist prompt from this person's picks */}
+      <SpotifyExport person={activePerson} mySets={mySets} />
+
       {/* Reset — clears only the active person's picks; quiet line button */}
       <div style={{ marginTop: 28, textAlign: 'center' }}>
         <button onClick={() => {
@@ -528,6 +555,271 @@ function CrewSection({ title, accent, items, emptyText, showWho }) {
           })}
         </section>
       )}
+    </div>
+  );
+}
+
+// ── Spotify prompt ───────────────────────────────────────────
+// Builds a STATIC text prompt (no AI, no API) from a person's picks. The user
+// copies it and pastes it into Spotify's AI Playlist box in the mobile app.
+function buildSpotifyPrompt(mySets, stage) {
+  const names = [...new Set(mySets.map(s => s.name))]
+    .filter(n => !/^to be announced$/i.test(n.trim()))
+    .sort((a, b) => a.localeCompare(b));
+  const scope = stage ? `from the ${stage} stage ` : '';
+  return (
+    `Make me a Tomorrowland 2026 playlist ${scope}featuring these artists, with 1–2 of each artist's most popular tracks. ` +
+    `Order it to build energy from a warm-up to peak time. Genre: electronic / dance / festival. ` +
+    `If an artist is a B2B or F2F pairing, include tracks from each name; skip anyone you can't find.\n\n` +
+    `Artists: ${names.join(', ')}.`
+  );
+}
+
+async function copyToClipboard(text) {
+  try {
+    await navigator.clipboard.writeText(text);
+  } catch {
+    // Fallback for browsers without the async clipboard API.
+    const ta = document.createElement('textarea');
+    ta.value = text; ta.style.position = 'fixed'; ta.style.opacity = '0';
+    document.body.appendChild(ta); ta.focus(); ta.select();
+    try { document.execCommand('copy'); } catch {}
+    document.body.removeChild(ta);
+  }
+}
+
+function SpotifyExport({ person, mySets }) {
+  const [copied, setCopied]     = useState(false);
+  const [showText, setShowText] = useState(false);
+  const prompt = useMemo(() => buildSpotifyPrompt(mySets), [mySets]);
+  const count  = mySets.length;
+
+  async function copy() {
+    await copyToClipboard(prompt);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  }
+
+  if (!count) return null;
+
+  return (
+    <section style={{ marginTop: 28, border: `1px solid ${rule}`, borderRadius: 10, padding: 14, backgroundColor: paper }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
+        <span aria-hidden="true" style={{ width: 10, height: 10, borderRadius: '50%', backgroundColor: '#1DB954', display: 'inline-block' }} />
+        <span style={{ ...mono, fontSize: 10, color: muted, letterSpacing: '0.16em', textTransform: 'uppercase' }}>Spotify playlist</span>
+      </div>
+      <p style={{ fontSize: 14, color: ink, lineHeight: 1.45, margin: '0 0 12px' }}>
+        Build a playlist from <strong>{person}'s {count}</strong> pick{count === 1 ? '' : 's'}. Copy the prompt, then paste it into Spotify's AI Playlist (Premium, in the mobile app).
+      </p>
+      <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+        <button onClick={copy} aria-live="polite"
+          style={{ minHeight: 44, padding: '0 18px', border: 'none', borderRadius: 8, backgroundColor: '#0d5c2f', color: '#fff', ...sans, fontSize: 14, fontWeight: 700, cursor: 'pointer' }}>
+          {copied ? 'Copied ✓' : 'Copy prompt'}
+        </button>
+        <button onClick={() => setShowText(s => !s)} aria-expanded={showText}
+          style={{ minHeight: 44, padding: '0 14px', border: `1px solid ${rule}`, borderRadius: 8, background: 'none', color: ink, ...mono, fontSize: 11, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', cursor: 'pointer' }}>
+          {showText ? 'Hide' : 'Preview'}
+        </button>
+      </div>
+      {showText && (
+        <textarea readOnly value={prompt} aria-label="Spotify playlist prompt"
+          style={{ marginTop: 12, width: '100%', boxSizing: 'border-box', minHeight: 130, padding: 12, borderRadius: 8, border: `1px solid ${rule}`, backgroundColor: '#fff', color: ink, fontSize: 16, ...sans, lineHeight: 1.45, resize: 'vertical' }} />
+      )}
+    </section>
+  );
+}
+
+// Compact, per-stage variant — lives in the foot of each open stage accordion.
+function StageSpotify({ stage, pickedSets }) {
+  const [copied, setCopied]     = useState(false);
+  const [showText, setShowText] = useState(false);
+  const prompt = useMemo(() => buildSpotifyPrompt(pickedSets, stage), [pickedSets, stage]);
+  const n = pickedSets.length;
+
+  async function copy() {
+    await copyToClipboard(prompt);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  }
+
+  return (
+    <div style={{ borderTop: `1px solid ${rule}`, padding: '10px 14px', backgroundColor: 'rgba(26,10,46,0.04)' }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+        <span aria-hidden="true" style={{ width: 8, height: 8, borderRadius: '50%', backgroundColor: '#1DB954', display: 'inline-block' }} />
+        <span style={{ ...mono, fontSize: 10, color: muted, letterSpacing: '0.12em', textTransform: 'uppercase', flex: 1, minWidth: 110 }}>
+          {stage} playlist · {n} pick{n === 1 ? '' : 's'}
+        </span>
+        <button onClick={copy} aria-live="polite"
+          style={{ minHeight: 40, padding: '0 14px', border: 'none', borderRadius: 8, backgroundColor: '#0d5c2f', color: '#fff', ...sans, fontSize: 12, fontWeight: 700, cursor: 'pointer' }}>
+          {copied ? 'Copied ✓' : 'Copy prompt'}
+        </button>
+        <button onClick={() => setShowText(s => !s)} aria-expanded={showText}
+          style={{ minHeight: 40, padding: '0 10px', border: `1px solid ${rule}`, borderRadius: 8, background: 'none', color: ink, ...mono, fontSize: 10, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', cursor: 'pointer' }}>
+          {showText ? 'Hide' : 'Preview'}
+        </button>
+      </div>
+      {showText && (
+        <textarea readOnly value={prompt} aria-label={`Spotify playlist prompt for ${stage}`}
+          style={{ marginTop: 10, width: '100%', boxSizing: 'border-box', minHeight: 110, padding: 10, borderRadius: 8, border: `1px solid ${rule}`, backgroundColor: '#fff', color: ink, fontSize: 16, ...sans, lineHeight: 1.45, resize: 'vertical' }} />
+      )}
+    </div>
+  );
+}
+
+// ── Party mode ───────────────────────────────────────────────
+// Full-screen, high-contrast, large-type "where do I go next" view for use at
+// the festival at night. Dormant set times mean it shows the ordered plan;
+// once real times drop, NOW / NEXT light up against the live clock.
+function fmtClock(d) {
+  return d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false });
+}
+// Normalise a timed set's [start, end] to minutes, treating early-AM as "late".
+function normSpan(s) {
+  let st = timeToMin(s.start);
+  let en = timeToMin(s.end);
+  if (en <= st) en += 1440;
+  if (st < 360) { st += 1440; en += 1440; }
+  return [st, en];
+}
+
+function PartyMode({ activePerson, setActivePerson, activeDay, setActiveDay, picks, onExit }) {
+  const [now, setNow] = useState(() => new Date());
+  useEffect(() => {
+    const id = setInterval(() => setNow(new Date()), 1000);
+    return () => clearInterval(id);
+  }, []);
+
+  const bg = '#0a0610', surf = '#171022', line = '#2c2040';
+  const txt = '#ffffff', gold = '#e8b84b', dim = '#a99cc4';
+
+  const dayHasTimes = useMemo(() => sets.some(s => s.day === activeDay && hasTime(s)), [activeDay]);
+  const plan = useMemo(() => {
+    const arr = sets.filter(s => s.day === activeDay && picks[s.id]?.[activePerson]);
+    if (dayHasTimes) arr.sort((a, b) => sortKey(a) - sortKey(b) || a.name.localeCompare(b.name));
+    else arr.sort((a, b) => a.name.localeCompare(b.name));
+    return arr;
+  }, [activeDay, activePerson, picks, dayHasTimes]);
+
+  // Live current / next, only meaningful once set times exist.
+  let nowMin = now.getHours() * 60 + now.getMinutes();
+  if (nowMin < 360) nowMin += 1440;
+  let current = null, nextUp = null;
+  if (dayHasTimes) {
+    for (const s of plan) {
+      const [st, en] = normSpan(s);
+      if (nowMin >= st && nowMin < en) { current = s; }
+      else if (st > nowMin && (!nextUp || st < normSpan(nextUp)[0])) { nextUp = s; }
+    }
+  }
+  const later = plan.filter(s => s !== current && s !== nextUp);
+  const dayLabel = DAYS.find(d => d.id === activeDay)?.label || '';
+
+  const card = (s, badge, badgeColor, big) => {
+    const stageColor = STAGES[s.stage]?.color || gold;
+    return (
+      <div key={s.id} style={{ backgroundColor: surf, border: `1px solid ${line}`, borderRadius: 14, padding: big ? '18px 18px' : '14px 16px' }}>
+        {badge && (
+          <div style={{ ...mono, fontSize: 11, fontWeight: 700, letterSpacing: '0.18em', textTransform: 'uppercase', color: badgeColor, marginBottom: 6 }}>{badge}</div>
+        )}
+        <div style={{ fontSize: big ? 30 : 21, fontWeight: 700, color: txt, lineHeight: 1.1, letterSpacing: '-0.01em' }}>{s.name}</div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 8, flexWrap: 'wrap' }}>
+          <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+            <span aria-hidden="true" style={{ width: 9, height: 9, borderRadius: 2, backgroundColor: stageColor, display: 'inline-block' }} />
+            <span style={{ ...mono, fontSize: big ? 15 : 13, color: dim }}>{s.stage}</span>
+          </span>
+          <span style={{ ...mono, fontSize: big ? 15 : 13, fontWeight: 700, color: hasTime(s) ? gold : dim }}>{timeLabel(s)}</span>
+        </div>
+      </div>
+    );
+  };
+
+  return (
+    <div style={{
+      position: 'fixed', inset: 0, zIndex: 55, overflowY: 'auto', backgroundColor: bg, color: txt,
+      padding: '0 max(16px, env(safe-area-inset-right)) calc(28px + env(safe-area-inset-bottom)) max(16px, env(safe-area-inset-left))',
+      ...sans,
+    }}>
+      {/* Sticky header — the clock + exit stay reachable while the plan scrolls */}
+      <div style={{ position: 'sticky', top: 0, zIndex: 2, backgroundColor: bg, borderBottom: `1px solid ${line}`, paddingTop: 'calc(14px + env(safe-area-inset-top))', paddingBottom: 14, marginBottom: 18 }}>
+        <div style={{ maxWidth: 520, margin: '0 auto' }}>
+          {/* Top bar */}
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
+            <span style={{ ...mono, fontSize: 11, fontWeight: 700, letterSpacing: '0.22em', textTransform: 'uppercase', color: gold }}>🌙 Party mode</span>
+            <button onClick={onExit} aria-label="Exit party mode"
+              style={{ minHeight: 44, padding: '0 16px', borderRadius: 999, border: `1px solid ${line}`, backgroundColor: surf, color: txt, ...mono, fontSize: 12, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', cursor: 'pointer' }}>
+              ✕ Exit
+            </button>
+          </div>
+          {/* Live clock */}
+          <div style={{ textAlign: 'center' }}>
+            <div role="timer" aria-label={`Current time ${fmtClock(now)}`} style={{ ...mono, fontSize: 'clamp(44px, 15vw, 72px)', fontWeight: 700, color: gold, lineHeight: 1, letterSpacing: '0.02em' }}>
+              {fmtClock(now)}
+            </div>
+            <div style={{ ...mono, fontSize: 12, letterSpacing: '0.2em', textTransform: 'uppercase', color: dim, marginTop: 6 }}>
+              {dayLabel} · {activePerson}'s night
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Scrolling body */}
+      <div style={{ maxWidth: 520, margin: '0 auto' }}>
+        {/* Person + day switchers — big, thumb-friendly */}
+        <div role="tablist" aria-label="Who" style={{ display: 'flex', gap: 8 }}>
+          {PEOPLE.map(p => {
+            const a = p === activePerson;
+            return (
+              <button key={p} role="tab" aria-selected={a} onClick={() => setActivePerson(p)}
+                style={{ flex: 1, minHeight: 54, borderRadius: 12, border: `1.5px solid ${a ? PERSON_COLORS[p] : line}`, backgroundColor: a ? PERSON_COLORS[p] : 'transparent', color: a ? '#1a1614' : dim, ...sans, fontSize: 15, fontWeight: 700, cursor: 'pointer' }}>
+                {p}
+              </button>
+            );
+          })}
+        </div>
+        <div role="tablist" aria-label="Day" style={{ display: 'flex', gap: 8, marginTop: 10, marginBottom: 22 }}>
+          {DAYS.map((d, i) => {
+            const a = d.id === activeDay;
+            return (
+              <button key={d.id} role="tab" aria-selected={a} onClick={() => setActiveDay(d.id)}
+                style={{ flex: 1, minHeight: 54, borderRadius: 12, border: `1.5px solid ${a ? gold : line}`, backgroundColor: a ? gold : 'transparent', color: a ? '#1a1614' : dim, ...mono, fontSize: 12, fontWeight: 700, letterSpacing: '0.08em', cursor: 'pointer', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 2 }}>
+                <span>DAY {i + 1}</span>
+                <span style={{ fontSize: 13 }}>{d.label}</span>
+              </button>
+            );
+          })}
+        </div>
+
+        {/* Plan */}
+        {plan.length === 0 ? (
+          <div style={{ textAlign: 'center', padding: '40px 16px', color: dim }}>
+            <div style={{ fontSize: 34, marginBottom: 10 }}>🎧</div>
+            <div style={{ fontSize: 16, lineHeight: 1.5 }}>{activePerson} hasn't picked anyone for {dayLabel}.<br />Switch the day or who you are above.</div>
+          </div>
+        ) : !dayHasTimes ? (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+            <div style={{ ...mono, fontSize: 12, color: dim, lineHeight: 1.5, textAlign: 'center', marginBottom: 4 }}>
+              Set times not announced yet — here's your full plan. NOW / NEXT light up once times drop.
+            </div>
+            {plan.map(s => card(s, null, gold, false))}
+          </div>
+        ) : (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+            {current && card(current, '▶ On now', clashRed, true)}
+            {nextUp && card(nextUp, '↑ Up next', gold, true)}
+            {!current && !nextUp && (
+              <div style={{ ...mono, fontSize: 13, color: dim, textAlign: 'center', padding: '8px 0' }}>
+                Nothing live right now — your full plan for {dayLabel}:
+              </div>
+            )}
+            {later.length > 0 && (
+              <>
+                <div style={{ ...mono, fontSize: 11, color: dim, letterSpacing: '0.18em', textTransform: 'uppercase', marginTop: 6 }}>Later</div>
+                {later.map(s => card(s, null, gold, false))}
+              </>
+            )}
+          </div>
+        )}
+      </div>
     </div>
   );
 }
