@@ -5,7 +5,7 @@
 
 // Last updated timestamp — update this string whenever you push changes
 // so Grant / Des / Lawrence can see what changed at a glance
-export const LAST_UPDATED = '2026-05-31T12:00:00';
+export const LAST_UPDATED = '2026-06-02T12:00:00';
 export const LAST_UPDATE_NOTE = 'Initial build — all bookings current';
 
 // ─── Hotels ──────────────────────────────────────────────────
@@ -182,6 +182,14 @@ export const days = [
       cost: null,
       tag: 'Booked',
     },
+    events: [
+      { time: '11:30 – 12:30', label: 'Porsche Museum tour · Porscheplatz 1, Stuttgart' },
+    ],
+    bookingRefs: [
+      { label: 'Porsche booking', value: '00339807' },
+      { label: 'Porsche order', value: '00136506' },
+      { label: 'Museum tickets', value: '€20pp × 3' },
+    ],
     lodging: { ...frankfurtHotel, nightLabel: 'Night 2 of 3' },
   },
   {
