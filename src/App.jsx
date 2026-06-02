@@ -85,7 +85,7 @@ export default function App() {
                   borderBottom: active ? `2px solid ${accent}` : '2px solid transparent',
                   cursor: 'pointer',
                   whiteSpace: 'nowrap',
-                  transition: 'color 0.15s, border-color 0.15s',
+                  transition: 'transform var(--dur-press) var(--ease-out), color var(--dur-fast) var(--ease-out), border-color var(--dur-fast) var(--ease-out)',
                 }}
               >
                 {tab.label}

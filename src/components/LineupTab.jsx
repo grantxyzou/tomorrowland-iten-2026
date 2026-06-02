@@ -75,7 +75,7 @@ function ArtistRow({ set, myColor, myPick, others, isClash, showStage, onToggle 
         display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10,
         padding: '10px 14px', border: 'none', borderTop: `1px solid ${rule}55`,
         borderLeft: myPick ? `5px solid ${myColor}` : '5px solid transparent',
-        backgroundColor: myPick ? tmrwBg : 'transparent', transition: 'background 0.12s',
+        backgroundColor: myPick ? tmrwBg : 'transparent', transition: 'background-color var(--dur-press) var(--ease-out)',
       }}>
       <div style={{ minWidth: 0 }}>
         <div style={{ fontSize: 15, fontWeight: 600, color: myPick ? tmrwGold : ink, letterSpacing: '-0.01em' }}>
@@ -262,7 +262,7 @@ export default function LineupTab() {
                 border: 'none', background: 'none', marginBottom: -1,
                 borderBottom: `2px solid ${active ? goldInk : 'transparent'}`,
                 color: active ? ink : muted,
-                ...mono, fontWeight: 700, textTransform: 'uppercase', transition: 'all 0.15s',
+                ...mono, fontWeight: 700, textTransform: 'uppercase', transition: 'transform var(--dur-press) var(--ease-out), color var(--dur-fast) var(--ease-out), border-color var(--dur-fast) var(--ease-out)',
                 display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 3,
               }}>
               <span aria-hidden="true" style={{ fontSize: 8, letterSpacing: '0.16em', color: active ? goldInk : muted }}>Day {i + 1}</span>
@@ -283,7 +283,7 @@ export default function LineupTab() {
               <span aria-hidden="true" style={{ width: 10, height: 10, borderRadius: '50%', backgroundColor: myInk, flexShrink: 0 }} />
               <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{activePerson}</span>
             </span>
-            <span aria-hidden="true" style={{ fontSize: 18, lineHeight: 1, color: muted, transform: whoOpen ? 'rotate(180deg)' : 'none', transition: 'transform 0.15s', flexShrink: 0 }}>▾</span>
+            <span aria-hidden="true" style={{ fontSize: 18, lineHeight: 1, color: muted, transform: whoOpen ? 'rotate(180deg)' : 'none', transition: 'transform var(--dur-fast) var(--ease-in-out)', flexShrink: 0 }}>▾</span>
           </button>
 
           {whoOpen && (
@@ -338,7 +338,7 @@ export default function LineupTab() {
                 borderLeft: i === 0 ? 'none' : `1px solid ${rule}`,
                 backgroundColor: active ? ink : 'transparent', color: active ? paper : muted,
                 ...mono, fontSize: 10, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase',
-                transition: 'all 0.15s',
+                transition: 'transform var(--dur-press) var(--ease-out), background-color var(--dur-fast) var(--ease-out), color var(--dur-fast) var(--ease-out)',
               }}>
               {v.label}{v.id === 'crew' && (crew.all3.length + crew.two.length > 0) ? ` ·${crew.all3.length + crew.two.length}` : ''}
             </button>
@@ -416,7 +416,7 @@ export default function LineupTab() {
                     <span aria-hidden="true" style={{ ...mono, fontSize: 10, fontWeight: 700, color: '#fff', backgroundColor: myInk, borderRadius: 999, padding: '2px 7px' }}>★ {picked}</span>
                   )}
                   <span aria-hidden="true" style={{ ...mono, fontSize: 11, color: muted }}>{stageSets.length}</span>
-                  <span aria-hidden="true" style={{ fontSize: 11, color: muted, transform: open ? 'rotate(90deg)' : 'none', transition: 'transform 0.18s' }}>▶</span>
+                  <span aria-hidden="true" style={{ fontSize: 11, color: muted, transform: open ? 'rotate(90deg)' : 'none', transition: 'transform var(--dur-fast) var(--ease-in-out)' }}>▶</span>
                 </button>
                 {open && (
                   <div style={{ borderTop: `1px solid ${rule}` }}>

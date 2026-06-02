@@ -234,26 +234,36 @@ function HeaderContent({ d, isTmrw, isGap, dateStr }) {
         <p style={{ fontSize: 11, color: noteColor, marginTop: 4, lineHeight: 1.4 }}>{d.note}</p>
       )}
 
-      {/* Weather row */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginTop: 8, flexWrap: 'wrap' }}>
-        {!loading && weather && (
-          <WeatherPill weather={weather} wmo={wmo} isTmrw={isTmrw} />
-        )}
+      {/* Weather row — a same-size skeleton holds the space while the per-day
+          forecast loads, so the card never grows/jumps; real pills fade in. */}
+      <div style={{ marginTop: 8 }}>
+        <WeatherPill weather={weather} wmo={wmo} loading={loading} isTmrw={isTmrw} />
       </div>
     </div>
   );
 }
 
 // ── Weather pill ─────────────────────────────────────────────
-function WeatherPill({ weather, wmo, isTmrw }) {
+function WeatherPill({ weather, wmo, loading, isTmrw }) {
   const bg   = isTmrw ? 'rgba(232,184,75,0.12)' : 'rgba(26,22,20,0.06)';
   const text = isTmrw ? p.tmrwGold : p.muted;
   // display:flex (not inline-flex) so each chip stretches to fill its grid
   // cell; the grid gives every chip an equal width regardless of content.
   const chip = { display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 4, backgroundColor: bg, borderRadius: 4, padding: '3px 7px', ...mono, fontSize: 10, color: text, fontWeight: 600, whiteSpace: 'nowrap' };
+  const grid = { display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(110px, 1fr))', gap: 6, width: '100%' };
+
+  // Skeleton: same grid + chip dimensions, transparent text — holds the layout.
+  if (loading) {
+    return (
+      <div style={grid} aria-hidden="true">
+        {[0, 1, 2].map(i => <span key={i} style={{ ...chip, color: 'transparent' }}>&nbsp;</span>)}
+      </div>
+    );
+  }
+  if (!weather) return null;
 
   return (
-    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(110px, 1fr))', gap: 6, width: '100%' }}>
+    <div style={grid} className="fx-fade">
       <span style={chip}>
         <span style={{ fontSize: 13 }}>{wmo?.emoji}</span>
         {weather.hi}° / {weather.lo}°
@@ -288,7 +298,7 @@ function BookingRefs({ refs, isTmrw, isFlightDay }) {
         <span style={{ ...mono, fontSize: 10, letterSpacing: '0.18em', textTransform: 'uppercase', color: label, fontWeight: 600 }}>
           Booking Refs
         </span>
-        <ChevronDown size={12} style={{ color: label, transform: open ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s' }} />
+        <ChevronDown size={12} style={{ color: label, transform: open ? 'rotate(180deg)' : 'none', transition: 'transform var(--dur-base) var(--ease-in-out)' }} />
       </button>
       {open && (
         <div style={{ padding: '0 16px 12px', display: 'flex', flexDirection: 'column', gap: 6 }}>

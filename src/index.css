@@ -8,6 +8,19 @@
   --muted: #5c544c;
   --card-bg: #f5efde;
   --rule: #cabda4;
+
+  /* ── Motion system ──────────────────────────────────────────
+     One set of curves + durations so every transition across the
+     app feels like one library. Reference via var() in inline
+     styles, e.g. transition: 'transform 150ms var(--ease-out)'. */
+  --ease-out:    cubic-bezier(0.23, 1, 0.32, 1);    /* entrances, default UI */
+  --ease-in-out: cubic-bezier(0.77, 0, 0.175, 1);   /* rotations / morphs / moves */
+  --ease-drawer: cubic-bezier(0.32, 0.72, 0, 1);    /* modal / sheet */
+  --dur-press: 120ms;
+  --dur-fast:  150ms;
+  --dur-base:  200ms;
+  --dur-modal: 240ms;
+  --dur-exit:  160ms;
 }
 
 html { font-size: 16px; -webkit-text-size-adjust: 100%; scroll-behavior: smooth; }
@@ -32,6 +45,19 @@ body {
 }
 /* Drop the default ring when focus is NOT from the keyboard */
 :focus:not(:focus-visible) { outline: none; }
+
+/* ── Motion primitives ────────────────────────────────────────
+   Press feedback is a global default: every <button> confirms the
+   tap with a subtle scale. Buttons that also transition colour set
+   their own (transform-inclusive) transition inline; the rest fall
+   back to this. */
+button { transition: transform var(--dur-press) var(--ease-out); }
+button:active { transform: scale(0.97); }
+
+/* Opacity fade-in for async/swapped content (weather pills, images,
+   crossfades). Newly-mounted elements start transparent and ease in. */
+.fx-fade { transition: opacity var(--dur-base) var(--ease-out); }
+@starting-style { .fx-fade { opacity: 0; } }
 
 /* Hide scrollbar on tab bar */
 .no-scrollbar::-webkit-scrollbar { display: none; }
