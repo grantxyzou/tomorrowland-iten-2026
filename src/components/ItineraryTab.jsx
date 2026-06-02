@@ -363,14 +363,16 @@ function SchedulePanel({ events, isTmrw }) {
       </div>
       <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
         {events.map((e, i) => (
-          <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-            <span style={{ ...mono, fontSize: 11, fontWeight: 700, color: time, minWidth: 80, flexShrink: 0, alignSelf: 'baseline', paddingTop: 1 }}>{e.time}</span>
+          <div key={i} style={{ display: 'flex', alignItems: 'baseline', gap: 12 }}>
+            <span style={{ ...mono, fontSize: 11, fontWeight: 700, color: time, minWidth: 80, flexShrink: 0 }}>{e.time}</span>
             <span style={{ fontSize: 13, lineHeight: 1.3, color: text, flex: 1 }}>{e.label}</span>
             {e.ticket && (
               <button
                 onClick={() => setTicket(e.ticket)}
                 aria-label={`View ticket for ${e.label}`}
-                style={{ flexShrink: 0, width: 44, height: 44, marginRight: -10, display: 'flex', alignItems: 'center', justifyContent: 'center', border: 'none', background: 'none', color: time, cursor: 'pointer' }}
+                // align-self center + negative vertical margins: the 44px touch
+                // target stays full size but doesn't inflate the baseline row.
+                style={{ flexShrink: 0, alignSelf: 'center', width: 44, height: 44, marginTop: -12, marginBottom: -12, marginRight: -10, display: 'flex', alignItems: 'center', justifyContent: 'center', border: 'none', background: 'none', color: time, cursor: 'pointer' }}
               >
                 <QrCode size={22} />
               </button>
