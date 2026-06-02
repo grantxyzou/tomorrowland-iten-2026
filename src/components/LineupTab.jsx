@@ -1,4 +1,5 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useRef } from 'react';
+import { usePresence } from '../hooks/usePresence.js';
 import { sets, STAGES, PEOPLE, LINEUP_STATUS } from '../data/lineup.js';
 import { usePicks } from '../hooks/usePicks.js';
 
@@ -138,6 +139,13 @@ export default function LineupTab() {
     const t = setTimeout(() => setToast(null), toast.duration || 3000);
     return () => clearTimeout(t);
   }, [toast]);
+
+  // Keep the toast mounted through its slide-out; remember its content so the
+  // exit frame still has a message after `toast` clears.
+  const toastRef = useRef(null);
+  if (toast) toastRef.current = toast;
+  const toastPresent = usePresence(!!toast, 240);
+  const shownToast = toast || toastRef.current;
 
   // Remember which person this device is, so you don't re-pick each visit.
   useEffect(() => { try { localStorage.setItem(ME_KEY, activePerson); } catch {} }, [activePerson]);
@@ -514,14 +522,16 @@ export default function LineupTab() {
         </button>
       </div>
 
-      {/* Bottom-screen toast — copy confirmations, undo, etc. */}
-      {toast && (
-        <div role="status" style={{ position: 'fixed', left: 16, right: 16, bottom: 'calc(16px + env(safe-area-inset-bottom))', maxWidth: 648, margin: '0 auto', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, padding: '12px 16px', borderRadius: 10, backgroundColor: ink, color: paper, zIndex: 60, boxShadow: '0 6px 20px rgba(0,0,0,0.28)' }}>
-          <span style={{ ...sans, fontSize: 13 }}>{toast.msg}</span>
-          {toast.action && (
-            <button onClick={() => { toast.action.run(); setToast(null); }}
+      {/* Bottom-screen toast — copy confirmations, undo, etc. Slides up on
+          enter and back down on exit (same direction) via .fx-toast. */}
+      {toastPresent && shownToast && (
+        <div role="status" data-open={!!toast} className="fx-toast"
+          style={{ position: 'fixed', left: 16, right: 16, bottom: 'calc(16px + env(safe-area-inset-bottom))', maxWidth: 648, margin: '0 auto', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, padding: '12px 16px', borderRadius: 10, backgroundColor: ink, color: paper, zIndex: 60, boxShadow: '0 6px 20px rgba(0,0,0,0.28)' }}>
+          <span style={{ ...sans, fontSize: 13 }}>{shownToast.msg}</span>
+          {shownToast.action && (
+            <button onClick={() => { shownToast.action.run(); setToast(null); }}
               style={{ minHeight: 44, padding: '0 6px', border: 'none', background: 'none', color: tmrwGold, ...mono, fontSize: 12, fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', cursor: 'pointer', flexShrink: 0 }}>
-              {toast.action.label}
+              {shownToast.action.label}
             </button>
           )}
         </div>

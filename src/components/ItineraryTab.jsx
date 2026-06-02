@@ -1,7 +1,8 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { ArrowDown, Check, Plane, Car, Clock, Bed, ChevronDown, QrCode, X } from 'lucide-react';
 import { days } from '../data/trip.js';
+import { usePresence } from '../hooks/usePresence.js';
 import { useWeather } from '../hooks/useWeather.js';
 import { useLocalTime } from '../hooks/useLocalTime.js';
 import { TomorrowlandMark, AirCanadaMark } from './BrandMarks.jsx';
@@ -362,8 +363,10 @@ function SchedulePanel({ events, isTmrw }) {
   const time   = isTmrw ? p.tmrwGold : p.accent;
   const text   = isTmrw ? p.tmrwBodyText : p.ink;
 
-  // Which ticket (if any) is open in the modal.
-  const [ticket, setTicket] = React.useState(null);
+  // Ticket modal: `ticket` is the current src (kept during the exit anim),
+  // `ticketOpen` drives enter/exit so the close can animate before unmount.
+  const [ticket, setTicket]         = React.useState(null);
+  const [ticketOpen, setTicketOpen] = React.useState(false);
 
   return (
     <div style={{ borderTop: `1px solid ${border}`, backgroundColor: bg, padding: '14px 16px', position: 'relative', zIndex: 1 }}>
@@ -378,7 +381,7 @@ function SchedulePanel({ events, isTmrw }) {
             <span style={{ fontSize: 13, lineHeight: 1.3, color: text, flex: 1 }}>{e.label}</span>
             {e.ticket && (
               <button
-                onClick={() => setTicket(e.ticket)}
+                onClick={() => { setTicket(e.ticket); setTicketOpen(true); }}
                 aria-label={`View ticket for ${e.label}`}
                 // align-self center + negative vertical margins: the 44px touch
                 // target stays full size but doesn't inflate the baseline row.
@@ -390,7 +393,7 @@ function SchedulePanel({ events, isTmrw }) {
           </div>
         ))}
       </div>
-      {ticket && <TicketModal src={ticket} onClose={() => setTicket(null)} />}
+      <TicketModal open={ticketOpen} src={ticket} onClose={() => setTicketOpen(false)} />
     </div>
   );
 }
@@ -398,11 +401,16 @@ function SchedulePanel({ events, isTmrw }) {
 // ── Ticket modal ─────────────────────────────────────────────
 // Almost-full-screen overlay that renders a booked ticket image. Closes on the
 // ✕ button, the backdrop, or Escape; locks body scroll and restores focus.
-function TicketModal({ src, onClose }) {
+function TicketModal({ open, src, onClose }) {
+  const present = usePresence(open, 240); // keep mounted through the exit anim
   const closeRef = useRef(null);
-  const openerRef = useRef(typeof document !== 'undefined' ? document.activeElement : null);
+  const openerRef = useRef(null);
+  const [imgLoaded, setImgLoaded] = useState(false);
 
   useEffect(() => {
+    if (!open) return;
+    openerRef.current = document.activeElement;
+    setImgLoaded(false);
     const onKey = e => { if (e.key === 'Escape') onClose(); };
     document.addEventListener('keydown', onKey);
     const prevOverflow = document.body.style.overflow;
@@ -413,11 +421,14 @@ function TicketModal({ src, onClose }) {
       document.body.style.overflow = prevOverflow;
       openerRef.current?.focus?.();
     };
-  }, [onClose]);
+  }, [open, onClose]);
+
+  if (!present) return null;
 
   return createPortal((
     <div
       role="dialog" aria-modal="true" aria-label="Ticket"
+      data-open={open} className="fx-overlay"
       onClick={onClose}
       style={{
         position: 'fixed', inset: 0, zIndex: 70, display: 'flex', flexDirection: 'column',
@@ -434,14 +445,20 @@ function TicketModal({ src, onClose }) {
           <X size={16} /> Close
         </button>
       </div>
-      {/* Ticket — its rounded corners are baked into the image (transparent),
-          so drop-shadow (not box-shadow) hugs the card shape, no white edge. */}
+      {/* Ticket — scales in from centre (.fx-modal). Its rounded corners are
+          baked into the image (transparent), so drop-shadow hugs the card. The
+          image itself fades in on decode so it never flashes a blank frame. */}
       <div style={{ flex: 1, overflowY: 'auto', display: 'flex', justifyContent: 'center', alignItems: 'flex-start' }}>
-        <img
-          src={src} alt="Entrance ticket"
+        <div
+          data-open={open} className="fx-modal"
           onClick={e => e.stopPropagation()}
-          style={{ width: '100%', maxWidth: 460, height: 'auto', filter: 'drop-shadow(0 12px 30px rgba(0,0,0,0.22))' }}
-        />
+          style={{ width: '100%', maxWidth: 460, filter: 'drop-shadow(0 12px 30px rgba(0,0,0,0.22))' }}
+        >
+          <img
+            src={src} alt="Entrance ticket" onLoad={() => setImgLoaded(true)}
+            style={{ display: 'block', width: '100%', height: 'auto', opacity: imgLoaded ? 1 : 0, transition: 'opacity var(--dur-base) var(--ease-out)' }}
+          />
+        </div>
       </div>
     </div>
   ), document.body);

@@ -59,6 +59,31 @@ button:active { transform: scale(0.97); }
 .fx-fade { transition: opacity var(--dur-base) var(--ease-out); }
 @starting-style { .fx-fade { opacity: 0; } }
 
+/* Enter/exit primitives. Pair with usePresence(open): render while present,
+   set data-open={open}. @starting-style supplies the enter "from" frame;
+   [data-open="false"] supplies the exit "to" frame (snappier). */
+
+/* Modal backdrop — fade */
+.fx-overlay { transition: opacity var(--dur-modal) var(--ease-out); }
+.fx-overlay[data-open="false"] { opacity: 0; transition-duration: var(--dur-exit); }
+@starting-style { .fx-overlay[data-open="true"] { opacity: 0; } }
+
+/* Modal card — scale from centre + fade (modals stay centred, not origin-aware) */
+.fx-modal {
+  transition: opacity var(--dur-modal) var(--ease-out), transform var(--dur-modal) var(--ease-drawer);
+  transform-origin: center;
+}
+.fx-modal[data-open="false"] {
+  opacity: 0; transform: scale(0.96);
+  transition: opacity var(--dur-exit) var(--ease-out), transform var(--dur-exit) var(--ease-out);
+}
+@starting-style { .fx-modal[data-open="true"] { opacity: 0; transform: scale(0.96); } }
+
+/* Toast — slides up from below, exits the same direction (spatial consistency) */
+.fx-toast { transition: opacity var(--dur-base) var(--ease-out), transform var(--dur-base) var(--ease-out); }
+.fx-toast[data-open="false"] { opacity: 0; transform: translateY(120%); transition-duration: var(--dur-exit); }
+@starting-style { .fx-toast[data-open="true"] { opacity: 0; transform: translateY(120%); } }
+
 /* Hide scrollbar on tab bar */
 .no-scrollbar::-webkit-scrollbar { display: none; }
 .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
