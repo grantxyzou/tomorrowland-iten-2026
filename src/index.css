@@ -84,17 +84,36 @@ button:active { transform: scale(0.97); }
 .fx-toast[data-open="false"] { opacity: 0; transform: translateY(120%); transition-duration: var(--dur-exit); }
 @starting-style { .fx-toast[data-open="true"] { opacity: 0; transform: translateY(120%); } }
 
+/* Popover — scales in from its top edge (origin-aware: dropdowns/search sit
+   below their trigger). Not for modals (those stay centred). */
+.fx-pop { transition: opacity var(--dur-fast) var(--ease-out), transform var(--dur-fast) var(--ease-out); transform-origin: top; }
+.fx-pop[data-open="false"] { opacity: 0; transform: scale(0.97); transition-duration: var(--dur-exit); }
+@starting-style { .fx-pop[data-open="true"] { opacity: 0; transform: scale(0.97); } }
+
+/* Collapse — animates open/closed height via grid fr units (clean, no fixed
+   max-height). The single child must clip its overflow. */
+.fx-collapse { display: grid; grid-template-rows: 1fr; transition: grid-template-rows var(--dur-base) var(--ease-out), opacity var(--dur-base) var(--ease-out); }
+.fx-collapse > * { min-height: 0; overflow: hidden; }
+.fx-collapse[data-open="false"] { grid-template-rows: 0fr; opacity: 0; }
+@starting-style { .fx-collapse[data-open="true"] { grid-template-rows: 0fr; opacity: 0; } }
+
 /* Hide scrollbar on tab bar */
 .no-scrollbar::-webkit-scrollbar { display: none; }
 .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
 
-/* Respect users who ask for less motion */
+/* Respect users who ask for less motion. Emil-correct: keep opacity/colour
+   fades (they aid comprehension), remove movement and size changes. We do this
+   by restricting what may transition globally, rather than zeroing everything. */
 @media (prefers-reduced-motion: reduce) {
-  html { scroll-behavior: auto; }
+  html { scroll-behavior: auto !important; }
   *, *::before, *::after {
     animation-duration: 0.01ms !important;
     animation-iteration-count: 1 !important;
-    transition-duration: 0.01ms !important;
     scroll-behavior: auto !important;
+    transition-property: opacity, color, background-color, border-color, fill, box-shadow !important;
   }
+  /* Neutralise the primitives' movement so only their fade remains */
+  button:active, .fx-pop, .fx-modal, .fx-toast { transform: none !important; }
+  .fx-collapse { grid-template-rows: 1fr !important; }
+  .fx-collapse[data-open="false"] { grid-template-rows: 0fr !important; }
 }

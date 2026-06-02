@@ -283,6 +283,7 @@ function WeatherPill({ weather, wmo, loading, isTmrw }) {
 // ── Booking refs (collapsible) ───────────────────────────────
 function BookingRefs({ refs, isTmrw, isFlightDay }) {
   const [open, setOpen] = React.useState(false);
+  const present = usePresence(open, 200);
   const bg     = isFlightDay ? '#111' : isTmrw ? 'rgba(13,5,24,0.6)' : p.cardBg;
   const border = isFlightDay ? '#222' : isTmrw ? p.tmrwPanelBorder : p.ruleSubtle;
   const label  = isFlightDay ? p.acMuted : isTmrw ? p.tmrwBodyMuted : p.muted;
@@ -301,14 +302,16 @@ function BookingRefs({ refs, isTmrw, isFlightDay }) {
         </span>
         <ChevronDown size={12} style={{ color: label, transform: open ? 'rotate(180deg)' : 'none', transition: 'transform var(--dur-base) var(--ease-in-out)' }} />
       </button>
-      {open && (
-        <div style={{ padding: '0 16px 12px', display: 'flex', flexDirection: 'column', gap: 6 }}>
-          {refs.map((r, i) => (
-            <div key={i} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-              <span style={{ ...mono, fontSize: 10, color: label, letterSpacing: '0.1em' }}>{r.label}</span>
-              <span style={{ ...mono, fontSize: 12, fontWeight: 700, color: val, letterSpacing: '0.05em' }}>{r.value}</span>
-            </div>
-          ))}
+      {present && (
+        <div className="fx-collapse" data-open={open}>
+          <div style={{ padding: '0 16px 12px', display: 'flex', flexDirection: 'column', gap: 6 }}>
+            {refs.map((r, i) => (
+              <div key={i} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                <span style={{ ...mono, fontSize: 10, color: label, letterSpacing: '0.1em' }}>{r.label}</span>
+                <span style={{ ...mono, fontSize: 12, fontWeight: 700, color: val, letterSpacing: '0.05em' }}>{r.value}</span>
+              </div>
+            ))}
+          </div>
         </div>
       )}
     </div>

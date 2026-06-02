@@ -147,6 +147,10 @@ export default function LineupTab() {
   const toastPresent = usePresence(!!toast, 240);
   const shownToast = toast || toastRef.current;
 
+  // Presence for the reveal popovers so they animate in AND out.
+  const whoPresent    = usePresence(whoOpen, 200);
+  const searchPresent = usePresence(searchOpen, 200);
+
   // Remember which person this device is, so you don't re-pick each visit.
   useEffect(() => { try { localStorage.setItem(ME_KEY, activePerson); } catch {} }, [activePerson]);
 
@@ -294,8 +298,8 @@ export default function LineupTab() {
             <span aria-hidden="true" style={{ fontSize: 18, lineHeight: 1, color: muted, transform: whoOpen ? 'rotate(180deg)' : 'none', transition: 'transform var(--dur-fast) var(--ease-in-out)', flexShrink: 0 }}>▾</span>
           </button>
 
-          {whoOpen && (
-            <div role="listbox" aria-label="Switch person" style={{ position: 'absolute', top: 'calc(100% + 6px)', left: 0, right: 0, zIndex: 30, border: `1px solid ${rule}`, borderRadius: 8, overflow: 'hidden', backgroundColor: '#fff', boxShadow: '0 8px 24px rgba(0,0,0,0.14)' }}>
+          {whoPresent && (
+            <div role="listbox" aria-label="Switch person" data-open={whoOpen} className="fx-pop" style={{ position: 'absolute', top: 'calc(100% + 6px)', left: 0, right: 0, zIndex: 30, border: `1px solid ${rule}`, borderRadius: 8, overflow: 'hidden', backgroundColor: '#fff', boxShadow: '0 8px 24px rgba(0,0,0,0.14)' }}>
               {PEOPLE.map((person, i) => {
                 const active = activePerson === person;
                 const ink2 = PERSON_INK[person];
@@ -331,8 +335,8 @@ export default function LineupTab() {
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, marginBottom: 6 }}>
         <span style={{ ...mono, fontSize: 10, color: muted, letterSpacing: '0.18em', textTransform: 'uppercase' }}>View by</span>
         <span title={status === 'error' ? 'Offline — showing last synced picks' : 'Synced with the crew'}
-          style={{ ...mono, fontSize: 9, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', display: 'inline-flex', alignItems: 'center', gap: 4, color: status === 'error' ? '#a82a13' : status === 'ready' ? '#276627' : muted }}>
-          <span style={{ width: 6, height: 6, borderRadius: '50%', backgroundColor: status === 'error' ? '#a82a13' : status === 'ready' ? '#276627' : muted, display: 'inline-block' }} />
+          style={{ ...mono, fontSize: 9, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', display: 'inline-flex', alignItems: 'center', gap: 4, color: status === 'error' ? '#a82a13' : status === 'ready' ? '#276627' : muted, transition: 'color var(--dur-fast) var(--ease-out)' }}>
+          <span style={{ width: 6, height: 6, borderRadius: '50%', backgroundColor: status === 'error' ? '#a82a13' : status === 'ready' ? '#276627' : muted, display: 'inline-block', transition: 'background-color var(--dur-fast) var(--ease-out)' }} />
           {status === 'error' ? 'Offline' : status === 'ready' ? 'Live' : 'Syncing'}
         </span>
       </div>
@@ -370,8 +374,8 @@ export default function LineupTab() {
               </button>
             )}
           </div>
-          {searchOpen && (
-            <div style={{ position: 'relative', marginBottom: 12 }}>
+          {searchPresent && (
+            <div data-open={searchOpen} className="fx-pop" style={{ position: 'relative', marginBottom: 12 }}>
               <span style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', fontSize: 13, color: muted, pointerEvents: 'none' }}>⌕</span>
               <input autoFocus value={search} onChange={e => setSearch(e.target.value)} placeholder="Search artists…"
                 type="search" inputMode="search" aria-label="Search artists"
@@ -427,9 +431,11 @@ export default function LineupTab() {
                   <span aria-hidden="true" style={{ fontSize: 11, color: muted, transform: open ? 'rotate(90deg)' : 'none', transition: 'transform var(--dur-fast) var(--ease-in-out)' }}>▶</span>
                 </button>
                 {open && (
-                  <div style={{ borderTop: `1px solid ${rule}` }}>
-                    {stageSets.map(set => <ArtistRow key={set.id} {...rowProps(set)} showStage={false} />)}
-                    {picked > 0 && <StageSpotify stage={stage} pickedSets={pickedSets} onCopied={notify} />}
+                  <div className="fx-collapse" data-open="true">
+                    <div style={{ borderTop: `1px solid ${rule}` }}>
+                      {stageSets.map(set => <ArtistRow key={set.id} {...rowProps(set)} showStage={false} />)}
+                      {picked > 0 && <StageSpotify stage={stage} pickedSets={pickedSets} onCopied={notify} />}
+                    </div>
                   </div>
                 )}
               </section>
@@ -775,7 +781,7 @@ function PartyMode({ activePerson, setActivePerson, activeDay, setActiveDay, pic
   };
 
   return (
-    <div style={{
+    <div className="fx-fade" style={{
       position: 'fixed', inset: 0, zIndex: 55, overflowY: 'auto', backgroundColor: bg, color: txt,
       padding: '0 max(16px, env(safe-area-inset-right)) calc(28px + env(safe-area-inset-bottom)) max(16px, env(safe-area-inset-left))',
       ...sans,
