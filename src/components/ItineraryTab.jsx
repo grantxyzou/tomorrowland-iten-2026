@@ -411,7 +411,7 @@ function TicketModal({ src, onClose }) {
       onClick={onClose}
       style={{
         position: 'fixed', inset: 0, zIndex: 70, display: 'flex', flexDirection: 'column',
-        backgroundColor: 'rgba(10,8,12,0.82)', backdropFilter: 'blur(3px)', WebkitBackdropFilter: 'blur(3px)',
+        backgroundColor: 'rgba(255,255,255,0.92)', backdropFilter: 'blur(6px)', WebkitBackdropFilter: 'blur(6px)',
         padding: 'calc(12px + env(safe-area-inset-top)) max(12px, env(safe-area-inset-right)) calc(16px + env(safe-area-inset-bottom)) max(12px, env(safe-area-inset-left))',
       }}
     >
@@ -419,17 +419,18 @@ function TicketModal({ src, onClose }) {
       <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 8 }}>
         <button
           ref={closeRef} onClick={onClose} aria-label="Close ticket"
-          style={{ minWidth: 44, minHeight: 44, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 6, padding: '0 14px', borderRadius: 999, border: '1px solid rgba(255,255,255,0.25)', backgroundColor: 'rgba(255,255,255,0.1)', color: '#fff', ...mono, fontSize: 12, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', cursor: 'pointer' }}
+          style={{ minWidth: 44, minHeight: 44, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 6, padding: '0 14px', borderRadius: 999, border: `1px solid ${p.rule}`, backgroundColor: '#fff', color: p.ink, ...mono, fontSize: 12, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', cursor: 'pointer' }}
         >
           <X size={16} /> Close
         </button>
       </div>
-      {/* Ticket — scrollable, tap-through guarded so clicks on it don't close */}
+      {/* Ticket — its rounded corners are baked into the image (transparent),
+          so drop-shadow (not box-shadow) hugs the card shape, no white edge. */}
       <div style={{ flex: 1, overflowY: 'auto', display: 'flex', justifyContent: 'center', alignItems: 'flex-start' }}>
         <img
           src={src} alt="Entrance ticket"
           onClick={e => e.stopPropagation()}
-          style={{ width: '100%', maxWidth: 460, height: 'auto', borderRadius: 16, boxShadow: '0 18px 50px rgba(0,0,0,0.5)' }}
+          style={{ width: '100%', maxWidth: 460, height: 'auto', filter: 'drop-shadow(0 12px 30px rgba(0,0,0,0.22))' }}
         />
       </div>
     </div>
