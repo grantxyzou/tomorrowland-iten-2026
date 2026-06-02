@@ -183,11 +183,11 @@ export const days = [
       tag: 'Booked',
     },
     events: [
-      { time: '11:30 – 12:30', label: 'Porsche Museum tour · Porscheplatz 1, Stuttgart' },
+      { time: '11:30 – 12:30', label: 'Porsche Museum tour · Porscheplatz 1, Stuttgart', ticket: '/tickets/porsche-museum.png' },
     ],
     bookingRefs: [
-      { label: 'Porsche booking', value: '00339807' },
-      { label: 'Porsche order', value: '00136506' },
+      // Order/booking numbers intentionally kept OFF the public site — they live
+      // on the original ticket. The ticket modal's QR + numbers are blurred too.
       { label: 'Museum tickets', value: '€20pp × 3' },
     ],
     lodging: { ...frankfurtHotel, nightLabel: 'Night 2 of 3' },

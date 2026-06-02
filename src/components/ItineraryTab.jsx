@@ -1,5 +1,6 @@
 import React, { useEffect, useRef } from 'react';
-import { ArrowDown, Check, Plane, Car, Clock, Bed, ChevronDown } from 'lucide-react';
+import { createPortal } from 'react-dom';
+import { ArrowDown, Check, Plane, Car, Clock, Bed, ChevronDown, QrCode, X } from 'lucide-react';
 import { days } from '../data/trip.js';
 import { useWeather } from '../hooks/useWeather.js';
 import { useLocalTime } from '../hooks/useLocalTime.js';
@@ -351,6 +352,9 @@ function SchedulePanel({ events, isTmrw }) {
   const time   = isTmrw ? p.tmrwGold : p.accent;
   const text   = isTmrw ? p.tmrwBodyText : p.ink;
 
+  // Which ticket (if any) is open in the modal.
+  const [ticket, setTicket] = React.useState(null);
+
   return (
     <div style={{ borderTop: `1px solid ${border}`, backgroundColor: bg, padding: '14px 16px', position: 'relative', zIndex: 1 }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 10 }}>
@@ -359,14 +363,75 @@ function SchedulePanel({ events, isTmrw }) {
       </div>
       <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
         {events.map((e, i) => (
-          <div key={i} style={{ display: 'flex', alignItems: 'baseline', gap: 12 }}>
-            <span style={{ ...mono, fontSize: 11, fontWeight: 700, color: time, minWidth: 80, flexShrink: 0 }}>{e.time}</span>
-            <span style={{ fontSize: 13, lineHeight: 1.3, color: text }}>{e.label}</span>
+          <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+            <span style={{ ...mono, fontSize: 11, fontWeight: 700, color: time, minWidth: 80, flexShrink: 0, alignSelf: 'baseline', paddingTop: 1 }}>{e.time}</span>
+            <span style={{ fontSize: 13, lineHeight: 1.3, color: text, flex: 1 }}>{e.label}</span>
+            {e.ticket && (
+              <button
+                onClick={() => setTicket(e.ticket)}
+                aria-label={`View ticket for ${e.label}`}
+                style={{ flexShrink: 0, width: 44, height: 44, marginRight: -10, display: 'flex', alignItems: 'center', justifyContent: 'center', border: 'none', background: 'none', color: time, cursor: 'pointer' }}
+              >
+                <QrCode size={22} />
+              </button>
+            )}
           </div>
         ))}
       </div>
+      {ticket && <TicketModal src={ticket} onClose={() => setTicket(null)} />}
     </div>
   );
+}
+
+// ── Ticket modal ─────────────────────────────────────────────
+// Almost-full-screen overlay that renders a booked ticket image. Closes on the
+// ✕ button, the backdrop, or Escape; locks body scroll and restores focus.
+function TicketModal({ src, onClose }) {
+  const closeRef = useRef(null);
+  const openerRef = useRef(typeof document !== 'undefined' ? document.activeElement : null);
+
+  useEffect(() => {
+    const onKey = e => { if (e.key === 'Escape') onClose(); };
+    document.addEventListener('keydown', onKey);
+    const prevOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    closeRef.current?.focus();
+    return () => {
+      document.removeEventListener('keydown', onKey);
+      document.body.style.overflow = prevOverflow;
+      openerRef.current?.focus?.();
+    };
+  }, [onClose]);
+
+  return createPortal((
+    <div
+      role="dialog" aria-modal="true" aria-label="Ticket"
+      onClick={onClose}
+      style={{
+        position: 'fixed', inset: 0, zIndex: 70, display: 'flex', flexDirection: 'column',
+        backgroundColor: 'rgba(10,8,12,0.82)', backdropFilter: 'blur(3px)', WebkitBackdropFilter: 'blur(3px)',
+        padding: 'calc(12px + env(safe-area-inset-top)) max(12px, env(safe-area-inset-right)) calc(16px + env(safe-area-inset-bottom)) max(12px, env(safe-area-inset-left))',
+      }}
+    >
+      {/* Close row */}
+      <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 8 }}>
+        <button
+          ref={closeRef} onClick={onClose} aria-label="Close ticket"
+          style={{ minWidth: 44, minHeight: 44, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 6, padding: '0 14px', borderRadius: 999, border: '1px solid rgba(255,255,255,0.25)', backgroundColor: 'rgba(255,255,255,0.1)', color: '#fff', ...mono, fontSize: 12, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', cursor: 'pointer' }}
+        >
+          <X size={16} /> Close
+        </button>
+      </div>
+      {/* Ticket — scrollable, tap-through guarded so clicks on it don't close */}
+      <div style={{ flex: 1, overflowY: 'auto', display: 'flex', justifyContent: 'center', alignItems: 'flex-start' }}>
+        <img
+          src={src} alt="Entrance ticket"
+          onClick={e => e.stopPropagation()}
+          style={{ width: '100%', maxWidth: 460, height: 'auto', borderRadius: 16, boxShadow: '0 18px 50px rgba(0,0,0,0.5)' }}
+        />
+      </div>
+    </div>
+  ), document.body);
 }
 
 // ── Travel panel ─────────────────────────────────────────────
