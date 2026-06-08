@@ -251,20 +251,24 @@ export default function LineupTab() {
 
   return (
     <div style={{ ...sans }}>
-      {/* Consciencia — golden-hour desert hero (theme of the 2026 edition).
-          Evokes the poster's sun-over-dunes without using the artwork. */}
+      {/* Consciencia — the poster's painterly scene in a band: blue sky with
+          soft clouds → sun glow → warm sand. The 2026 edition's hero (no art used). */}
       <div style={{
-        position: 'relative', height: 76, marginBottom: 16, borderRadius: 12, overflow: 'hidden',
-        display: 'flex', alignItems: 'center', justifyContent: 'center',
-        background: 'linear-gradient(180deg, #46384f 0%, #8a6238 54%, #c4903f 100%)',
+        position: 'relative', height: 96, marginBottom: 16, borderRadius: 12, overflow: 'hidden',
+        background: 'linear-gradient(180deg, #6f93b3 0%, #a9c5d8 34%, #ecddba 62%, #cf9f56 100%)',
       }}>
-        {/* sun rising at the horizon */}
-        <div aria-hidden="true" style={{ position: 'absolute', inset: 0, background: 'radial-gradient(closest-side at 50% 116%, rgba(255,228,158,0.9), rgba(255,228,158,0) 70%)' }} />
-        {/* horizon haze for legibility */}
-        <div aria-hidden="true" style={{ position: 'absolute', left: 0, right: 0, bottom: 0, height: '45%', background: 'linear-gradient(180deg, rgba(20,12,8,0), rgba(20,12,8,0.32))' }} />
-        <div style={{ position: 'relative', textAlign: 'center' }}>
-          <div style={{ ...sans, fontSize: 23, fontWeight: 700, letterSpacing: '0.16em', color: '#ffe7ad', textShadow: '0 1px 7px rgba(50,26,8,0.55)' }}>CONSCIENCIA</div>
-          <div style={{ ...mono, fontSize: 8.5, fontWeight: 700, letterSpacing: '0.3em', color: 'rgba(255,238,205,0.82)', marginTop: 3 }}>TOMORROWLAND · BELGIUM 2026</div>
+        {/* painterly clouds — soft, warm-lit, blurred blobs */}
+        <div aria-hidden="true" style={{ position: 'absolute', top: 9,  left: '6%',  width: 132, height: 34, borderRadius: '50%', background: 'radial-gradient(closest-side, rgba(255,253,247,0.95), rgba(255,253,247,0))', filter: 'blur(8px)' }} />
+        <div aria-hidden="true" style={{ position: 'absolute', top: 24, left: '58%', width: 168, height: 40, borderRadius: '50%', background: 'radial-gradient(closest-side, rgba(255,250,238,0.9), rgba(255,250,238,0))',  filter: 'blur(10px)' }} />
+        <div aria-hidden="true" style={{ position: 'absolute', top: 5,  left: '76%', width: 96,  height: 26, borderRadius: '50%', background: 'radial-gradient(closest-side, rgba(255,255,252,0.85), rgba(255,255,252,0))', filter: 'blur(7px)' }} />
+        <div aria-hidden="true" style={{ position: 'absolute', top: 38, left: '1%',  width: 120, height: 30, borderRadius: '50%', background: 'radial-gradient(closest-side, rgba(255,248,232,0.8), rgba(255,248,232,0))',  filter: 'blur(9px)' }} />
+        {/* sun glow at the horizon */}
+        <div aria-hidden="true" style={{ position: 'absolute', inset: 0, background: 'radial-gradient(closest-side at 50% 88%, rgba(255,247,220,0.95), rgba(255,247,220,0) 60%)' }} />
+        {/* soft halo so the gold wordmark stays legible over the bright sky */}
+        <div aria-hidden="true" style={{ position: 'absolute', inset: 0, background: 'radial-gradient(ellipse 58% 54% at 50% 45%, rgba(34,18,8,0.30), rgba(34,18,8,0) 72%)' }} />
+        <div style={{ position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', textAlign: 'center' }}>
+          <div style={{ ...sans, fontSize: 24, fontWeight: 700, letterSpacing: '0.15em', color: '#ffe7ad', textShadow: '0 1px 8px rgba(28,15,6,0.6)' }}>CONSCIENCIA</div>
+          <div style={{ ...mono, fontSize: 8.5, fontWeight: 700, letterSpacing: '0.3em', color: 'rgba(255,243,221,0.9)', marginTop: 4, textShadow: '0 1px 4px rgba(28,15,6,0.55)' }}>TOMORROWLAND · BELGIUM 2026</div>
         </div>
       </div>
 
