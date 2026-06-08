@@ -27,16 +27,17 @@ const p = {
   acRedText:    '#ff5747',
   acMuted:      '#b9b3ad',
   acWhite:      '#ffffff',
-  // Tomorrowland
-  tmrwBg:       '#1a0a2e',
-  tmrwChipBg:   '#0d0518',
-  tmrwGold:     '#e8b84b',
-  tmrwChipLabel:'#a37622',
+  // Tomorrowland — "Consciencia" 2026: golden-hour desert (warm shadow + liquid
+  // gold), matched to the Lineup tab. Festival day cards (Jul 17–19).
+  tmrwBg:       '#241712',
+  tmrwChipBg:   '#160d07',
+  tmrwGold:     '#dcab43',
+  tmrwChipLabel:'#a87b2a',
   tmrwBodyText: '#f0e8d8',
-  tmrwBodyMuted:'#b8a888',
-  tmrwBorder:   '#3d2a0a',
-  tmrwPanel:    'rgba(13,5,24,0.75)',
-  tmrwPanelBorder: 'rgba(232,184,75,0.15)',
+  tmrwBodyMuted:'#c2a982',
+  tmrwBorder:   '#3a2a16',
+  tmrwPanel:    'rgba(20,12,8,0.72)',
+  tmrwPanelBorder: 'rgba(220,171,67,0.18)',
   // Elemental dots
   tmlBlue:  '#4a7fc1', tmlRed: '#c94040', tmlGreen: '#4a9a4a', tmlYellow: '#e8b84b',
 };
