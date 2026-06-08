@@ -6,10 +6,12 @@ import { usePicks } from '../hooks/usePicks.js';
 const mono = { fontFamily: '"JetBrains Mono", ui-monospace, monospace' };
 const sans = { fontFamily: '"Space Grotesk", -apple-system, system-ui, sans-serif' };
 
-// Palette
-const tmrwBg    = '#1a0a2e';
-const tmrwGold  = '#e8b84b';
-const bodyMuted = '#b8a888';
+// Palette — "Consciencia" 2026 edition: golden-hour desert. The deep accent
+// shifts from cold festival-purple to a warm desert shadow; gold becomes the
+// richer "liquid gold" of the poster lettering. Neutral base unchanged.
+const tmrwBg    = '#241712';  // warm desert shadow (picked rows, party btn, clashes)
+const tmrwGold  = '#dcab43';  // liquid gold — on dark
+const bodyMuted = '#c2a982';  // warm sand — muted text on dark
 const paper     = '#ede7d8';
 const ink       = '#1a1614';
 const muted     = '#5c544c';
@@ -249,6 +251,23 @@ export default function LineupTab() {
 
   return (
     <div style={{ ...sans }}>
+      {/* Consciencia — golden-hour desert hero (theme of the 2026 edition).
+          Evokes the poster's sun-over-dunes without using the artwork. */}
+      <div style={{
+        position: 'relative', height: 76, marginBottom: 16, borderRadius: 12, overflow: 'hidden',
+        display: 'flex', alignItems: 'center', justifyContent: 'center',
+        background: 'linear-gradient(180deg, #46384f 0%, #8a6238 54%, #c4903f 100%)',
+      }}>
+        {/* sun rising at the horizon */}
+        <div aria-hidden="true" style={{ position: 'absolute', inset: 0, background: 'radial-gradient(closest-side at 50% 116%, rgba(255,228,158,0.9), rgba(255,228,158,0) 70%)' }} />
+        {/* horizon haze for legibility */}
+        <div aria-hidden="true" style={{ position: 'absolute', left: 0, right: 0, bottom: 0, height: '45%', background: 'linear-gradient(180deg, rgba(20,12,8,0), rgba(20,12,8,0.32))' }} />
+        <div style={{ position: 'relative', textAlign: 'center' }}>
+          <div style={{ ...sans, fontSize: 23, fontWeight: 700, letterSpacing: '0.16em', color: '#ffe7ad', textShadow: '0 1px 7px rgba(50,26,8,0.55)' }}>CONSCIENCIA</div>
+          <div style={{ ...mono, fontSize: 8.5, fontWeight: 700, letterSpacing: '0.3em', color: 'rgba(255,238,205,0.82)', marginTop: 3 }}>TOMORROWLAND · BELGIUM 2026</div>
+        </div>
+      </div>
+
       {/* One-time tip — slim and dismissible, not a dominant panel */}
       {LINEUP_STATUS !== 'official' && !tipDismissed && (
         <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 16, backgroundColor: 'rgba(26,10,46,0.05)', borderRadius: 8, padding: '6px 6px 6px 12px' }}>
@@ -734,8 +753,9 @@ function PartyMode({ activePerson, setActivePerson, activeDay, setActiveDay, pic
     return () => clearTimeout(timer);
   }, []);
 
-  const bg = '#0a0610', surf = '#171022', line = '#2c2040';
-  const txt = '#ffffff', gold = '#e8b84b', dim = '#a99cc4';
+  // Desert night — warm near-black + radiant gold (sun-over-dunes), not purple.
+  const bg = '#0c0805', surf = '#1d150c', line = '#3a2a16';
+  const txt = '#ffffff', gold = '#e8c25e', dim = '#b09b78';
 
   const dayHasTimes = useMemo(() => sets.some(s => s.day === activeDay && hasTime(s)), [activeDay]);
   const plan = useMemo(() => {
