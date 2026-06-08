@@ -33,6 +33,14 @@ const radissonAntwerp = {
   booked: true,
 };
 
+const hiltonBrussels = {
+  name: 'Hilton Garden Inn Brussels Airport',
+  address: 'Culliganlaan 3A, 1831 Diegem',
+  phone: '+32 2 894 39 40',
+  ref: null,
+  booked: true,
+};
+
 // ─── Days ─────────────────────────────────────────────────────
 // Each day: { phase?, dateNum, month, dayOfWeek, city, status, note?,
 //             isTomorrowland?, isGap?,
@@ -245,7 +253,7 @@ export const days = [
     bookingRefs: [
       { label: 'DB Order', value: '— add ref —' },
     ],
-    lodging: { name: 'TBD · Brussels', address: 'Need to book 3 nights', booked: false, isGap: true },
+    lodging: { ...hiltonBrussels, nightLabel: 'Night 1 of 3' },
   },
   {
     dateNum: '25',
@@ -255,7 +263,7 @@ export const days = [
     status: 'Free day',
     note: 'Optional day trip to Bruges or Ghent (35–60 min by train)',
     timezone: 'Europe/Brussels',
-    lodging: { name: 'TBD · Brussels', address: 'Need to book 3 nights', booked: false, isGap: true },
+    lodging: { ...hiltonBrussels, nightLabel: 'Night 2 of 3' },
   },
   {
     dateNum: '26',
@@ -263,9 +271,9 @@ export const days = [
     dayOfWeek: 'Sunday',
     city: 'Brussels',
     status: 'Free day · last night',
-    note: 'Be at hotel near BRU or city center for easy Mon morning',
+    note: 'At the airport hotel — easy hop to BRU for the 09:55 flight',
     timezone: 'Europe/Brussels',
-    lodging: { name: 'TBD · Brussels', address: 'Need to book 3 nights', booked: false, isGap: true },
+    lodging: { ...hiltonBrussels, nightLabel: 'Night 3 of 3' },
   },
 
   // ── RETURN ────────────────────────────────────────────────
