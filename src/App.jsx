@@ -29,8 +29,15 @@ export default function App() {
   const accent   = '#a82a13';
   const cardBg   = '#f5efde';
 
+  // "Consciencia" desert wash for the Lineup tab: a faint warm sun-glow at the
+  // top fading into warm sand. Kept light on purpose — every stop stays above
+  // L≈0.76 so dark text + the gold labels that sit on it still clear WCAG AA.
+  const lineupAtmosphere =
+    'radial-gradient(135% 46% at 50% 70px, rgba(232,201,131,0.16), rgba(232,201,131,0) 60%),' +
+    'linear-gradient(180deg, #efe8d8 0px, #ebe2cd 520px)';
+
   return (
-    <div style={{ minHeight: '100dvh', backgroundColor: paper, color: ink }}>
+    <div style={{ minHeight: '100dvh', color: ink, background: activeTab === 'lineup' ? lineupAtmosphere : paper, backgroundColor: paper }}>
 
       {/* ── Top bar ─────────────────────────────────────────── */}
       <header style={{ backgroundColor: ink, color: paper, padding: '12px 16px', paddingTop: 'calc(12px + env(safe-area-inset-top))', position: 'sticky', top: 0, zIndex: 50 }}>

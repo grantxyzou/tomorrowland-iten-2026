@@ -274,7 +274,7 @@ export default function LineupTab() {
 
       {/* One-time tip — slim and dismissible, not a dominant panel */}
       {LINEUP_STATUS !== 'official' && !tipDismissed && (
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 16, backgroundColor: 'rgba(26,10,46,0.05)', borderRadius: 8, padding: '6px 6px 6px 12px' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 16, backgroundColor: 'rgba(58,32,12,0.06)', borderRadius: 8, padding: '6px 6px 6px 12px' }}>
           <span aria-hidden="true" style={{ fontSize: 13 }}>🎵</span>
           <span style={{ fontSize: 12, color: muted, lineHeight: 1.35, flex: 1 }}>
             Tap an artist to add it to your picks. Set times TBA.
@@ -704,7 +704,7 @@ function StageSpotify({ stage, pickedSets, onCopied }) {
   if (!n) return null; // only TBA slots picked here — nothing to build
 
   return (
-    <div style={{ borderTop: `1px solid ${rule}`, padding: '10px 14px', backgroundColor: 'rgba(26,10,46,0.04)' }}>
+    <div style={{ borderTop: `1px solid ${rule}`, padding: '10px 14px', backgroundColor: 'rgba(58,32,12,0.05)' }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
         <span aria-hidden="true" style={{ width: 8, height: 8, borderRadius: '50%', backgroundColor: spotifyDot, display: 'inline-block' }} />
         <span style={{ ...mono, fontSize: 10, color: muted, letterSpacing: '0.12em', textTransform: 'uppercase', flex: 1, minWidth: 110 }}>
