@@ -5,7 +5,7 @@
 
 // Last updated timestamp — update this string whenever you push changes
 // so Grant / Des / Lawrence can see what changed at a glance
-export const LAST_UPDATED = '2026-06-02T12:00:00';
+export const LAST_UPDATED = '2026-06-07T12:00:00';
 export const LAST_UPDATE_NOTE = 'Initial build — all bookings current';
 
 // ─── Hotels ──────────────────────────────────────────────────
@@ -21,6 +21,14 @@ const frankfurtHotel = {
   name: 'Scandic Frankfurt Museumsufer',
   address: 'Wilhelm-Leuschner-Straße 44, 60329 Frankfurt',
   phone: '+49 69 273 130',
+  ref: null,
+  booked: true,
+};
+
+const radissonAntwerp = {
+  name: 'Radisson Blu Hotel, Antwerp City Centre',
+  address: 'Koningin Astridplein 7, 2018 Antwerpen',
+  phone: '+32 3 203 12 34',
   ref: null,
   booked: true,
 };
@@ -127,14 +135,15 @@ export const days = [
     month: 'JUL',
     dayOfWeek: 'Monday',
     city: 'Antwerp',
-    status: 'Checkout · recovery',
-    note: 'Need a place to sleep Mon night before Tue train',
+    status: 'Checkout · last night in Antwerp',
+    note: 'Booked by Lawrence · 3 adults, 1 room',
     timezone: 'Europe/Brussels',
     events: [
       { time: '01:00', label: 'Last shuttle from festival to hotel' },
       { time: '12:00', label: 'Check-out · Lindner Hotel Antwerp (Day 5/5)' },
+      { time: '15:00', label: 'Check-in · Radisson Blu, Antwerp City Centre' },
     ],
-    lodging: { name: 'TBD', address: 'Antwerp · need to book a hotel for Mon night', booked: false, isGap: true },
+    lodging: { ...radissonAntwerp, nightLabel: 'Mon night' },
   },
 
   // ── GERMANY WEEK ──────────────────────────────────────────
