@@ -33,7 +33,7 @@ const PERSON_INK = {
   Desmond: '#2f5c9e',  // dark blue  (5.4:1)
   Lawrence:'#276627',  // dark green (5.6:1)
 };
-const goldInk = '#7a5d10'; // accessible gold for labels on light paper
+const goldInk = '#6e500e'; // deep gold for labels — clears AA on the warm sand bg too
 
 // Spotify accents: bright brand green for the decorative dot, a darkened
 // variant for buttons so white text clears WCAG AA (~6:1).

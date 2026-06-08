@@ -33,8 +33,8 @@ export default function App() {
   // top fading into warm sand. Kept light on purpose — every stop stays above
   // L≈0.76 so dark text + the gold labels that sit on it still clear WCAG AA.
   const lineupAtmosphere =
-    'radial-gradient(135% 46% at 50% 70px, rgba(232,201,131,0.16), rgba(232,201,131,0) 60%),' +
-    'linear-gradient(180deg, #efe8d8 0px, #ebe2cd 520px)';
+    'radial-gradient(130% 62% at 50% 30px, rgba(244,202,112,0.30), rgba(244,202,112,0) 62%),' +
+    'linear-gradient(180deg, #efe6d0 0px, #e6d6ad 560px)';
 
   return (
     <div style={{ minHeight: '100dvh', color: ink, background: activeTab === 'lineup' ? lineupAtmosphere : paper, backgroundColor: paper }}>
