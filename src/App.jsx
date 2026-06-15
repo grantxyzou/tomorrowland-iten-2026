@@ -29,15 +29,22 @@ export default function App() {
   const accent   = '#a82a13';
   const cardBg   = '#f5efde';
 
-  // "Consciencia" desert wash for the Lineup tab: a faint warm sun-glow at the
-  // top fading into warm sand. Kept light on purpose — every stop stays above
-  // L≈0.76 so dark text + the gold labels that sit on it still clear WCAG AA.
+  // "Cage" deep-blue oil-painting background for the Lineup tab: layered radial
+  // brushstroke glows + edge vignette over a navy wash. (The Itinerary tab keeps
+  // the light desert theme.) The Lineup runs as a full dark theme.
   const lineupAtmosphere =
-    'radial-gradient(130% 62% at 50% 30px, rgba(244,202,112,0.30), rgba(244,202,112,0) 62%),' +
-    'linear-gradient(180deg, #efe6d0 0px, #e6d6ad 560px)';
+    'radial-gradient(120% 80% at 30% -10%, rgba(58,86,170,0.55), rgba(58,86,170,0) 55%),' +
+    'radial-gradient(90% 70% at 85% 35%, rgba(96,72,156,0.40), rgba(96,72,156,0) 60%),' +
+    'radial-gradient(100% 90% at 10% 90%, rgba(20,52,92,0.55), rgba(20,52,92,0) 60%),' +
+    'radial-gradient(140% 110% at 50% 40%, rgba(8,12,32,0) 45%, rgba(6,9,24,0.85) 100%),' +
+    'linear-gradient(178deg, #1b2856 0%, #131a3a 45%, #0e1430 100%)';
+
+  // Dark-theme chrome only on the Lineup tab.
+  const dark = activeTab === 'lineup';
+  const lineupAccent = '#e8c25e'; // gold active-tab indicator (rust fails on navy)
 
   return (
-    <div style={{ minHeight: '100dvh', color: ink, background: activeTab === 'lineup' ? lineupAtmosphere : paper, backgroundColor: paper }}>
+    <div style={{ minHeight: '100dvh', color: ink, background: dark ? lineupAtmosphere : paper, backgroundColor: dark ? '#0e1430' : paper }}>
 
       {/* ── Top bar ─────────────────────────────────────────── */}
       <header style={{ backgroundColor: ink, color: paper, padding: '12px 16px', paddingTop: 'calc(12px + env(safe-area-inset-top))', position: 'sticky', top: 0, zIndex: 50 }}>
@@ -56,16 +63,16 @@ export default function App() {
       </header>
 
       {/* ── Last updated banner ─────────────────────────────── */}
-      <div style={{ backgroundColor: cardBg, borderBottom: `1px solid ${rule}`, padding: '6px 16px' }}>
+      <div style={{ backgroundColor: dark ? '#131a3a' : cardBg, borderBottom: `1px solid ${dark ? '#34406e' : rule}`, padding: '6px 16px' }}>
         <div style={{ maxWidth: 680, margin: '0 auto', display: 'flex', alignItems: 'center', gap: 8 }}>
-          <span style={{ ...mono, fontSize: 10, color: muted, letterSpacing: '0.12em', textTransform: 'uppercase' }}>
+          <span style={{ ...mono, fontSize: 10, color: dark ? '#a9b2cf' : muted, letterSpacing: '0.12em', textTransform: 'uppercase' }}>
             Updated {formatUpdated(LAST_UPDATED)}
           </span>
         </div>
       </div>
 
       {/* ── Tab bar ─────────────────────────────────────────── */}
-      <nav role="tablist" aria-label="Sections" style={{ backgroundColor: paper, borderBottom: `1px solid ${rule}`, position: 'sticky', top: 53, zIndex: 40 }}>
+      <nav role="tablist" aria-label="Sections" style={{ backgroundColor: dark ? '#131a3a' : paper, borderBottom: `1px solid ${dark ? '#34406e' : rule}`, position: 'sticky', top: 53, zIndex: 40 }}>
         <div style={{ maxWidth: 680, margin: '0 auto', display: 'flex', overflowX: 'auto' }} className="no-scrollbar">
           {TABS.map(tab => {
             const active = activeTab === tab.id;
@@ -86,10 +93,10 @@ export default function App() {
                   fontWeight: active ? 700 : 500,
                   letterSpacing: '0.18em',
                   textTransform: 'uppercase',
-                  color: active ? accent : muted,
+                  color: active ? (dark ? lineupAccent : accent) : (dark ? '#a9b2cf' : muted),
                   background: 'none',
                   border: 'none',
-                  borderBottom: active ? `2px solid ${accent}` : '2px solid transparent',
+                  borderBottom: active ? `2px solid ${dark ? lineupAccent : accent}` : '2px solid transparent',
                   cursor: 'pointer',
                   whiteSpace: 'nowrap',
                   transition: 'transform var(--dur-press) var(--ease-out), color var(--dur-fast) var(--ease-out), border-color var(--dur-fast) var(--ease-out)',

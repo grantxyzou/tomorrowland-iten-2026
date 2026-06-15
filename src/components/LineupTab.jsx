@@ -6,34 +6,31 @@ import { usePicks } from '../hooks/usePicks.js';
 const mono = { fontFamily: '"JetBrains Mono", ui-monospace, monospace' };
 const sans = { fontFamily: '"Space Grotesk", -apple-system, system-ui, sans-serif' };
 
-// Palette — "Consciencia" 2026 edition: golden-hour desert. The deep accent
-// shifts from cold festival-purple to a warm desert shadow; gold becomes the
-// richer "liquid gold" of the poster lettering. Neutral base unchanged.
-const tmrwBg    = '#241712';  // warm desert shadow (picked rows, party btn, clashes)
-const tmrwGold  = '#dcab43';  // liquid gold — on dark
-const bodyMuted = '#c2a982';  // warm sand — muted text on dark
-const paper     = '#ede7d8';
-const ink       = '#1a1614';
-const muted     = '#5c544c';
-const rule      = '#cabda4';
-const clashRed  = '#c94040';
+// Palette — "Cage" 2026 edition: deep-blue oil painting + molten gold. The tab
+// is a DARK theme: navy surfaces, cream text, bright gold accents. (The
+// Itinerary tab keeps the light desert theme.) Names are kept so every usage
+// site flips automatically; the few spots where the old `ink` was a *dark*
+// fill/stroke are pinned with `checkInk` / explicit colors below.
+const tmrwBg    = '#0c1126';  // deepest surface — picked rows, party btn, clash cards
+const tmrwGold  = '#e8c25e';  // molten gold — accent on dark
+const bodyMuted = '#a9b2cf';  // cool muted text on dark
+const paper     = '#19224a';  // card surface (sections, dropdown, search) + light text on dark
+const ink       = '#f2ecdc';  // primary text → cream
+const muted     = '#a9b2cf';  // secondary text / labels (cool light gray)
+const rule      = '#34406e';  // borders / dividers
+const clashRed  = '#ef6e6e';  // clash warnings (brightened for dark)
+const checkInk  = '#0c1126';  // checkmark stroke — stays dark (sits on a bright person dot)
 
 // Bright identity colours — used on DARK backgrounds (picked rows on the
 // purple card), where they have ample contrast.
+// Bright identity colours — text/dots/chips on the dark theme. Used with dark
+// text (tmrwBg) when filled, or as-is for text/dots on navy surfaces.
 const PERSON_COLORS = {
   Grant:   '#e8b84b',  // gold
-  Desmond: '#4a7fc1',  // blue
-  Lawrence:'#4a9a4a',  // green
+  Desmond: '#7aa6dd',  // blue
+  Lawrence:'#5cb85c',  // green
 };
-
-// Darkened variants for use as text/border/fill on the LIGHT paper background.
-// Each passes WCAG AA: >=4.5:1 as text and white text >=4.5:1 when used as a fill.
-const PERSON_INK = {
-  Grant:   '#7a5d10',  // dark gold  (5.0:1 on paper)
-  Desmond: '#2f5c9e',  // dark blue  (5.4:1)
-  Lawrence:'#276627',  // dark green (5.6:1)
-};
-const goldInk = '#6e500e'; // deep gold for labels — clears AA on the warm sand bg too
+const goldInk = '#e8c25e'; // gold labels — bright on the dark navy bg
 
 // Spotify accents: bright brand green for the decorative dot, a darkened
 // variant for buttons so white text clears WCAG AA (~6:1).
@@ -97,7 +94,7 @@ function ArtistRow({ set, myColor, myPick, others, isClash, showStage, onToggle 
       </div>
       <div style={{ display: 'flex', alignItems: 'center', gap: 4, flexShrink: 0 }}>
         {others.map(p => (
-          <span key={p} title={p} style={{ width: 8, height: 8, borderRadius: '50%', backgroundColor: myPick ? PERSON_COLORS[p] : PERSON_INK[p], display: 'inline-block' }} />
+          <span key={p} title={p} style={{ width: 8, height: 8, borderRadius: '50%', backgroundColor: PERSON_COLORS[p], display: 'inline-block' }} />
         ))}
         <span style={{
           width: 22, height: 22, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', marginLeft: 2,
@@ -105,7 +102,7 @@ function ArtistRow({ set, myColor, myPick, others, isClash, showStage, onToggle 
           backgroundColor: myPick ? myColor : 'transparent',
         }}>
           {myPick && (
-            <svg width="11" height="11" viewBox="0 0 10 10"><polyline points="1.5,5 4,7.5 8.5,2.5" fill="none" stroke={ink} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" /></svg>
+            <svg width="11" height="11" viewBox="0 0 10 10"><polyline points="1.5,5 4,7.5 8.5,2.5" fill="none" stroke={checkInk} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" /></svg>
           )}
         </span>
       </div>
@@ -158,7 +155,6 @@ export default function LineupTab() {
 
   const q = search.trim().toLowerCase();
   const myColor = PERSON_COLORS[activePerson];
-  const myInk = PERSON_INK[activePerson];
   const forceOpen = q.length > 0;
   const dayHasTimes = useMemo(() => sets.some(s => s.day === activeDay && hasTime(s)), [activeDay]);
   const dayLabel = DAYS.find(d => d.id === activeDay)?.label || '';
@@ -251,30 +247,31 @@ export default function LineupTab() {
 
   return (
     <div style={{ ...sans }}>
-      {/* Consciencia — the poster's painterly scene in a band: blue sky with
-          soft clouds → sun glow → warm sand. The 2026 edition's hero (no art used). */}
+      {/* Molten-gold liquid frame around the whole Lineup (Cage edition) */}
+      <div style={{ borderRadius: 16, padding: 2, background: 'linear-gradient(135deg, #7a5810 0%, #f3d77a 22%, #b5832a 48%, #ffe8a8 70%, #8a6312 100%)', boxShadow: '0 0 0 1px rgba(255,232,168,0.25), 0 8px 40px rgba(6,9,24,0.6)' }}>
+      <div style={{ borderRadius: 14, background: 'linear-gradient(180deg, rgba(20,29,62,0.55), rgba(12,17,38,0.55))', padding: '18px 14px', boxShadow: 'inset 0 0 24px rgba(8,12,32,0.6), inset 0 1px 0 rgba(255,232,168,0.12)' }}>
+      {/* Consciencia — the Cage poster's painterly night sky in a band: deep
+          indigo depth with soft nebula light → a molten-gold horizon glow. */}
       <div style={{
         position: 'relative', height: 96, marginBottom: 16, borderRadius: 12, overflow: 'hidden',
-        background: 'linear-gradient(180deg, #6f93b3 0%, #a9c5d8 34%, #ecddba 62%, #cf9f56 100%)',
+        background: 'linear-gradient(180deg, #0c1226 0%, #16204a 50%, #20183a 100%)',
       }}>
-        {/* painterly clouds — soft, warm-lit, blurred blobs */}
-        <div aria-hidden="true" style={{ position: 'absolute', top: 9,  left: '6%',  width: 132, height: 34, borderRadius: '50%', background: 'radial-gradient(closest-side, rgba(255,253,247,0.95), rgba(255,253,247,0))', filter: 'blur(8px)' }} />
-        <div aria-hidden="true" style={{ position: 'absolute', top: 24, left: '58%', width: 168, height: 40, borderRadius: '50%', background: 'radial-gradient(closest-side, rgba(255,250,238,0.9), rgba(255,250,238,0))',  filter: 'blur(10px)' }} />
-        <div aria-hidden="true" style={{ position: 'absolute', top: 5,  left: '76%', width: 96,  height: 26, borderRadius: '50%', background: 'radial-gradient(closest-side, rgba(255,255,252,0.85), rgba(255,255,252,0))', filter: 'blur(7px)' }} />
-        <div aria-hidden="true" style={{ position: 'absolute', top: 38, left: '1%',  width: 120, height: 30, borderRadius: '50%', background: 'radial-gradient(closest-side, rgba(255,248,232,0.8), rgba(255,248,232,0))',  filter: 'blur(9px)' }} />
-        {/* sun glow at the horizon */}
-        <div aria-hidden="true" style={{ position: 'absolute', inset: 0, background: 'radial-gradient(closest-side at 50% 88%, rgba(255,247,220,0.95), rgba(255,247,220,0) 60%)' }} />
-        {/* soft halo so the gold wordmark stays legible over the bright sky */}
-        <div aria-hidden="true" style={{ position: 'absolute', inset: 0, background: 'radial-gradient(ellipse 58% 54% at 50% 45%, rgba(34,18,8,0.30), rgba(34,18,8,0) 72%)' }} />
+        {/* painterly indigo/violet nebula — soft blurred light */}
+        <div aria-hidden="true" style={{ position: 'absolute', top: 6,  left: '8%',  width: 150, height: 38, borderRadius: '50%', background: 'radial-gradient(closest-side, rgba(120,150,230,0.5), rgba(120,150,230,0))', filter: 'blur(12px)' }} />
+        <div aria-hidden="true" style={{ position: 'absolute', top: 30, left: '60%', width: 170, height: 42, borderRadius: '50%', background: 'radial-gradient(closest-side, rgba(150,120,210,0.45), rgba(150,120,210,0))', filter: 'blur(14px)' }} />
+        {/* molten-gold horizon glow at the base (ties to the frame) */}
+        <div aria-hidden="true" style={{ position: 'absolute', inset: 0, background: 'radial-gradient(closest-side at 50% 100%, rgba(240,210,120,0.55), rgba(240,210,120,0) 62%)' }} />
+        {/* legibility halo behind the wordmark */}
+        <div aria-hidden="true" style={{ position: 'absolute', inset: 0, background: 'radial-gradient(ellipse 58% 54% at 50% 45%, rgba(6,9,24,0.45), rgba(6,9,24,0) 72%)' }} />
         <div style={{ position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', textAlign: 'center' }}>
-          <div style={{ ...sans, fontSize: 24, fontWeight: 700, letterSpacing: '0.15em', color: '#ffe7ad', textShadow: '0 1px 8px rgba(28,15,6,0.6)' }}>CONSCIENCIA</div>
-          <div style={{ ...mono, fontSize: 8.5, fontWeight: 700, letterSpacing: '0.3em', color: 'rgba(255,243,221,0.9)', marginTop: 4, textShadow: '0 1px 4px rgba(28,15,6,0.55)' }}>TOMORROWLAND · BELGIUM 2026</div>
+          <div style={{ ...sans, fontSize: 24, fontWeight: 700, letterSpacing: '0.15em', color: '#f7e6b0', textShadow: '0 1px 10px rgba(6,9,24,0.8)' }}>CONSCIENCIA</div>
+          <div style={{ ...mono, fontSize: 8.5, fontWeight: 700, letterSpacing: '0.3em', color: 'rgba(242,236,220,0.92)', marginTop: 4, textShadow: '0 1px 6px rgba(6,9,24,0.7)' }}>TOMORROWLAND · BELGIUM 2026</div>
         </div>
       </div>
 
       {/* One-time tip — slim and dismissible, not a dominant panel */}
       {LINEUP_STATUS !== 'official' && !tipDismissed && (
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 16, backgroundColor: 'rgba(58,32,12,0.06)', borderRadius: 8, padding: '6px 6px 6px 12px' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 16, backgroundColor: 'rgba(255,255,255,0.06)', borderRadius: 8, padding: '6px 6px 6px 12px' }}>
           <span aria-hidden="true" style={{ fontSize: 13 }}>🎵</span>
           <span style={{ fontSize: 12, color: muted, lineHeight: 1.35, flex: 1 }}>
             Tap an artist to add it to your picks. Set times TBA.
@@ -313,19 +310,19 @@ export default function LineupTab() {
         <div style={{ position: 'relative', flex: 1, minWidth: 0 }}>
           <button onClick={() => setWhoOpen(o => !o)} aria-expanded={whoOpen} aria-haspopup="listbox"
             aria-label={`I'm ${activePerson}. Tap to change who's using this device.`}
-            style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, minHeight: 48, padding: '10px 14px', borderRadius: 8, border: `1px solid ${rule}`, backgroundColor: '#fff', color: myInk, ...sans, fontSize: 14, fontWeight: 700, cursor: 'pointer' }}>
+            style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, minHeight: 48, padding: '10px 14px', borderRadius: 8, border: `1px solid ${rule}`, backgroundColor: tmrwBg, color: myColor, ...sans, fontSize: 14, fontWeight: 700, cursor: 'pointer' }}>
             <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8, minWidth: 0 }}>
-              <span aria-hidden="true" style={{ width: 10, height: 10, borderRadius: '50%', backgroundColor: myInk, flexShrink: 0 }} />
+              <span aria-hidden="true" style={{ width: 10, height: 10, borderRadius: '50%', backgroundColor: myColor, flexShrink: 0 }} />
               <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{activePerson}</span>
             </span>
             <span aria-hidden="true" style={{ fontSize: 18, lineHeight: 1, color: muted, transform: whoOpen ? 'rotate(180deg)' : 'none', transition: 'transform var(--dur-fast) var(--ease-in-out)', flexShrink: 0 }}>▾</span>
           </button>
 
           {whoPresent && (
-            <div role="listbox" aria-label="Switch person" data-open={whoOpen} className="fx-pop" style={{ position: 'absolute', top: 'calc(100% + 6px)', left: 0, right: 0, zIndex: 30, border: `1px solid ${rule}`, borderRadius: 8, overflow: 'hidden', backgroundColor: '#fff', boxShadow: '0 8px 24px rgba(0,0,0,0.14)' }}>
+            <div role="listbox" aria-label="Switch person" data-open={whoOpen} className="fx-pop" style={{ position: 'absolute', top: 'calc(100% + 6px)', left: 0, right: 0, zIndex: 30, border: `1px solid ${rule}`, borderRadius: 8, overflow: 'hidden', backgroundColor: tmrwBg, boxShadow: '0 8px 24px rgba(0,0,0,0.5)' }}>
               {PEOPLE.map((person, i) => {
                 const active = activePerson === person;
-                const ink2 = PERSON_INK[person];
+                const ink2 = PERSON_COLORS[person];
                 return (
                   <button key={person} role="option" aria-selected={active}
                     onClick={() => { setActivePerson(person); setWhoOpen(false); }}
@@ -333,7 +330,7 @@ export default function LineupTab() {
                       width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8,
                       minHeight: 48, padding: '10px 14px', border: 'none',
                       borderTop: i === 0 ? 'none' : `1px solid ${rule}55`,
-                      backgroundColor: active ? `${ink2}14` : 'transparent', color: ink2,
+                      backgroundColor: active ? `${ink2}22` : 'transparent', color: ink2,
                       ...sans, fontSize: 14, fontWeight: 700, cursor: 'pointer', textAlign: 'left',
                     }}>
                     <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
@@ -358,8 +355,8 @@ export default function LineupTab() {
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, marginBottom: 6 }}>
         <span style={{ ...mono, fontSize: 10, color: muted, letterSpacing: '0.18em', textTransform: 'uppercase' }}>View by</span>
         <span title={status === 'error' ? 'Offline — showing last synced picks' : 'Synced with the crew'}
-          style={{ ...mono, fontSize: 9, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', display: 'inline-flex', alignItems: 'center', gap: 4, color: status === 'error' ? '#a82a13' : status === 'ready' ? '#276627' : muted, transition: 'color var(--dur-fast) var(--ease-out)' }}>
-          <span style={{ width: 6, height: 6, borderRadius: '50%', backgroundColor: status === 'error' ? '#a82a13' : status === 'ready' ? '#276627' : muted, display: 'inline-block', transition: 'background-color var(--dur-fast) var(--ease-out)' }} />
+          style={{ ...mono, fontSize: 9, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', display: 'inline-flex', alignItems: 'center', gap: 4, color: status === 'error' ? clashRed : status === 'ready' ? '#5cb85c' : muted, transition: 'color var(--dur-fast) var(--ease-out)' }}>
+          <span style={{ width: 6, height: 6, borderRadius: '50%', backgroundColor: status === 'error' ? clashRed : status === 'ready' ? '#5cb85c' : muted, display: 'inline-block', transition: 'background-color var(--dur-fast) var(--ease-out)' }} />
           {status === 'error' ? 'Offline' : status === 'ready' ? 'Live' : 'Syncing'}
         </span>
       </div>
@@ -371,7 +368,7 @@ export default function LineupTab() {
               style={{
                 flex: 1, padding: '7px 0', minHeight: 40, cursor: 'pointer', border: 'none',
                 borderLeft: i === 0 ? 'none' : `1px solid ${rule}`,
-                backgroundColor: active ? ink : 'transparent', color: active ? paper : muted,
+                backgroundColor: active ? tmrwGold : 'transparent', color: active ? tmrwBg : muted,
                 ...mono, fontSize: 10, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase',
                 transition: 'transform var(--dur-press) var(--ease-out), background-color var(--dur-fast) var(--ease-out), color var(--dur-fast) var(--ease-out)',
               }}>
@@ -402,7 +399,7 @@ export default function LineupTab() {
               <span style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', fontSize: 13, color: muted, pointerEvents: 'none' }}>⌕</span>
               <input autoFocus value={search} onChange={e => setSearch(e.target.value)} placeholder="Search artists…"
                 type="search" inputMode="search" aria-label="Search artists"
-                style={{ width: '100%', boxSizing: 'border-box', padding: '10px 38px 10px 30px', minHeight: 44, borderRadius: 8, border: `1px solid ${rule}`, backgroundColor: '#fff', color: ink, fontSize: 16, ...sans }} />
+                style={{ width: '100%', boxSizing: 'border-box', padding: '10px 38px 10px 30px', minHeight: 44, borderRadius: 8, border: `1px solid ${rule}`, backgroundColor: tmrwBg, color: ink, fontSize: 16, ...sans }} />
               <button onClick={() => { setSearch(''); setSearchOpen(false); }} aria-label="Close search"
                 style={{ position: 'absolute', right: 2, top: '50%', transform: 'translateY(-50%)', border: 'none', background: 'none', color: muted, fontSize: 18, lineHeight: 1, cursor: 'pointer', width: 40, height: 40, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>×</button>
             </div>
@@ -448,7 +445,7 @@ export default function LineupTab() {
                   style={{ width: '100%', textAlign: 'left', cursor: forceOpen ? 'default' : 'pointer', display: 'flex', alignItems: 'center', gap: 10, padding: '12px 14px', minHeight: 44, border: 'none', borderLeft: `5px solid ${color}`, background: 'none' }}>
                   <span aria-hidden="true" style={{ ...mono, fontSize: 12, fontWeight: 700, color: ink, letterSpacing: '0.04em', textTransform: 'uppercase', flex: 1 }}>{stage}</span>
                   {picked > 0 && (
-                    <span aria-hidden="true" style={{ ...mono, fontSize: 10, fontWeight: 700, color: '#fff', backgroundColor: myInk, borderRadius: 999, padding: '2px 7px' }}>★ {picked}</span>
+                    <span aria-hidden="true" style={{ ...mono, fontSize: 10, fontWeight: 700, color: tmrwBg, backgroundColor: myColor, borderRadius: 999, padding: '2px 7px' }}>★ {picked}</span>
                   )}
                   <span aria-hidden="true" style={{ ...mono, fontSize: 11, color: muted }}>{stageSets.length}</span>
                   <span aria-hidden="true" style={{ fontSize: 11, color: muted, transform: open ? 'rotate(90deg)' : 'none', transition: 'transform var(--dur-fast) var(--ease-in-out)' }}>▶</span>
@@ -487,9 +484,9 @@ export default function LineupTab() {
           {/* Per-person totals — colour-filled tags, one per crew member */}
           <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
             {PEOPLE.map(person => (
-              <div key={person} style={{ flex: 1, minWidth: 90, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, padding: '8px 12px', borderRadius: 8, backgroundColor: PERSON_INK[person] }}>
-                <span style={{ ...sans, fontSize: 12, fontWeight: 700, color: '#fff' }}>{person}</span>
-                <span style={{ ...mono, fontSize: 14, fontWeight: 700, color: '#fff' }}>{totalPicks[person]}</span>
+              <div key={person} style={{ flex: 1, minWidth: 90, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, padding: '8px 12px', borderRadius: 8, backgroundColor: PERSON_COLORS[person] }}>
+                <span style={{ ...sans, fontSize: 12, fontWeight: 700, color: tmrwBg }}>{person}</span>
+                <span style={{ ...mono, fontSize: 14, fontWeight: 700, color: tmrwBg }}>{totalPicks[person]}</span>
               </div>
             ))}
           </div>
@@ -550,12 +547,14 @@ export default function LineupTab() {
           Reset {activePerson}'s selections
         </button>
       </div>
+      </div>
+      </div>
 
       {/* Bottom-screen toast — copy confirmations, undo, etc. Slides up on
           enter and back down on exit (same direction) via .fx-toast. */}
       {toastPresent && shownToast && (
         <div role="status" data-open={!!toast} className="fx-toast"
-          style={{ position: 'fixed', left: 16, right: 16, bottom: 'calc(16px + env(safe-area-inset-bottom))', maxWidth: 648, margin: '0 auto', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, padding: '12px 16px', borderRadius: 10, backgroundColor: ink, color: paper, zIndex: 60, boxShadow: '0 6px 20px rgba(0,0,0,0.28)' }}>
+          style={{ position: 'fixed', left: 16, right: 16, bottom: 'calc(16px + env(safe-area-inset-bottom))', maxWidth: 648, margin: '0 auto', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, padding: '12px 16px', borderRadius: 10, backgroundColor: '#0c1126', color: '#f2ecdc', zIndex: 60, boxShadow: '0 6px 20px rgba(0,0,0,0.5)' }}>
           <span style={{ ...sans, fontSize: 13 }}>{shownToast.msg}</span>
           {shownToast.action && (
             <button onClick={() => { shownToast.action.run(); setToast(null); }}
@@ -590,10 +589,10 @@ function CrewSection({ title, accent, items, emptyText, showWho }) {
                 </div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 4, flexShrink: 0 }}>
                   {(showWho ? pickers : []).map(p => (
-                    <span key={p} title={p} style={{ ...mono, fontSize: 9, fontWeight: 700, color: '#fff', backgroundColor: PERSON_INK[p], borderRadius: 3, padding: '2px 5px' }}>{p[0]}</span>
+                    <span key={p} title={p} style={{ ...mono, fontSize: 9, fontWeight: 700, color: tmrwBg, backgroundColor: PERSON_COLORS[p], borderRadius: 3, padding: '2px 5px' }}>{p[0]}</span>
                   ))}
                   {!showWho && PEOPLE.map(p => (
-                    <span key={p} title={p} style={{ width: 9, height: 9, borderRadius: '50%', backgroundColor: PERSON_INK[p], display: 'inline-block' }} />
+                    <span key={p} title={p} style={{ width: 9, height: 9, borderRadius: '50%', backgroundColor: PERSON_COLORS[p], display: 'inline-block' }} />
                   ))}
                 </div>
               </div>
@@ -689,7 +688,7 @@ function SpotifyExport({ person, mySets, onCopied }) {
       </div>
       {showText && (
         <textarea readOnly value={prompt} aria-label="Spotify playlist prompt"
-          style={{ marginTop: 12, width: '100%', boxSizing: 'border-box', minHeight: 130, padding: 12, borderRadius: 8, border: `1px solid ${rule}`, backgroundColor: '#fff', color: ink, fontSize: 16, ...sans, lineHeight: 1.45, resize: 'vertical' }} />
+          style={{ marginTop: 12, width: '100%', boxSizing: 'border-box', minHeight: 130, padding: 12, borderRadius: 8, border: `1px solid ${rule}`, backgroundColor: tmrwBg, color: ink, fontSize: 16, ...sans, lineHeight: 1.45, resize: 'vertical' }} />
       )}
     </section>
   );
@@ -704,7 +703,7 @@ function StageSpotify({ stage, pickedSets, onCopied }) {
   if (!n) return null; // only TBA slots picked here — nothing to build
 
   return (
-    <div style={{ borderTop: `1px solid ${rule}`, padding: '10px 14px', backgroundColor: 'rgba(58,32,12,0.05)' }}>
+    <div style={{ borderTop: `1px solid ${rule}`, padding: '10px 14px', backgroundColor: 'rgba(255,255,255,0.04)' }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
         <span aria-hidden="true" style={{ width: 8, height: 8, borderRadius: '50%', backgroundColor: spotifyDot, display: 'inline-block' }} />
         <span style={{ ...mono, fontSize: 10, color: muted, letterSpacing: '0.12em', textTransform: 'uppercase', flex: 1, minWidth: 110 }}>
@@ -721,7 +720,7 @@ function StageSpotify({ stage, pickedSets, onCopied }) {
       </div>
       {showText && (
         <textarea readOnly value={prompt} aria-label={`Spotify playlist prompt for ${stage}`}
-          style={{ marginTop: 10, width: '100%', boxSizing: 'border-box', minHeight: 110, padding: 10, borderRadius: 8, border: `1px solid ${rule}`, backgroundColor: '#fff', color: ink, fontSize: 16, ...sans, lineHeight: 1.45, resize: 'vertical' }} />
+          style={{ marginTop: 10, width: '100%', boxSizing: 'border-box', minHeight: 110, padding: 10, borderRadius: 8, border: `1px solid ${rule}`, backgroundColor: tmrwBg, color: ink, fontSize: 16, ...sans, lineHeight: 1.45, resize: 'vertical' }} />
       )}
     </div>
   );
@@ -757,9 +756,9 @@ function PartyMode({ activePerson, setActivePerson, activeDay, setActiveDay, pic
     return () => clearTimeout(timer);
   }, []);
 
-  // Desert night — warm near-black + radiant gold (sun-over-dunes), not purple.
-  const bg = '#0c0805', surf = '#1d150c', line = '#3a2a16';
-  const txt = '#ffffff', gold = '#e8c25e', dim = '#b09b78';
+  // Cage night — cool deep navy + molten gold (matches the Lineup theme).
+  const bg = '#0a0f24', surf = '#141d3e', line = '#2a386b';
+  const txt = '#ffffff', gold = '#ecc766', dim = '#9aa6c8';
 
   const dayHasTimes = useMemo(() => sets.some(s => s.day === activeDay && hasTime(s)), [activeDay]);
   const plan = useMemo(() => {
