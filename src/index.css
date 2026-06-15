@@ -97,6 +97,11 @@ button:active { transform: scale(0.97); }
 .fx-collapse[data-open="false"] { grid-template-rows: 0fr; opacity: 0; }
 @starting-style { .fx-collapse[data-open="true"] { grid-template-rows: 0fr; opacity: 0; } }
 
+/* Staggered entrance — fade + lift on mount (used for the Lineup hero + stage
+   cards, cascaded via inline animation-delay). Reduced-motion neutralises it. */
+.fx-enter { animation: fx-enter 320ms var(--ease-out) both; }
+@keyframes fx-enter { from { opacity: 0; transform: translateY(8px); } }
+
 /* Hide scrollbar on tab bar */
 .no-scrollbar::-webkit-scrollbar { display: none; }
 .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }

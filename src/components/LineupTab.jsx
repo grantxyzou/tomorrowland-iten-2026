@@ -2,9 +2,13 @@ import { useState, useEffect, useMemo, useRef } from 'react';
 import { usePresence } from '../hooks/usePresence.js';
 import { sets, STAGES, PEOPLE, LINEUP_STATUS } from '../data/lineup.js';
 import { usePicks } from '../hooks/usePicks.js';
+import { TomorrowlandMark } from './BrandMarks.jsx';
 
 const mono = { fontFamily: '"JetBrains Mono", ui-monospace, monospace' };
 const sans = { fontFamily: '"Space Grotesk", -apple-system, system-ui, sans-serif' };
+// Distinctive display serif — wordmark + stage headers (echoes the poster's
+// ornate lettering); labels stay mono, artist names stay sans for legibility.
+const display = { fontFamily: '"Fraunces", Georgia, serif' };
 
 // Palette — "Cage" 2026 edition: deep-blue oil painting + molten gold. The tab
 // is a DARK theme: navy surfaces, cream text, bright gold accents. (The
@@ -73,9 +77,10 @@ function ArtistRow({ set, myColor, myPick, others, isClash, showStage, onToggle 
       style={{
         width: '100%', textAlign: 'left', cursor: 'pointer', minHeight: 44,
         display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10,
-        padding: '10px 14px', border: 'none', borderTop: `1px solid ${rule}55`,
-        borderLeft: myPick ? `5px solid ${myColor}` : '5px solid transparent',
-        backgroundColor: myPick ? tmrwBg : 'transparent', transition: 'background-color var(--dur-press) var(--ease-out)',
+        padding: '10px 16px', border: 'none', borderTop: `1px solid ${rule}55`,
+        backgroundColor: myPick ? tmrwBg : 'transparent',
+        boxShadow: myPick ? 'inset 3px 0 12px -6px rgba(232,194,94,0.6)' : 'none',
+        transition: 'background-color var(--dur-press) var(--ease-out)',
       }}>
       <div style={{ minWidth: 0 }}>
         <div style={{ fontSize: 15, fontWeight: 600, color: myPick ? tmrwGold : ink, letterSpacing: '-0.01em' }}>
@@ -252,8 +257,8 @@ export default function LineupTab() {
       <div style={{ borderRadius: 14, background: 'linear-gradient(180deg, rgba(20,29,62,0.55), rgba(12,17,38,0.55))', padding: '18px 14px', boxShadow: 'inset 0 0 24px rgba(8,12,32,0.6), inset 0 1px 0 rgba(255,232,168,0.12)' }}>
       {/* Consciencia — the Cage poster's painterly night sky in a band: deep
           indigo depth with soft nebula light → a molten-gold horizon glow. */}
-      <div style={{
-        position: 'relative', height: 96, marginBottom: 16, borderRadius: 12, overflow: 'hidden',
+      <div className="fx-enter" style={{
+        position: 'relative', height: 124, marginBottom: 16, borderRadius: 12, overflow: 'hidden',
         background: 'linear-gradient(180deg, #0c1226 0%, #16204a 50%, #20183a 100%)',
       }}>
         {/* painterly indigo/violet nebula — soft blurred light */}
@@ -264,8 +269,9 @@ export default function LineupTab() {
         {/* legibility halo behind the wordmark */}
         <div aria-hidden="true" style={{ position: 'absolute', inset: 0, background: 'radial-gradient(ellipse 58% 54% at 50% 45%, rgba(6,9,24,0.45), rgba(6,9,24,0) 72%)' }} />
         <div style={{ position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', textAlign: 'center' }}>
-          <div style={{ ...sans, fontSize: 24, fontWeight: 700, letterSpacing: '0.15em', color: '#f7e6b0', textShadow: '0 1px 10px rgba(6,9,24,0.8)' }}>CONSCIENCIA</div>
-          <div style={{ ...mono, fontSize: 8.5, fontWeight: 700, letterSpacing: '0.3em', color: 'rgba(242,236,220,0.92)', marginTop: 4, textShadow: '0 1px 6px rgba(6,9,24,0.7)' }}>TOMORROWLAND · BELGIUM 2026</div>
+          <TomorrowlandMark color="#f0d27a" style={{ width: 30, height: 30, marginBottom: 6, filter: 'drop-shadow(0 1px 6px rgba(6,9,24,0.8))' }} />
+          <div style={{ ...display, fontSize: 31, fontWeight: 700, letterSpacing: '0.03em', lineHeight: 1, color: '#f7e6b0', textShadow: '0 1px 12px rgba(6,9,24,0.85)', fontVariationSettings: '"SOFT" 30, "opsz" 144' }}>Consciencia</div>
+          <div style={{ ...mono, fontSize: 8.5, fontWeight: 700, letterSpacing: '0.3em', color: 'rgba(242,236,220,0.92)', marginTop: 7, textShadow: '0 1px 6px rgba(6,9,24,0.7)' }}>TOMORROWLAND · BELGIUM 2026</div>
         </div>
       </div>
 
@@ -433,17 +439,18 @@ export default function LineupTab() {
       {/* ── STAGE VIEW ── */}
       {view === 'stage' && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-          {groups.map(({ stage, sets: stageSets }) => {
+          {groups.map(({ stage, sets: stageSets }, idx) => {
             const color = STAGES[stage]?.color || tmrwGold;
             const open  = forceOpen || openStages.has(stage);
             const pickedSets = stageSets.filter(s => picks[s.id]?.[activePerson]);
             const picked = pickedSets.length;
             return (
-              <section key={stage} style={{ borderRadius: 10, border: `1px solid ${rule}`, overflow: 'hidden', backgroundColor: paper }}>
+              <section key={stage} className="fx-enter" style={{ animationDelay: `${Math.min(idx, 8) * 40}ms`, borderRadius: 10, border: `1px solid ${rule}`, overflow: 'hidden', backgroundColor: paper }}>
                 <button onClick={() => !forceOpen && toggleStage(stage)} aria-expanded={open}
                   aria-label={`${stage}, ${stageSets.length} artists${picked > 0 ? `, ${picked} of your picks` : ''}`}
-                  style={{ width: '100%', textAlign: 'left', cursor: forceOpen ? 'default' : 'pointer', display: 'flex', alignItems: 'center', gap: 10, padding: '12px 14px', minHeight: 44, border: 'none', borderLeft: `5px solid ${color}`, background: 'none' }}>
-                  <span aria-hidden="true" style={{ ...mono, fontSize: 12, fontWeight: 700, color: ink, letterSpacing: '0.04em', textTransform: 'uppercase', flex: 1 }}>{stage}</span>
+                  style={{ width: '100%', textAlign: 'left', cursor: forceOpen ? 'default' : 'pointer', display: 'flex', alignItems: 'center', gap: 10, padding: '12px 16px', minHeight: 44, border: 'none', background: 'none' }}>
+                  <span aria-hidden="true" style={{ width: 10, height: 10, borderRadius: '50%', backgroundColor: color, boxShadow: `0 0 8px ${color}`, flexShrink: 0 }} />
+                  <span aria-hidden="true" style={{ ...display, fontSize: 16, fontWeight: 700, color: ink, letterSpacing: '0.01em', flex: 1 }}>{stage}</span>
                   {picked > 0 && (
                     <span aria-hidden="true" style={{ ...mono, fontSize: 10, fontWeight: 700, color: tmrwBg, backgroundColor: myColor, borderRadius: 999, padding: '2px 7px' }}>★ {picked}</span>
                   )}
@@ -579,7 +586,7 @@ function CrewSection({ title, accent, items, emptyText, showWho }) {
           {items.map(({ set, pickers }) => {
             const stageColor = STAGES[set.stage]?.color || tmrwGold;
             return (
-              <div key={set.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, padding: '10px 14px', borderTop: `1px solid ${rule}55`, borderLeft: `5px solid ${accent}` }}>
+              <div key={set.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, padding: '10px 14px', borderTop: `1px solid ${rule}55` }}>
                 <div style={{ minWidth: 0 }}>
                   <div style={{ fontSize: 15, fontWeight: 600, color: ink }}>{set.name}</div>
                   <div style={{ ...mono, fontSize: 10, color: muted, marginTop: 2, display: 'flex', alignItems: 'center', gap: 6 }}>
