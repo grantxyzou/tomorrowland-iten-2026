@@ -254,7 +254,7 @@ export default function LineupTab() {
     <div style={{ ...sans }}>
       {/* Molten-gold liquid frame around the whole Lineup (Cage edition) */}
       <div style={{ borderRadius: 16, padding: 2, background: 'linear-gradient(135deg, #7a5810 0%, #f3d77a 22%, #b5832a 48%, #ffe8a8 70%, #8a6312 100%)', boxShadow: '0 0 0 1px rgba(255,232,168,0.25), 0 8px 40px rgba(6,9,24,0.6)' }}>
-      <div style={{ borderRadius: 14, background: 'linear-gradient(180deg, rgba(20,29,62,0.55), rgba(12,17,38,0.55))', padding: '18px 14px', boxShadow: 'inset 0 0 24px rgba(8,12,32,0.6), inset 0 1px 0 rgba(255,232,168,0.12)' }}>
+      <div style={{ borderRadius: 14, background: 'linear-gradient(180deg, #141d3e 0%, #0f1636 100%)', padding: '18px 14px', boxShadow: 'inset 0 0 24px rgba(8,12,32,0.6), inset 0 1px 0 rgba(255,232,168,0.12)' }}>
       {/* Consciencia — the Cage poster's painterly night sky in a band: deep
           indigo depth with soft nebula light → a molten-gold horizon glow. */}
       <div className="fx-enter" style={{
