@@ -69,11 +69,51 @@ function timesOverlap(a, b) {
   return aS < bE && bS < aE;
 }
 
+// ── Change tag ───────────────────────────────────────────────
+// Tiny pill that flags how an entry differs from the previous roster
+// after the official sync: NEW (added), EDITED (renamed), REMOVED (dropped).
+function StatusPill({ status }) {
+  const map = {
+    new:     { label: 'NEW',     bg: tmrwGold,     fg: tmrwBg,    border: 'none' },
+    edited:  { label: 'EDITED',  bg: 'transparent', fg: bodyMuted, border: `1px solid ${rule}` },
+    deleted: { label: 'REMOVED', bg: 'transparent', fg: bodyMuted, border: `1px solid ${rule}` },
+  };
+  const s = map[status];
+  if (!s) return null;
+  return (
+    <span style={{
+      ...mono, fontSize: 8.5, fontWeight: 700, letterSpacing: '0.08em',
+      lineHeight: 1, padding: '2.5px 5px', borderRadius: 4, flexShrink: 0,
+      backgroundColor: s.bg, color: s.fg, border: s.border,
+    }}>{s.label}</span>
+  );
+}
+
 // ── Shared artist row ────────────────────────────────────────
 function ArtistRow({ set, myColor, myPick, others, isClash, showStage, onToggle }) {
   const stageColor = STAGES[set.stage]?.color || tmrwGold;
+  const deleted = set.status === 'deleted';
+
+  // Dropped from the lineup — kept visible, struck through, not pickable.
+  if (deleted) {
+    return (
+      <div aria-label={`${set.name}, removed from the lineup`}
+        style={{
+          minHeight: 44, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10,
+          padding: '10px 16px', borderTop: `1px solid ${rule}55`, opacity: 0.6,
+        }}>
+        <div style={{ minWidth: 0, display: 'flex', alignItems: 'center', gap: 7, flexWrap: 'wrap' }}>
+          <span style={{ fontSize: 15, fontWeight: 600, color: muted, letterSpacing: '-0.01em', textDecoration: 'line-through' }}>
+            {set.name}
+          </span>
+          <StatusPill status="deleted" />
+        </div>
+      </div>
+    );
+  }
+
   return (
-    <button onClick={onToggle} aria-pressed={myPick} aria-label={`${set.name}, ${set.stage}`}
+    <button onClick={onToggle} aria-pressed={myPick} aria-label={`${set.name}, ${set.stage}${set.status === 'new' ? ', newly added' : ''}`}
       style={{
         width: '100%', textAlign: 'left', cursor: 'pointer', minHeight: 44,
         display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10,
@@ -83,8 +123,11 @@ function ArtistRow({ set, myColor, myPick, others, isClash, showStage, onToggle 
         transition: 'background-color var(--dur-press) var(--ease-out)',
       }}>
       <div style={{ minWidth: 0 }}>
-        <div style={{ fontSize: 15, fontWeight: 600, color: myPick ? tmrwGold : ink, letterSpacing: '-0.01em' }}>
-          {set.name}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 7, flexWrap: 'wrap' }}>
+          <span style={{ fontSize: 15, fontWeight: 600, color: myPick ? tmrwGold : ink, letterSpacing: '-0.01em' }}>
+            {set.name}
+          </span>
+          {(set.status === 'new' || set.status === 'edited') && <StatusPill status={set.status} />}
         </div>
         <div style={{ ...mono, fontSize: 10, color: myPick ? bodyMuted : muted, marginTop: 2, display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
           {showStage && (
@@ -194,7 +237,8 @@ export default function LineupTab() {
     return arr;
   }, [activeDay, picks, activePerson, dayHasTimes]);
 
-  const dayCount = useMemo(() => sets.filter(s => s.day === activeDay).length, [activeDay]);
+  const dayCount = useMemo(() => sets.filter(s => s.day === activeDay && s.status !== 'deleted').length, [activeDay]);
+  const browseLiveCount = useMemo(() => browseSets.filter(s => s.status !== 'deleted').length, [browseSets]);
 
   // Clash detection — dormant until set times exist.
   const clashes = useMemo(() => {
@@ -389,7 +433,7 @@ export default function LineupTab() {
         <>
           <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: searchOpen ? 10 : 8, flexWrap: 'wrap' }}>
             <span style={{ ...mono, fontSize: 10, color: muted }}>
-              {browseSets.length}{browseSets.length !== dayCount ? ` / ${dayCount}` : ''} artists · {groups.length} stage{groups.length === 1 ? '' : 's'}
+              {browseLiveCount}{browseLiveCount !== dayCount ? ` / ${dayCount}` : ''} artists · {groups.length} stage{groups.length === 1 ? '' : 's'}
             </span>
             <button onClick={() => setSearchOpen(o => !o)} aria-expanded={searchOpen} aria-label="Search artists"
               style={{ marginLeft: 'auto', width: 40, height: 40, display: 'flex', alignItems: 'center', justifyContent: 'center', border: 'none', background: 'none', color: searchOpen ? ink : muted, fontSize: 17, cursor: 'pointer' }}>⌕</button>
@@ -444,17 +488,22 @@ export default function LineupTab() {
             const open  = forceOpen || openStages.has(stage);
             const pickedSets = stageSets.filter(s => picks[s.id]?.[activePerson]);
             const picked = pickedSets.length;
+            const newCount  = stageSets.filter(s => s.status === 'new').length;
+            const liveCount = stageSets.filter(s => s.status !== 'deleted').length;
             return (
               <section key={stage} className="fx-enter" style={{ animationDelay: `${Math.min(idx, 8) * 40}ms`, borderRadius: 10, border: `1px solid ${rule}`, overflow: 'hidden', backgroundColor: paper }}>
                 <button onClick={() => !forceOpen && toggleStage(stage)} aria-expanded={open}
-                  aria-label={`${stage}, ${stageSets.length} artists${picked > 0 ? `, ${picked} of your picks` : ''}`}
+                  aria-label={`${stage}, ${liveCount} artists${newCount > 0 ? `, ${newCount} newly added` : ''}${picked > 0 ? `, ${picked} of your picks` : ''}`}
                   style={{ width: '100%', textAlign: 'left', cursor: forceOpen ? 'default' : 'pointer', display: 'flex', alignItems: 'center', gap: 10, padding: '12px 16px', minHeight: 44, border: 'none', background: 'none' }}>
                   <span aria-hidden="true" style={{ width: 10, height: 10, borderRadius: '50%', backgroundColor: color, boxShadow: `0 0 8px ${color}`, flexShrink: 0 }} />
                   <span aria-hidden="true" style={{ ...display, fontSize: 16, fontWeight: 700, color: ink, letterSpacing: '0.01em', flex: 1 }}>{stage}</span>
+                  {newCount > 0 && (
+                    <span aria-hidden="true" style={{ ...mono, fontSize: 9, fontWeight: 700, letterSpacing: '0.06em', color: tmrwBg, backgroundColor: tmrwGold, borderRadius: 999, padding: '2.5px 7px' }}>+{newCount} NEW</span>
+                  )}
                   {picked > 0 && (
                     <span aria-hidden="true" style={{ ...mono, fontSize: 10, fontWeight: 700, color: tmrwBg, backgroundColor: myColor, borderRadius: 999, padding: '2px 7px' }}>★ {picked}</span>
                   )}
-                  <span aria-hidden="true" style={{ ...mono, fontSize: 11, color: muted }}>{stageSets.length}</span>
+                  <span aria-hidden="true" style={{ ...mono, fontSize: 11, color: muted }}>{liveCount}</span>
                   <span aria-hidden="true" style={{ fontSize: 11, color: muted, transform: open ? 'rotate(90deg)' : 'none', transition: 'transform var(--dur-fast) var(--ease-in-out)' }}>▶</span>
                 </button>
                 {open && (
@@ -617,7 +666,7 @@ function CrewSection({ title, accent, items, emptyText, showWho }) {
 
 // Real, playable artist names: deduped, TBA placeholders dropped, sorted.
 function artistNames(mySets) {
-  return [...new Set(mySets.map(s => s.name))]
+  return [...new Set(mySets.filter(s => s.status !== 'deleted').map(s => s.name))]
     .filter(n => !/^to be announced$/i.test(n.trim()))
     .sort((a, b) => a.localeCompare(b));
 }
