@@ -51,8 +51,8 @@ export default function App() {
           Two viewport-fixed layers (light desert + dark Cage) whose
           opacity swaps on tab change. Lets the whole surface dissolve
           between themes — a `background` transition can't tween gradients. */}
-      <div aria-hidden="true" style={{ position: 'fixed', inset: 0, zIndex: -1, backgroundColor: paper, opacity: dark ? 0 : 1, transition: 'opacity var(--dur-base) var(--ease-out)' }} />
-      <div aria-hidden="true" style={{ position: 'fixed', inset: 0, zIndex: -1, backgroundColor: '#0e1430', backgroundImage: lineupAtmosphere, opacity: dark ? 1 : 0, transition: 'opacity var(--dur-base) var(--ease-out)' }} />
+      <div aria-hidden="true" style={{ position: 'fixed', inset: 0, zIndex: -1, backgroundColor: paper, opacity: dark ? 0 : 1, transition: 'opacity var(--dur-theme) var(--ease-out)' }} />
+      <div aria-hidden="true" style={{ position: 'fixed', inset: 0, zIndex: -1, backgroundColor: '#0e1430', backgroundImage: lineupAtmosphere, opacity: dark ? 1 : 0, transition: 'opacity var(--dur-theme) var(--ease-out)' }} />
 
       {/* ── Top bar ─────────────────────────────────────────── */}
       <header style={{ backgroundColor: ink, color: paper, padding: '12px 16px', paddingTop: 'calc(12px + env(safe-area-inset-top))', position: 'sticky', top: 0, zIndex: 50 }}>
@@ -71,16 +71,16 @@ export default function App() {
       </header>
 
       {/* ── Last updated banner ─────────────────────────────── */}
-      <div style={{ backgroundColor: dark ? '#131a3a' : cardBg, borderBottom: `1px solid ${dark ? '#34406e' : rule}`, padding: '6px 16px', transition: 'background-color var(--dur-base) var(--ease-out), border-color var(--dur-base) var(--ease-out)' }}>
+      <div style={{ backgroundColor: dark ? '#131a3a' : cardBg, borderBottom: `1px solid ${dark ? '#34406e' : rule}`, padding: '6px 16px', transition: 'background-color var(--dur-theme) var(--ease-out), border-color var(--dur-theme) var(--ease-out)' }}>
         <div style={{ maxWidth: 680, margin: '0 auto', display: 'flex', alignItems: 'center', gap: 8 }}>
-          <span style={{ ...mono, fontSize: 10, color: dark ? '#a9b2cf' : muted, letterSpacing: '0.12em', textTransform: 'uppercase', transition: 'color var(--dur-base) var(--ease-out)' }}>
+          <span style={{ ...mono, fontSize: 10, color: dark ? '#a9b2cf' : muted, letterSpacing: '0.12em', textTransform: 'uppercase', transition: 'color var(--dur-theme) var(--ease-out)' }}>
             Updated {formatUpdated(LAST_UPDATED)}
           </span>
         </div>
       </div>
 
       {/* ── Tab bar ─────────────────────────────────────────── */}
-      <nav role="tablist" aria-label="Sections" style={{ backgroundColor: dark ? '#131a3a' : paper, borderBottom: `1px solid ${dark ? '#34406e' : rule}`, position: 'sticky', top: 53, zIndex: 40, transition: 'background-color var(--dur-base) var(--ease-out), border-color var(--dur-base) var(--ease-out)' }}>
+      <nav role="tablist" aria-label="Sections" style={{ backgroundColor: dark ? '#131a3a' : paper, borderBottom: `1px solid ${dark ? '#34406e' : rule}`, position: 'sticky', top: 53, zIndex: 40, transition: 'background-color var(--dur-theme) var(--ease-out), border-color var(--dur-theme) var(--ease-out)' }}>
         <div style={{ position: 'relative', maxWidth: 680, margin: '0 auto', display: 'flex', overflowX: 'auto' }} className="no-scrollbar">
           {TABS.map(tab => {
             const active = activeTab === tab.id;
@@ -119,7 +119,7 @@ export default function App() {
             position: 'absolute', bottom: 0, left: 0, height: 2, borderRadius: 2,
             width: `${100 / TABS.length}%`, transform: `translateX(${activeIndex * 100}%)`,
             backgroundColor: dark ? lineupAccent : accent,
-            transition: 'transform var(--dur-base) var(--ease-drawer), background-color var(--dur-base) var(--ease-out)',
+            transition: 'transform var(--dur-base) var(--ease-drawer), background-color var(--dur-theme) var(--ease-out)',
           }} />
         </div>
       </nav>

@@ -21,6 +21,7 @@
   --dur-base:  200ms;
   --dur-modal: 240ms;
   --dur-exit:  160ms;
+  --dur-theme: 520ms;  /* slow theme dissolve (Itinerary ↔ Lineup background) */
 }
 
 html { font-size: 16px; -webkit-text-size-adjust: 100%; scroll-behavior: smooth; }
