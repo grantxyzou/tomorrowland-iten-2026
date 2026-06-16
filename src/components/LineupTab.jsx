@@ -34,7 +34,15 @@ const PERSON_COLORS = {
   Desmond: '#7aa6dd',  // blue
   Lawrence:'#5cb85c',  // green
 };
-const goldInk = '#e8c25e'; // gold labels — bright on the dark navy bg
+// Per-person "molten metal" frame gradient — the Lineup border + accents
+// re-tint to whoever the "I'm ___" dropdown says you are. Same stop
+// structure as the gold original (dark → light → mid → bright → dark),
+// hue-shifted to each person's colour. Grant keeps the original gold.
+const FRAME = {
+  Grant:    'linear-gradient(135deg, #7a5810 0%, #f3d77a 22%, #b5832a 48%, #ffe8a8 70%, #8a6312 100%)',
+  Desmond:  'linear-gradient(135deg, #1f3a6b 0%, #aacaf0 22%, #3f6dae 48%, #d6e8ff 70%, #25406f 100%)',
+  Lawrence: 'linear-gradient(135deg, #1f5a2c 0%, #aee0a6 22%, #3f8f46 48%, #d6f5cf 70%, #235e2b 100%)',
+};
 
 // Spotify accents: bright brand green for the decorative dot, a darkened
 // variant for buttons so white text clears WCAG AA (~6:1).
@@ -72,9 +80,9 @@ function timesOverlap(a, b) {
 // ── Change tag ───────────────────────────────────────────────
 // Tiny pill that flags how an entry differs from the previous roster
 // after the official sync: NEW (added), EDITED (renamed), REMOVED (dropped).
-function StatusPill({ status }) {
+function StatusPill({ status, accent = tmrwGold }) {
   const map = {
-    new:     { label: 'NEW',     bg: tmrwGold,     fg: tmrwBg,    border: 'none' },
+    new:     { label: 'NEW',     bg: accent,       fg: tmrwBg,    border: 'none' },
     edited:  { label: 'EDITED',  bg: 'transparent', fg: bodyMuted, border: `1px solid ${rule}` },
     deleted: { label: 'REMOVED', bg: 'transparent', fg: bodyMuted, border: `1px solid ${rule}` },
   };
@@ -119,15 +127,15 @@ function ArtistRow({ set, myColor, myPick, others, isClash, showStage, onToggle 
         display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10,
         padding: '10px 16px', border: 'none', borderTop: `1px solid ${rule}55`,
         backgroundColor: myPick ? tmrwBg : 'transparent',
-        boxShadow: myPick ? 'inset 3px 0 12px -6px rgba(232,194,94,0.6)' : 'none',
+        boxShadow: myPick ? `inset 3px 0 12px -6px ${myColor}99` : 'none',
         transition: 'background-color var(--dur-press) var(--ease-out)',
       }}>
       <div style={{ minWidth: 0 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 7, flexWrap: 'wrap' }}>
-          <span style={{ fontSize: 15, fontWeight: 600, color: myPick ? tmrwGold : ink, letterSpacing: '-0.01em' }}>
+          <span style={{ fontSize: 15, fontWeight: 600, color: myPick ? myColor : ink, letterSpacing: '-0.01em', transition: 'color var(--dur-base) var(--ease-out)' }}>
             {set.name}
           </span>
-          {(set.status === 'new' || set.status === 'edited') && <StatusPill status={set.status} />}
+          {(set.status === 'new' || set.status === 'edited') && <StatusPill status={set.status} accent={myColor} />}
         </div>
         <div style={{ ...mono, fontSize: 10, color: myPick ? bodyMuted : muted, marginTop: 2, display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
           {showStage && (
@@ -297,8 +305,8 @@ export default function LineupTab() {
   return (
     <div style={{ ...sans }}>
       {/* Molten-gold liquid frame around the whole Lineup (Cage edition) */}
-      <div style={{ borderRadius: 16, padding: 2, background: 'linear-gradient(135deg, #7a5810 0%, #f3d77a 22%, #b5832a 48%, #ffe8a8 70%, #8a6312 100%)', boxShadow: '0 0 0 1px rgba(255,232,168,0.25), 0 8px 40px rgba(6,9,24,0.6)' }}>
-      <div style={{ borderRadius: 14, background: 'linear-gradient(180deg, #141d3e 0%, #0f1636 100%)', padding: '18px 14px', boxShadow: 'inset 0 0 24px rgba(8,12,32,0.6), inset 0 1px 0 rgba(255,232,168,0.12)' }}>
+      <div style={{ borderRadius: 16, padding: 2, background: FRAME[activePerson] || FRAME.Grant, boxShadow: `0 0 0 1px ${myColor}40, 0 8px 40px rgba(6,9,24,0.6)` }}>
+      <div style={{ borderRadius: 14, background: 'linear-gradient(180deg, #141d3e 0%, #0f1636 100%)', padding: '18px 14px', boxShadow: `inset 0 0 24px rgba(8,12,32,0.6), inset 0 1px 0 ${myColor}26` }}>
       {/* Consciencia — the Cage poster's painterly night sky in a band: deep
           indigo depth with soft nebula light → a molten-gold horizon glow. */}
       <div className="fx-enter" style={{
@@ -342,12 +350,12 @@ export default function LineupTab() {
               style={{
                 flex: 1, padding: '6px 0 9px', minHeight: 48, cursor: 'pointer',
                 border: 'none', background: 'none', marginBottom: -1,
-                borderBottom: `2px solid ${active ? goldInk : 'transparent'}`,
+                borderBottom: `2px solid ${active ? myColor : 'transparent'}`,
                 color: active ? ink : muted,
-                ...mono, fontWeight: 700, textTransform: 'uppercase', transition: 'transform var(--dur-press) var(--ease-out), color var(--dur-fast) var(--ease-out), border-color var(--dur-fast) var(--ease-out)',
+                ...mono, fontWeight: 700, textTransform: 'uppercase', transition: 'transform var(--dur-press) var(--ease-out), color var(--dur-fast) var(--ease-out), border-color var(--dur-base) var(--ease-out)',
                 display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 3,
               }}>
-              <span aria-hidden="true" style={{ fontSize: 8, letterSpacing: '0.16em', color: active ? goldInk : muted }}>Day {i + 1}</span>
+              <span aria-hidden="true" style={{ fontSize: 8, letterSpacing: '0.16em', color: active ? myColor : muted, transition: 'color var(--dur-base) var(--ease-out)' }}>Day {i + 1}</span>
               <span aria-hidden="true" style={{ fontSize: 13, letterSpacing: '0.1em' }}>{day.label}</span>
             </button>
           );
@@ -396,7 +404,7 @@ export default function LineupTab() {
         </div>
 
         <button onClick={() => setParty(true)} aria-label="Enter party mode"
-          style={{ flexShrink: 0, minHeight: 48, padding: '0 16px', borderRadius: 8, border: `1px solid ${tmrwBg}`, backgroundColor: tmrwBg, color: tmrwGold, ...mono, fontSize: 11, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: 6, whiteSpace: 'nowrap' }}>
+          style={{ flexShrink: 0, minHeight: 48, padding: '0 16px', borderRadius: 8, border: `1px solid ${tmrwBg}`, backgroundColor: tmrwBg, color: myColor, ...mono, fontSize: 11, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: 6, whiteSpace: 'nowrap', transition: 'color var(--dur-base) var(--ease-out)' }}>
           <span aria-hidden="true">🌙</span> Party mode
         </button>
       </div>
@@ -418,9 +426,9 @@ export default function LineupTab() {
               style={{
                 flex: 1, padding: '7px 0', minHeight: 40, cursor: 'pointer', border: 'none',
                 borderLeft: i === 0 ? 'none' : `1px solid ${rule}`,
-                backgroundColor: active ? tmrwGold : 'transparent', color: active ? tmrwBg : muted,
+                backgroundColor: active ? myColor : 'transparent', color: active ? tmrwBg : muted,
                 ...mono, fontSize: 10, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase',
-                transition: 'transform var(--dur-press) var(--ease-out), background-color var(--dur-fast) var(--ease-out), color var(--dur-fast) var(--ease-out)',
+                transition: 'transform var(--dur-press) var(--ease-out), background-color var(--dur-base) var(--ease-out), color var(--dur-base) var(--ease-out)',
               }}>
               {v.label}{v.id === 'crew' && (crew.all3.length + crew.two.length > 0) ? ` ·${crew.all3.length + crew.two.length}` : ''}
             </button>
@@ -439,7 +447,7 @@ export default function LineupTab() {
               style={{ marginLeft: 'auto', width: 40, height: 40, display: 'flex', alignItems: 'center', justifyContent: 'center', border: 'none', background: 'none', color: searchOpen ? ink : muted, fontSize: 17, cursor: 'pointer' }}>⌕</button>
             {!forceOpen && (
               <button onClick={() => setOpenStages(openStages.size >= groups.length ? new Set() : new Set(STAGE_ORDER))}
-                style={{ minHeight: 40, padding: '0 4px', border: 'none', background: 'none', color: goldInk, ...mono, fontSize: 10, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', cursor: 'pointer' }}>
+                style={{ minHeight: 40, padding: '0 4px', border: 'none', background: 'none', color: myColor, ...mono, fontSize: 10, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', cursor: 'pointer', transition: 'color var(--dur-base) var(--ease-out)' }}>
                 {openStages.size >= groups.length ? 'Collapse all' : 'Expand all'}
               </button>
             )}
@@ -498,7 +506,7 @@ export default function LineupTab() {
                   <span aria-hidden="true" style={{ width: 10, height: 10, borderRadius: '50%', backgroundColor: color, boxShadow: `0 0 8px ${color}`, flexShrink: 0 }} />
                   <span aria-hidden="true" style={{ ...display, fontSize: 16, fontWeight: 700, color: ink, letterSpacing: '0.01em', flex: 1 }}>{stage}</span>
                   {newCount > 0 && (
-                    <span aria-hidden="true" style={{ ...mono, fontSize: 9, fontWeight: 700, letterSpacing: '0.06em', color: tmrwBg, backgroundColor: tmrwGold, borderRadius: 999, padding: '2.5px 7px' }}>+{newCount} NEW</span>
+                    <span aria-hidden="true" style={{ ...mono, fontSize: 9, fontWeight: 700, letterSpacing: '0.06em', color: tmrwBg, backgroundColor: myColor, borderRadius: 999, padding: '2.5px 7px', transition: 'background-color var(--dur-base) var(--ease-out)' }}>+{newCount} NEW</span>
                   )}
                   {picked > 0 && (
                     <span aria-hidden="true" style={{ ...mono, fontSize: 10, fontWeight: 700, color: tmrwBg, backgroundColor: myColor, borderRadius: 999, padding: '2px 7px' }}>★ {picked}</span>
@@ -574,7 +582,7 @@ export default function LineupTab() {
           </div>
 
           {/* All three */}
-          <CrewSection title={`Everyone (${PEOPLE.length}/3)`} accent={goldInk} items={crew.all3} emptyText="No artist all three of you picked yet." picks={picks} />
+          <CrewSection title={`Everyone (${PEOPLE.length}/3)`} accent={myColor} items={crew.all3} emptyText="No artist all three of you picked yet." picks={picks} />
           {/* Two of three */}
           <CrewSection title="Two of you" accent={muted} items={crew.two} emptyText="No two-way overlaps yet." picks={picks} showWho />
 
@@ -614,7 +622,7 @@ export default function LineupTab() {
           <span style={{ ...sans, fontSize: 13 }}>{shownToast.msg}</span>
           {shownToast.action && (
             <button onClick={() => { shownToast.action.run(); setToast(null); }}
-              style={{ minHeight: 44, padding: '0 6px', border: 'none', background: 'none', color: tmrwGold, ...mono, fontSize: 12, fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', cursor: 'pointer', flexShrink: 0 }}>
+              style={{ minHeight: 44, padding: '0 6px', border: 'none', background: 'none', color: myColor, ...mono, fontSize: 12, fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', cursor: 'pointer', flexShrink: 0 }}>
               {shownToast.action.label}
             </button>
           )}
