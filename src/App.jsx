@@ -42,9 +42,17 @@ export default function App() {
   // Dark-theme chrome only on the Lineup tab.
   const dark = activeTab === 'lineup';
   const lineupAccent = '#e8c25e'; // gold active-tab indicator (rust fails on navy)
+  const activeIndex = TABS.findIndex(t => t.id === activeTab);
 
   return (
-    <div style={{ minHeight: '100dvh', color: ink, background: dark ? lineupAtmosphere : paper, backgroundColor: dark ? '#0e1430' : paper }}>
+    <div style={{ minHeight: '100dvh', color: ink, position: 'relative' }}>
+
+      {/* ── Crossfading theme backgrounds ───────────────────────
+          Two viewport-fixed layers (light desert + dark Cage) whose
+          opacity swaps on tab change. Lets the whole surface dissolve
+          between themes — a `background` transition can't tween gradients. */}
+      <div aria-hidden="true" style={{ position: 'fixed', inset: 0, zIndex: -1, backgroundColor: paper, opacity: dark ? 0 : 1, transition: 'opacity var(--dur-base) var(--ease-out)' }} />
+      <div aria-hidden="true" style={{ position: 'fixed', inset: 0, zIndex: -1, backgroundColor: '#0e1430', backgroundImage: lineupAtmosphere, opacity: dark ? 1 : 0, transition: 'opacity var(--dur-base) var(--ease-out)' }} />
 
       {/* ── Top bar ─────────────────────────────────────────── */}
       <header style={{ backgroundColor: ink, color: paper, padding: '12px 16px', paddingTop: 'calc(12px + env(safe-area-inset-top))', position: 'sticky', top: 0, zIndex: 50 }}>
@@ -63,17 +71,17 @@ export default function App() {
       </header>
 
       {/* ── Last updated banner ─────────────────────────────── */}
-      <div style={{ backgroundColor: dark ? '#131a3a' : cardBg, borderBottom: `1px solid ${dark ? '#34406e' : rule}`, padding: '6px 16px' }}>
+      <div style={{ backgroundColor: dark ? '#131a3a' : cardBg, borderBottom: `1px solid ${dark ? '#34406e' : rule}`, padding: '6px 16px', transition: 'background-color var(--dur-base) var(--ease-out), border-color var(--dur-base) var(--ease-out)' }}>
         <div style={{ maxWidth: 680, margin: '0 auto', display: 'flex', alignItems: 'center', gap: 8 }}>
-          <span style={{ ...mono, fontSize: 10, color: dark ? '#a9b2cf' : muted, letterSpacing: '0.12em', textTransform: 'uppercase' }}>
+          <span style={{ ...mono, fontSize: 10, color: dark ? '#a9b2cf' : muted, letterSpacing: '0.12em', textTransform: 'uppercase', transition: 'color var(--dur-base) var(--ease-out)' }}>
             Updated {formatUpdated(LAST_UPDATED)}
           </span>
         </div>
       </div>
 
       {/* ── Tab bar ─────────────────────────────────────────── */}
-      <nav role="tablist" aria-label="Sections" style={{ backgroundColor: dark ? '#131a3a' : paper, borderBottom: `1px solid ${dark ? '#34406e' : rule}`, position: 'sticky', top: 53, zIndex: 40 }}>
-        <div style={{ maxWidth: 680, margin: '0 auto', display: 'flex', overflowX: 'auto' }} className="no-scrollbar">
+      <nav role="tablist" aria-label="Sections" style={{ backgroundColor: dark ? '#131a3a' : paper, borderBottom: `1px solid ${dark ? '#34406e' : rule}`, position: 'sticky', top: 53, zIndex: 40, transition: 'background-color var(--dur-base) var(--ease-out), border-color var(--dur-base) var(--ease-out)' }}>
+        <div style={{ position: 'relative', maxWidth: 680, margin: '0 auto', display: 'flex', overflowX: 'auto' }} className="no-scrollbar">
           {TABS.map(tab => {
             const active = activeTab === tab.id;
             return (
@@ -96,16 +104,23 @@ export default function App() {
                   color: active ? (dark ? lineupAccent : accent) : (dark ? '#a9b2cf' : muted),
                   background: 'none',
                   border: 'none',
-                  borderBottom: active ? `2px solid ${dark ? lineupAccent : accent}` : '2px solid transparent',
                   cursor: 'pointer',
                   whiteSpace: 'nowrap',
-                  transition: 'transform var(--dur-press) var(--ease-out), color var(--dur-fast) var(--ease-out), border-color var(--dur-fast) var(--ease-out)',
+                  transition: 'transform var(--dur-press) var(--ease-out), color var(--dur-base) var(--ease-out)',
                 }}
               >
                 {tab.label}
               </button>
             );
           })}
+          {/* Sliding active-tab indicator — glides between tabs and eases
+              its colour (rust → gold) as the theme crossfades. */}
+          <span aria-hidden="true" style={{
+            position: 'absolute', bottom: 0, left: 0, height: 2, borderRadius: 2,
+            width: `${100 / TABS.length}%`, transform: `translateX(${activeIndex * 100}%)`,
+            backgroundColor: dark ? lineupAccent : accent,
+            transition: 'transform var(--dur-base) var(--ease-drawer), background-color var(--dur-base) var(--ease-out)',
+          }} />
         </div>
       </nav>
 
@@ -116,8 +131,10 @@ export default function App() {
         aria-labelledby={`tab-${activeTab}`}
         style={{ maxWidth: 680, margin: '0 auto', padding: '24px max(16px, env(safe-area-inset-right)) calc(64px + env(safe-area-inset-bottom)) max(16px, env(safe-area-inset-left))' }}
       >
-        {activeTab === 'itinerary' && <ItineraryTab />}
-        {activeTab === 'lineup'    && <LineupTab    />}
+        <div key={activeTab} className="fx-fade" style={{ opacity: 1 }}>
+          {activeTab === 'itinerary' && <ItineraryTab />}
+          {activeTab === 'lineup'    && <LineupTab    />}
+        </div>
       </main>
 
       {/* Vercel Web Analytics — sends page views to /_vercel/insights (served
