@@ -74,7 +74,8 @@ export default function ItineraryTab() {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
       {days.map((d, idx) => (
-        <div key={d.dateNum} ref={el => refs.current[idx] = el}>
+        <div key={d.dateNum} ref={el => refs.current[idx] = el}
+          className="fx-enter" style={{ animationDelay: `${Math.min(idx, 8) * 45}ms` }}>
           {d.phase && (
             <PhaseDivider phase={d.phase} idx={idx} />
           )}
