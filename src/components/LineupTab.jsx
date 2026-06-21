@@ -76,6 +76,14 @@ function timesOverlap(a, b) {
   if (bE <= bS) bE += 1440;
   return aS < bE && bS < aE;
 }
+// Stage view lists each stage chronologically; sets with no time (hosts,
+// unannounced) fall to the end, ties broken alphabetically.
+function stageOrder(a, b) {
+  const at = hasTime(a), bt = hasTime(b);
+  if (at && bt) return sortKey(a) - sortKey(b) || a.name.localeCompare(b.name);
+  if (at !== bt) return at ? -1 : 1;
+  return a.name.localeCompare(b.name);
+}
 
 // ── Change tag ───────────────────────────────────────────────
 // Tiny pill that flags how an entry differs from the previous roster
@@ -231,7 +239,7 @@ export default function LineupTab() {
   );
   const groups = useMemo(() =>
     STAGE_ORDER
-      .map(stage => ({ stage, sets: browseSets.filter(s => s.stage === stage) }))
+      .map(stage => ({ stage, sets: browseSets.filter(s => s.stage === stage).sort(stageOrder) }))
       .filter(g => g.sets.length > 0),
     [browseSets]
   );
