@@ -153,7 +153,7 @@ function ArtistRow({ set, myColor, myPick, others, isClash, showStage, onToggle 
             </span>
           )}
           <span>{timeLabel(set)}</span>
-          {isClash && <span style={{ color: clashRed, fontWeight: 700 }}>⚡ CLASH</span>}
+          {isClash && <span style={{ color: clashRed, fontWeight: 700 }}>⚡ CONFLICT</span>}
         </div>
       </div>
       <div style={{ display: 'flex', alignItems: 'center', gap: 4, flexShrink: 0 }}>
@@ -564,25 +564,40 @@ export default function LineupTab() {
           </div>
           {/* Clash overview */}
           <div>
-            <div style={{ ...mono, fontSize: 10, color: muted, letterSpacing: '0.18em', textTransform: 'uppercase', marginBottom: 8 }}>⚡ Clashes</div>
+            <div style={{ ...mono, fontSize: 10, color: muted, letterSpacing: '0.18em', textTransform: 'uppercase', marginBottom: 8 }}>⚡ Time conflicts</div>
             {!dayHasTimes ? (
               <div style={{ ...mono, fontSize: 11, color: muted, padding: '10px 12px', border: `1px solid ${rule}`, borderRadius: 8 }}>
-                No clashes to detect yet — set times aren’t announced. Overlaps in your shared picks will appear here automatically once times drop.
+                No conflicts to detect yet — set times aren’t announced. Overlaps in your shared picks will appear here automatically once times drop.
               </div>
             ) : clashes.length === 0 ? (
               <div style={{ ...mono, fontSize: 11, color: muted, padding: '10px 12px', border: `1px solid ${rule}`, borderRadius: 8 }}>
-                No clashes — your shared picks don’t overlap. 🎉
+                No time conflicts — your shared picks don’t overlap. 🎉
               </div>
             ) : (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
                 {clashes.map((c, i) => (
-                  <div key={i} style={{ backgroundColor: tmrwBg, border: `1px solid ${clashRed}`, borderRadius: 8, padding: '10px 14px' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 4 }}>
-                      {c.shared.map(p => <span key={p} style={{ ...mono, fontSize: 10, fontWeight: 700, color: PERSON_COLORS[p] }}>{p}</span>)}
-                      <span style={{ fontSize: 10, color: clashRed }}>clash</span>
+                  <div key={i} style={{ backgroundColor: tmrwBg, border: `1px solid ${clashRed}55`, borderRadius: 10, overflow: 'hidden' }}>
+                    {/* Header — what it is + exactly who it hits */}
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', padding: '8px 12px', borderBottom: `1px solid ${rule}`, backgroundColor: `${clashRed}14` }}>
+                      <span style={{ ...mono, fontSize: 9.5, fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: clashRed }}>⚡ Time conflict</span>
+                      <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, flexWrap: 'wrap', marginLeft: 'auto' }}>
+                        <span style={{ ...mono, fontSize: 9, letterSpacing: '0.08em', textTransform: 'uppercase', color: muted }}>Both picked by</span>
+                        {c.shared.map(p => (
+                          <span key={p} style={{ display: 'inline-flex', alignItems: 'center', gap: 4, ...mono, fontSize: 10, fontWeight: 700, color: PERSON_COLORS[p] }}>
+                            <span aria-hidden="true" style={{ width: 6, height: 6, borderRadius: '50%', backgroundColor: PERSON_COLORS[p] }} />{p}
+                          </span>
+                        ))}
+                      </span>
                     </div>
-                    <div style={{ fontSize: 13, color: paper }}>{c.a.name} <span style={{ color: clashRed }}>vs</span> {c.b.name}</div>
-                    <div style={{ ...mono, fontSize: 10, color: bodyMuted, marginTop: 2 }}>{c.a.start}–{c.a.end} {c.a.stage} · {c.b.start}–{c.b.end} {c.b.stage}</div>
+                    {/* The two overlapping sets — artist (left) and its time (right)
+                        line up across both rows for a quick this-or-that read. */}
+                    <ConflictOption set={c.a} />
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '0 12px' }}>
+                      <span style={{ flex: 1, height: 1, backgroundColor: rule }} />
+                      <span style={{ ...mono, fontSize: 9, fontWeight: 700, letterSpacing: '0.14em', color: clashRed }}>VS</span>
+                      <span style={{ flex: 1, height: 1, backgroundColor: rule }} />
+                    </div>
+                    <ConflictOption set={c.b} />
                   </div>
                 ))}
               </div>
@@ -636,6 +651,23 @@ export default function LineupTab() {
           )}
         </div>
       )}
+    </div>
+  );
+}
+
+// One side of a time conflict — stage swatch + artist name (kept fully legible
+// in cream) on the left, its set time on the right. Both rows share the layout
+// so names and times line up column-wise for an at-a-glance comparison.
+function ConflictOption({ set }) {
+  const stageColor = STAGES[set.stage]?.color || tmrwGold;
+  return (
+    <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '9px 12px' }}>
+      <span aria-hidden="true" style={{ width: 8, height: 8, borderRadius: 2, backgroundColor: stageColor, flexShrink: 0 }} />
+      <div style={{ minWidth: 0, flex: 1 }}>
+        <div style={{ ...sans, fontSize: 14, fontWeight: 600, color: ink, letterSpacing: '-0.01em', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{set.name}</div>
+        <div style={{ ...mono, fontSize: 10, color: muted, marginTop: 1 }}>{set.stage}</div>
+      </div>
+      <span style={{ ...mono, fontSize: 11.5, fontWeight: 700, color: ink, flexShrink: 0, whiteSpace: 'nowrap' }}>{set.start}–{set.end}</span>
     </div>
   );
 }
@@ -946,7 +978,7 @@ function PartyMode({ activePerson, setActivePerson, activeDay, setActiveDay, pic
           </div>
         ) : (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-            {currents.map((s, i) => card(s, i === 0 ? (currents.length > 1 ? '▶ On now (clash)' : '▶ On now') : '▶ Also now', clashRed, true))}
+            {currents.map((s, i) => card(s, i === 0 ? (currents.length > 1 ? '▶ On now (conflict)' : '▶ On now') : '▶ Also now', clashRed, true))}
             {nextUp && card(nextUp, '↑ Up next', gold, true)}
             {!currents.length && !nextUp && (
               <div style={{ ...mono, fontSize: 13, color: dim, textAlign: 'center', padding: '8px 0' }}>
