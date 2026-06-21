@@ -15,10 +15,12 @@
 // swap, and the House of Fortune reshuffle (Da Tweekaz, Blasterjaxx, Sam
 // Hofman, Kris Kross Amsterdam, Amber Broos). They keep `status:'new'`.
 //
-// A few timetable blocks have no matching roster entry and are intentionally
-// left out (festival "Discovery"/opening segments, "Surprise" guests, "More
-// To Be Announced" placeholders, and hosts/MCs who don't get a set time —
-// MC Stretch, MC Rim, MC Claudio, MC Pyro, MC Mota). Those MCs and a couple
+// Timetable blocks that aren't traditional roster artists are still
+// included with their times: the festival "Discovery" opening segments,
+// the "Surprise" guest slots, and the extra acts Frank Verstraeten /
+// Karakals. The only blocks left out are the "More To Be Announced"
+// placeholders (no act to name) and hosts/MCs who don't get a set time —
+// MC Stretch, MC Rim, MC Claudio, MC Pyro, MC Mota. Those MCs and a couple
 // of unannounced acts (e.g. Villain) stay as plain strings = "Set time TBA".
 //
 // ENTRY SHAPE — a roster entry is either:
@@ -60,6 +62,7 @@ export const STAGES = {
 export const LINEUP = {
   fri: {
     'Mainstage': [
+      { name: 'Discovery', start: '12:00', end: '14:00' },
       { name: 'The Chainsmokers', status: 'edited', idSlug: 'chainsmokers', start: '21:45', end: '22:50' },
       { name: 'Disco Lines', start: '15:30', end: '16:30' },
       { name: 'Henri PFR', start: '17:35', end: '18:40' },
@@ -74,6 +77,7 @@ export const LINEUP = {
     ],
     'Freedom by Bud': [
       { name: '4444 of a Kind', status: 'new', start: '22:30', end: '23:30' },
+      { name: 'Frank Verstraeten', start: '16:30', end: '18:00' },
       { name: 'Holy Priest', start: '23:30', end: '00:30' },
       { name: 'Jesabel', start: '13:30', end: '15:00' },
       { name: 'Max Styler', start: '18:00', end: '19:30' },
@@ -228,6 +232,7 @@ export const LINEUP = {
 
   sat: {
     'Mainstage': [
+      { name: 'Discovery', start: '12:00', end: '14:00' },
       { name: 'Boris Brejcha', start: '19:10', end: '20:10' },
       { name: 'David Guetta', start: '23:35', end: '01:00' },
       { name: 'Dimitri Vegas & Like Mike', start: '22:20', end: '23:35' },
@@ -303,6 +308,7 @@ export const LINEUP = {
     ],
     'Planaxis': [
       { name: 'Bassjackers', start: '21:00', end: '22:00' },
+      { name: 'Surprise', start: '19:00', end: '20:00' },
       { name: 'Chocolate Puma', start: '13:00', end: '14:00' },
       { name: "D'Angello & Francis", start: '12:00', end: '13:00' },
       { name: 'Dvbbs', start: '22:00', end: '23:00' },
@@ -399,6 +405,9 @@ export const LINEUP = {
 
   sun: {
     'Mainstage': [
+      { name: 'Discovery', start: '12:00', end: '14:30' },
+      { name: 'Karakals', start: '15:30', end: '16:30' },
+      { name: 'Surprise', start: '19:40', end: '20:40' },
       { name: 'Alesso', start: '21:45', end: '22:50' },
       { name: 'B Jones', start: '18:40', end: '19:40' },
       { name: 'Calvin Harris', start: '22:50', end: '01:00' },
