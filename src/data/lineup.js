@@ -10,7 +10,7 @@
 //
 // When the timetable dropped, several entries that had been tagged
 // `status:'new'` (provisional, no published day) moved to their real
-// day/stage — e.g. Bassjackers → Fri Mainstage, Sef Sanst → Sat Celestia,
+// day/stage — e.g. Bassjackers → Fri Mainstage, Sef sansT → Sat Celestia,
 // Aline Rocha → Sun Freedom, the Wilbert Pigmans / Effe Serieus Moose Bar
 // swap, and the House of Fortune reshuffle (Da Tweekaz, Blasterjaxx, Sam
 // Hofman, Kris Kross Amsterdam, Amber Broos). They keep `status:'new'`.
@@ -283,7 +283,7 @@ export const LINEUP = {
       { name: 'Pretty Girls Like Trap Music Soundsystem (Imani & Claire Lyons)', start: '15:00', end: '16:00' },
       { name: 'Rockefellababe', start: '22:00', end: '23:00' },
       { name: 'Sojuju & Julian Jermain', start: '13:00', end: '14:00' },
-      { name: 'Steww Soundsystem', start: '00:00', end: '01:00' },
+      { name: 'Stewww Soundsystem', start: '00:00', end: '01:00' },
       { name: 'Vunzige Deuntjes Soundsystem', start: '19:00', end: '20:00' },
       { name: 'Wef', start: '17:00', end: '18:00' },
     ],
@@ -294,7 +294,7 @@ export const LINEUP = {
       { name: 'Luna Fields', start: '12:00', end: '14:00' },
       { name: 'Maike Depas', start: '14:00', end: '15:30' },
       { name: 'Vieze Asbak', start: '21:30', end: '23:00' },
-      { name: 'Notmytype', status: 'new', start: '15:30', end: '17:00' },
+      { name: 'Not My Type', status: 'new', start: '15:30', end: '17:00' },
     ],
     'The Rave Cave': [
       { name: 'Aghatixx', start: '15:00', end: '16:00' },
@@ -343,7 +343,7 @@ export const LINEUP = {
       { name: 'Sebsky', start: '13:00', end: '14:00' },
       { name: 'Will Sparks', start: '22:00', end: '23:00' },
       { name: 'Yves V', start: '19:00', end: '20:00' },
-      { name: 'Sef Sanst', status: 'new', start: '12:00', end: '13:00' },
+      { name: 'Sef sansT', status: 'new', start: '12:00', end: '13:00' },
     ],
     'Atmosphere': [
       { name: 'Biia B2B Charlie Sparks', status: 'edited', start: '20:00', end: '21:30' },
@@ -390,7 +390,7 @@ export const LINEUP = {
       { name: 'Funkhauser', start: '15:00', end: '19:00' },
       { name: 'Jelle DK', start: '20:00', end: '00:00' },
       { name: 'Jeroen Visser', start: '12:00', end: '15:00' },
-      { name: 'Jebroer', status: 'new', start: '19:00', end: '20:00' },
+      { name: 'Je Broer', status: 'new', start: '19:00', end: '20:00' },
     ],
     'House of Fortune by JBL': [
       { name: 'Fonsi Nieto', start: '16:00', end: '17:00' },
