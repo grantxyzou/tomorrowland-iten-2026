@@ -306,7 +306,7 @@ export default function LineupTab() {
     <PartyMode
       activePerson={activePerson} setActivePerson={setActivePerson}
       activeDay={activeDay} setActiveDay={setActiveDay}
-      picks={picks} onExit={() => setParty(false)}
+      picks={picks} togglePick={togglePick} onExit={() => setParty(false)}
     />
   );
 
@@ -846,7 +846,129 @@ function normSpan(s) {
   return [st, en];
 }
 
-function PartyMode({ activePerson, setActivePerson, activeDay, setActiveDay, picks, onExit }) {
+// Apple-Calendar-style day grid for the rest of the plan ("Later"). Picked sets
+// are laid out proportionally by time; overlapping picks sit side-by-side with a
+// red outline so a conflict is obvious at a glance. Tap a block to select it,
+// then a big "Remove from plan" button appears — two-step so a tired late-night
+// tap can't accidentally drop a set.
+function LaterTimeline({ sets: later, onRemove, surf, line, txt, dim, gold }) {
+  const [selectedId, setSelectedId] = useState(null);
+
+  const timed = later.filter(hasTime);
+  const untimed = later.filter(s => !hasTime(s));
+  const selected = timed.find(s => s.id === selectedId) || null;
+
+  const PX_PER_MIN = 1.2; // ≈ 72px per hour — roomy enough to read while tired
+  const GUTTER = 46;      // left column for the hour labels
+  const MIN_H = 52;       // keep short/late sets tall enough to read & tap
+
+  let grid = null;
+  if (timed.length > 0) {
+    // Lay each set out by its normalised [start, end]; round bounds to the hour.
+    const items = timed
+      .map(s => { const [st, en] = normSpan(s); return { s, st, en }; })
+      .sort((a, b) => a.st - b.st || a.en - b.en);
+    const startHour = Math.floor(Math.min(...items.map(x => x.st)) / 60) * 60;
+    const endHour = Math.ceil(Math.max(...items.map(x => x.en)) / 60) * 60;
+    const totalH = (endHour - startHour) * PX_PER_MIN;
+
+    const hours = [];
+    for (let m = startHour; m <= endHour; m += 60) hours.push(m);
+
+    // Greedy column packing: place each set in the first free column.
+    const colEnds = [];
+    items.forEach(it => {
+      let col = colEnds.findIndex(end => end <= it.st);
+      if (col === -1) { col = colEnds.length; colEnds.push(it.en); }
+      else colEnds[col] = it.en;
+      it.col = col;
+    });
+    // Within each overlap cluster, share the width across its columns.
+    for (let i = 0; i < items.length;) {
+      let j = i, clusterEnd = items[i].en;
+      while (j + 1 < items.length && items[j + 1].st < clusterEnd) {
+        j++; clusterEnd = Math.max(clusterEnd, items[j].en);
+      }
+      const cols = Math.max(...items.slice(i, j + 1).map(x => x.col)) + 1;
+      for (let k = i; k <= j; k++) items[k].cols = cols;
+      i = j + 1;
+    }
+
+    const hourLabel = (m) => String(Math.floor((m % 1440) / 60)).padStart(2, '0') + ':00';
+
+    grid = (
+      <div style={{ position: 'relative', height: totalH, marginTop: 6 }}>
+        {hours.map(m => {
+          const top = (m - startHour) * PX_PER_MIN;
+          return (
+            <div key={m} aria-hidden="true">
+              <div style={{ position: 'absolute', left: GUTTER, right: 0, top, borderTop: `1px solid ${line}` }} />
+              <span style={{ position: 'absolute', left: 0, top: top - 7, ...mono, fontSize: 11, color: dim }}>{hourLabel(m)}</span>
+            </div>
+          );
+        })}
+        {items.map(({ s, st, en, col, cols }) => {
+          const top = (st - startHour) * PX_PER_MIN;
+          const h = Math.max((en - st) * PX_PER_MIN, MIN_H);
+          const stageColor = STAGES[s.stage]?.color || gold;
+          const clash = cols > 1;
+          const sel = s.id === selectedId;
+          return (
+            <button key={s.id} aria-pressed={sel}
+              aria-label={`${s.name}, ${timeLabel(s)}, ${s.stage}${clash ? ', overlaps another pick' : ''}`}
+              onClick={() => setSelectedId(sel ? null : s.id)}
+              style={{
+                position: 'absolute', top,
+                left: `calc(${GUTTER}px + ${col} * (100% - ${GUTTER}px) / ${cols} + 2px)`,
+                width: `calc((100% - ${GUTTER}px) / ${cols} - 4px)`,
+                height: h - 2, overflow: 'hidden', textAlign: 'left', cursor: 'pointer',
+                backgroundColor: surf, color: txt, borderRadius: 10, padding: '7px 9px',
+                border: sel ? `2px solid ${gold}` : clash ? `1px solid ${clashRed}` : `1px solid ${line}`,
+                borderLeft: `4px solid ${stageColor}`,
+                boxShadow: sel ? `0 0 0 2px ${gold}55` : 'none', ...sans,
+              }}>
+              <div style={{ fontSize: 15, fontWeight: 700, lineHeight: 1.1, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{s.name}</div>
+              <div style={{ ...mono, fontSize: 11, fontWeight: 700, color: clash ? clashRed : gold, marginTop: 3 }}>{s.start}–{s.end}</div>
+              <div style={{ ...mono, fontSize: 10, color: dim, marginTop: 2, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{s.stage}</div>
+            </button>
+          );
+        })}
+      </div>
+    );
+  }
+
+  return (
+    <div>
+      {grid}
+      {untimed.map(s => (
+        <div key={s.id} style={{ marginTop: 8, backgroundColor: surf, border: `1px solid ${line}`, borderRadius: 10, padding: '10px 12px' }}>
+          <div style={{ fontSize: 15, fontWeight: 700, color: txt, ...sans }}>{s.name}</div>
+          <div style={{ ...mono, fontSize: 11, color: dim, marginTop: 3 }}>{s.stage} · Set time TBA</div>
+        </div>
+      ))}
+      {selected && (
+        <div role="region" aria-label="Remove set from plan"
+          style={{ marginTop: 14, padding: 12, borderRadius: 12, backgroundColor: surf, border: `1px solid ${clashRed}` }}>
+          <div style={{ fontSize: 14, color: dim, marginBottom: 10, ...sans }}>
+            Remove <strong style={{ color: txt }}>{selected.name}</strong> from your plan?
+          </div>
+          <div style={{ display: 'flex', gap: 10 }}>
+            <button onClick={() => { onRemove(selected); setSelectedId(null); }}
+              style={{ flex: 2, minHeight: 48, borderRadius: 10, border: 'none', backgroundColor: clashRed, color: '#1a0c0c', ...sans, fontSize: 15, fontWeight: 700, cursor: 'pointer' }}>
+              ✕ Remove from plan
+            </button>
+            <button onClick={() => setSelectedId(null)}
+              style={{ flex: 1, minHeight: 48, borderRadius: 10, border: `1px solid ${line}`, backgroundColor: 'transparent', color: txt, ...sans, fontSize: 15, fontWeight: 700, cursor: 'pointer' }}>
+              Cancel
+            </button>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function PartyMode({ activePerson, setActivePerson, activeDay, setActiveDay, picks, togglePick, onExit }) {
   // The clock only shows HH:MM, so tick once per minute (aligned to the
   // boundary) instead of every second — far less re-rendering / battery use.
   const [now, setNow] = useState(() => new Date());
@@ -887,6 +1009,7 @@ function PartyMode({ activePerson, setActivePerson, activeDay, setActiveDay, pic
   }
   const later = plan.filter(s => !currents.includes(s) && s !== nextUp);
   const dayLabel = DAYS.find(d => d.id === activeDay)?.label || '';
+  const onRemove = (s) => togglePick(s.id, activePerson);
 
   const card = (s, badge, badgeColor, big) => {
     const stageColor = STAGES[s.stage]?.color || gold;
@@ -988,7 +1111,7 @@ function PartyMode({ activePerson, setActivePerson, activeDay, setActiveDay, pic
             {later.length > 0 && (
               <>
                 <div style={{ ...mono, fontSize: 11, color: dim, letterSpacing: '0.18em', textTransform: 'uppercase', marginTop: 6 }}>Later</div>
-                {later.map(s => card(s, null, gold, false))}
+                <LaterTimeline sets={later} onRemove={onRemove} surf={surf} line={line} txt={txt} dim={dim} gold={gold} />
               </>
             )}
           </div>
