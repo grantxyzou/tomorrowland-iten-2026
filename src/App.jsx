@@ -3,6 +3,7 @@ import { Analytics } from '@vercel/analytics/react';
 import { LAST_UPDATED } from './data/trip.js';
 import ItineraryTab from './components/ItineraryTab.jsx';
 import LineupTab from './components/LineupTab.jsx';
+import ErrorBoundary from './components/ErrorBoundary.jsx';
 
 const TABS = [
   { id: 'itinerary', label: 'Itinerary' },
@@ -46,6 +47,9 @@ export default function App() {
 
   return (
     <div style={{ minHeight: '100dvh', color: ink, position: 'relative' }}>
+
+      {/* Single page-level heading for screen readers / document outline. */}
+      <h1 className="sr-only">Tomorrowland 2026 trip planner</h1>
 
       {/* ── Crossfading theme backgrounds ───────────────────────
           Two viewport-fixed layers (light desert + dark Cage) whose
@@ -132,8 +136,11 @@ export default function App() {
         style={{ maxWidth: 680, margin: '0 auto', padding: '24px max(16px, env(safe-area-inset-right)) calc(64px + env(safe-area-inset-bottom)) max(16px, env(safe-area-inset-left))' }}
       >
         <div key={activeTab} className="fx-fade" style={{ opacity: 1 }}>
-          {activeTab === 'itinerary' && <ItineraryTab />}
-          {activeTab === 'lineup'    && <LineupTab    />}
+          {/* Keyed by tab so switching tabs resets a crashed boundary. */}
+          <ErrorBoundary key={activeTab}>
+            {activeTab === 'itinerary' && <ItineraryTab />}
+            {activeTab === 'lineup'    && <LineupTab    />}
+          </ErrorBoundary>
         </div>
       </main>
 
