@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Headphones, Clock, PencilSimple, Check, X, CaretRight } from '@phosphor-icons/react';
-import { mono, display, muted, rule, paper, ink, tmrwBg, tmrwGold, bodyMuted, STAGE_ORDER } from '../theme.js';
+import { Headphones, Clock, PencilSimple, Check, X, CaretRight, ArrowCounterClockwise } from '@phosphor-icons/react';
+import { mono, sans, display, muted, rule, paper, ink, tmrwBg, tmrwGold, bodyMuted, STAGE_ORDER } from '../theme.js';
 import { STAGES, sets as BASELINE } from '../../../data/lineup.js';
 import { normSpan } from '../time.js';
 import ArtistRow from '../ArtistRow.jsx';
@@ -33,6 +33,14 @@ export default function TimeView({
   // Switching day (or leaving edit mode) abandons in-progress edits, so you
   // never accidentally publish edits made while looking at a different day.
   useEffect(() => { setDraft({}); setSelectedId(null); }, [activeDay, editTimes]);
+
+  // Close the editor sheet on Escape.
+  useEffect(() => {
+    if (!selectedId) return;
+    const onKey = (e) => { if (e.key === 'Escape') setSelectedId(null); };
+    document.addEventListener('keydown', onKey);
+    return () => document.removeEventListener('keydown', onKey);
+  }, [selectedId]);
 
   const setMap = useMemo(() => new Map(daySets.map(s => [s.id, s])), [daySets]);
 
@@ -121,7 +129,7 @@ export default function TimeView({
         display: 'inline-flex', alignItems: 'center', gap: 6,
       }}>
       {editTimes ? <X size={13} weight="bold" /> : <PencilSimple size={13} weight="bold" />}
-      {editTimes ? 'Done' : 'Edit times'}
+      {editTimes ? 'Cancel' : 'Edit times'}
     </button>
   );
 
@@ -170,10 +178,9 @@ export default function TimeView({
                 </button>
                 {open && (
                   <StageCalendar
-                    stage={stage} sets={stageSets} draft={draft} official={OFFICIAL}
+                    stage={stage} sets={stageSets} draft={draft}
                     winLo={winLo} winHi={winHi} pxPerMin={PX_PER_MIN}
-                    selectedId={selectedId} onSelect={setSelectedId}
-                    onSet={onSet} onField={onField} onReset={onReset}
+                    selectedId={selectedId} onSelect={setSelectedId} onSet={onSet}
                   />
                 )}
               </section>
@@ -188,7 +195,7 @@ export default function TimeView({
               {pendingIds.size} change{pendingIds.size === 1 ? '' : 's'} ready
             </span>
             <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-              <button type="button" onClick={() => { setDraft({}); setSelectedId(null); }} disabled={publishing}
+              <button type="button" onClick={() => setEditTimes(false)} disabled={publishing}
                 style={{ minHeight: 40, padding: '0 12px', border: 'none', background: 'none', color: muted, ...mono, fontSize: 11, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', cursor: 'pointer' }}>
                 Cancel
               </button>
@@ -199,6 +206,54 @@ export default function TimeView({
             </div>
           </div>
         )}
+
+        {/* Tap-to-edit action sheet (PartyMode-style) — type exact times for the
+            selected set; edits stay staged until you publish. */}
+        {(() => {
+          const sel = selectedId ? setMap.get(selectedId) : null;
+          if (!sel) return null;
+          const v = draft[sel.id] ?? { start: sel.start || null, end: sel.end || null };
+          const off = OFFICIAL.get(sel.id);
+          const changed = off && !same(v, off);
+          const stageColor = STAGES[sel.stage]?.color || tmrwGold;
+          const inp = { ...mono, fontSize: 18, color: ink, backgroundColor: tmrwBg, border: `1px solid ${rule}`, borderRadius: 10, padding: '10px 12px', minHeight: 48, colorScheme: 'dark', width: '100%', boxSizing: 'border-box', marginTop: 6 };
+          const lbl = { flex: 1, minWidth: 110, ...mono, fontSize: 10, color: muted, letterSpacing: '0.12em', textTransform: 'uppercase', display: 'block' };
+          return (
+            <>
+              <div onClick={() => setSelectedId(null)} aria-hidden="true" className="fx-fade"
+                style={{ position: 'fixed', inset: 0, zIndex: 58, backgroundColor: 'rgba(6,9,24,0.62)' }} />
+              <div role="region" aria-label={`Edit set time for ${sel.name}`} className="fx-fade"
+                style={{ position: 'fixed', left: 0, right: 0, bottom: 0, zIndex: 60, backgroundColor: paper, borderTop: `3px solid ${myColor}`, borderTopLeftRadius: 18, borderTopRightRadius: 18, boxShadow: '0 -10px 40px rgba(6,9,24,0.6)', padding: '16px max(16px, env(safe-area-inset-right)) calc(16px + env(safe-area-inset-bottom)) max(16px, env(safe-area-inset-left))' }}>
+                <div style={{ maxWidth: 520, margin: '0 auto' }}>
+                  <div style={{ ...sans, fontSize: 20, fontWeight: 700, color: ink, lineHeight: 1.15 }}>{sel.name}</div>
+                  <div style={{ ...mono, fontSize: 12, color: muted, marginTop: 6, display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+                    <span aria-hidden="true" style={{ width: 8, height: 8, borderRadius: 2, backgroundColor: stageColor }} /> {sel.stage}
+                  </div>
+                  <div style={{ display: 'flex', gap: 12, marginTop: 16 }}>
+                    <label style={lbl}>Start
+                      <input type="time" value={v.start || ''} onChange={(e) => onField(sel.id, 'start', e.target.value)} style={inp} />
+                    </label>
+                    <label style={lbl}>End
+                      <input type="time" value={v.end || ''} onChange={(e) => onField(sel.id, 'end', e.target.value)} style={inp} />
+                    </label>
+                  </div>
+                  <div style={{ display: 'flex', gap: 10, marginTop: 18, alignItems: 'center' }}>
+                    {changed && (
+                      <button type="button" onClick={() => onReset(sel.id)}
+                        style={{ minHeight: 48, padding: '0 14px', borderRadius: 12, border: `1px solid ${rule}`, backgroundColor: 'transparent', color: bodyMuted, ...mono, fontSize: 11, fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase', cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+                        <ArrowCounterClockwise size={15} weight="bold" /> Official
+                      </button>
+                    )}
+                    <button type="button" onClick={() => setSelectedId(null)}
+                      style={{ flex: 1, minHeight: 48, borderRadius: 12, border: 'none', backgroundColor: myColor, color: tmrwBg, ...sans, fontSize: 16, fontWeight: 700, cursor: 'pointer' }}>
+                      Done
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </>
+          );
+        })()}
       </div>
     );
   }

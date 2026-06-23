@@ -1,38 +1,52 @@
 import { memo, useRef, useState } from 'react';
-import { ArrowCounterClockwise, X, Clock } from '@phosphor-icons/react';
+import { Clock, DotsThree } from '@phosphor-icons/react';
 import { STAGES } from '../../data/lineup.js';
 import { mono, sans, ink, muted, rule, tmrwBg, tmrwGold, bodyMuted } from './theme.js';
 import { normSpan, minToLabel, snap } from './time.js';
 
-const norm = (v) => v || null;
-const same = (a, b) => norm(a?.start) === norm(b?.start) && norm(a?.end) === norm(b?.end);
 const hasTime = (v) => Boolean(v?.start && v?.end);
+const HOLD_MS = 350; // press-and-hold before a block arms for dragging (touch)
 
-// One draggable block on the stage's vertical time axis. Drag the body to move
-// the set (keeping its duration); drag the top/bottom grip to change start/end.
-// All movement snaps to 5 min and is clamped to the day window. Tapping (no
-// drag) selects the block to reveal its typed editor.
+// One block on the stage's vertical time axis. TAP opens the time editor sheet;
+// PRESS-AND-HOLD arms dragging — the body moves the set (keeping its duration),
+// the top/bottom grip changes start/end. While charging, the block visibly
+// compresses + rings; once armed it lifts. Movement before the hold completes
+// is treated as a page scroll, so the timetable still scrolls normally.
 const CalBlock = memo(function CalBlock({ set, value, color, winLo, winHi, pxPerMin, selected, onSet, onSelect }) {
   const drag = useRef(null);
-  // `grab` is the lift state the instant you press (kind tells body vs edge), so
-  // there's immediate "I've got it" feedback before any movement.
-  const [grab, setGrab] = useState(null);
+  const elRef = useRef(null);
+  const [phase, setPhase] = useState('idle'); // 'idle' | 'charging' | 'armed'
   const [st, en] = normSpan({ start: value.start, end: value.end });
   const top = (st - winLo) * pxPerMin;
-  const height = Math.max((en - st) * pxPerMin, 22);
+  const height = Math.max((en - st) * pxPerMin, 26);
 
+  const arm = () => {
+    const d = drag.current;
+    if (!d || d.scrolling) return;
+    d.armed = true;
+    d.startY = d.lastY; // measure the drag from where the finger actually is now
+    setPhase('armed');
+    if (navigator.vibrate) { try { navigator.vibrate(12); } catch {} }
+    try { elRef.current?.setPointerCapture(d.pointerId); } catch {}
+  };
   const begin = (kind) => (e) => {
     e.stopPropagation();
-    drag.current = { kind, startY: e.clientY, st0: st, en0: en, moved: false };
-    setGrab(kind);
-    if (navigator.vibrate) { try { navigator.vibrate(10); } catch {} } // light haptic on grab
-    try { e.currentTarget.setPointerCapture(e.pointerId); } catch {}
+    const mouse = e.pointerType === 'mouse';
+    drag.current = { kind, downY: e.clientY, startY: e.clientY, lastY: e.clientY, st0: st, en0: en, moved: false, armed: mouse, scrolling: false, pointerId: e.pointerId, timer: null };
+    if (mouse) { setPhase('armed'); try { e.currentTarget.setPointerCapture(e.pointerId); } catch {} }
+    else { setPhase('charging'); drag.current.timer = setTimeout(arm, HOLD_MS); }
   };
   const move = (e) => {
     const d = drag.current;
     if (!d) return;
+    d.lastY = e.clientY;
+    if (!d.armed) {
+      if (Math.abs(e.clientY - d.downY) > 8) { d.scrolling = true; clearTimeout(d.timer); if (phase !== 'idle') setPhase('idle'); }
+      return;
+    }
+    e.preventDefault();
     const dy = e.clientY - d.startY;
-    if (Math.abs(dy) > 4) d.moved = true;
+    if (Math.abs(dy) > 3) d.moved = true;
     const dMin = snap(dy / pxPerMin, 5);
     let ns = d.st0, ne = d.en0;
     if (d.kind === 'move') {
@@ -46,45 +60,51 @@ const CalBlock = memo(function CalBlock({ set, value, color, winLo, winHi, pxPer
     }
     onSet(set.id, { start: minToLabel(ns % 1440), end: minToLabel(ne % 1440) });
   };
-  const end = (e) => {
+  const finish = (e, cancelled) => {
     const d = drag.current;
     drag.current = null;
-    setGrab(null);
+    if (d) clearTimeout(d.timer);
+    setPhase('idle');
     try { e.currentTarget.releasePointerCapture(e.pointerId); } catch {}
-    if (d && !d.moved) onSelect(selected ? null : set.id);
-  };
-  const cancel = (e) => {
-    drag.current = null;
-    setGrab(null);
-    try { e.currentTarget.releasePointerCapture(e.pointerId); } catch {}
+    if (cancelled || !d) return;
+    // A tap, or a hold that never actually dragged, opens the editor sheet.
+    if (!d.moved && !d.scrolling) onSelect(selected ? null : set.id);
   };
 
-  const lifted = grab === 'move';
-  const grip = { position: 'absolute', left: 0, right: 0, height: 16, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'ns-resize', touchAction: 'none' };
-  const gripBar = (edge) => ({ width: 26, height: 3, borderRadius: 2, backgroundColor: grab === edge ? '#fff' : `${color}cc`, boxShadow: grab === edge ? `0 0 6px ${color}` : 'none' });
+  const armed = phase === 'armed';
+  const charging = phase === 'charging';
+  const grip = { position: 'absolute', left: 0, right: 0, height: 18, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'ns-resize' };
+  const gripBar = (edge) => ({ width: 28, height: 3, borderRadius: 2, backgroundColor: armed && drag.current?.kind === edge ? '#fff' : `${color}cc`, boxShadow: armed && drag.current?.kind === edge ? `0 0 6px ${color}` : 'none' });
 
   return (
     <div
-      onPointerDown={begin('move')} onPointerMove={move} onPointerUp={end} onPointerCancel={cancel}
-      role="button" aria-label={`${set.name}, ${value.start}–${value.end}. Drag to reschedule, or tap to type the time.`}
+      ref={elRef}
+      onPointerDown={begin('move')} onPointerMove={move} onPointerUp={(e) => finish(e, false)} onPointerCancel={(e) => finish(e, true)}
+      onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onSelect(selected ? null : set.id); } }}
+      role="button" tabIndex={0}
+      aria-label={`${set.name}, ${value.start}–${value.end}. Tap to edit the time, or press and hold to drag.`}
       style={{
         position: 'absolute', top, height, left: 4, right: 4, boxSizing: 'border-box',
-        backgroundColor: grab ? `${color}59` : `${color}33`, borderLeft: `${grab ? 4 : 3}px solid ${color}`, borderRadius: 6,
-        boxShadow: grab ? `0 10px 24px rgba(0,0,0,0.55), 0 0 0 2px ${color}` : selected ? `0 0 0 2px ${color}, 0 4px 14px rgba(0,0,0,0.4)` : 'none',
-        transform: lifted ? 'scale(1.03)' : 'none',
-        transition: 'transform var(--dur-fast) var(--ease-out), box-shadow var(--dur-fast) var(--ease-out), background-color var(--dur-fast) var(--ease-out)',
-        zIndex: grab ? 5 : selected ? 2 : 1,
-        cursor: grab ? 'grabbing' : 'grab', touchAction: 'none', overflow: 'hidden', userSelect: 'none',
+        backgroundColor: armed ? `${color}59` : `${color}33`, borderLeft: `${armed ? 4 : 3}px solid ${color}`, borderRadius: 6,
+        boxShadow: armed ? `0 12px 26px rgba(0,0,0,0.55), 0 0 0 2px ${color}`
+          : charging ? `0 0 0 3px ${color}`
+          : selected ? `0 0 0 2px ${color}, 0 4px 14px rgba(0,0,0,0.4)` : 'none',
+        transform: armed ? 'scale(1.05)' : charging ? 'scale(0.97)' : 'none',
+        transition: `transform ${charging ? HOLD_MS : 140}ms ease-out, box-shadow ${charging ? HOLD_MS : 140}ms ease-out, background-color 140ms ease-out`,
+        zIndex: armed ? 6 : charging ? 5 : selected ? 2 : 1,
+        cursor: armed ? 'grabbing' : 'grab',
+        touchAction: armed ? 'none' : 'pan-y', overflow: 'hidden', userSelect: 'none',
         display: 'flex', flexDirection: 'column', justifyContent: 'center', padding: '0 10px',
       }}>
+      <DotsThree aria-hidden="true" size={16} weight="bold" color={armed ? ink : `${color}cc`} style={{ position: 'absolute', top: 3, right: 5 }} />
       {/* top resize grip — change start */}
-      <div onPointerDown={begin('start')} onPointerMove={move} onPointerUp={end} onPointerCancel={cancel} data-handle="start" style={{ ...grip, top: 0 }} aria-hidden="true">
+      <div onPointerDown={begin('start')} onPointerMove={move} onPointerUp={(e) => finish(e, false)} onPointerCancel={(e) => finish(e, true)} data-handle="start" style={{ ...grip, top: 0, touchAction: armed ? 'none' : 'pan-y' }} aria-hidden="true">
         <span style={gripBar('start')} />
       </div>
-      <div style={{ ...sans, fontSize: 12, fontWeight: 700, color: ink, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{set.name}</div>
-      <div style={{ ...mono, fontSize: 10, color: grab ? ink : bodyMuted, marginTop: 1 }}>{value.start} – {value.end}</div>
+      <div style={{ ...sans, fontSize: 12, fontWeight: 700, color: ink, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', paddingRight: 14 }}>{set.name}</div>
+      <div style={{ ...mono, fontSize: 10, color: armed ? ink : bodyMuted, marginTop: 1 }}>{value.start} – {value.end}</div>
       {/* bottom resize grip — change end */}
-      <div onPointerDown={begin('end')} onPointerMove={move} onPointerUp={end} onPointerCancel={cancel} data-handle="end" style={{ ...grip, bottom: 0 }} aria-hidden="true">
+      <div onPointerDown={begin('end')} onPointerMove={move} onPointerUp={(e) => finish(e, false)} onPointerCancel={(e) => finish(e, true)} data-handle="end" style={{ ...grip, bottom: 0, touchAction: armed ? 'none' : 'pan-y' }} aria-hidden="true">
         <span style={gripBar('end')} />
       </div>
     </div>
@@ -92,12 +112,10 @@ const CalBlock = memo(function CalBlock({ set, value, color, winLo, winHi, pxPer
 });
 
 // The per-stage vertical calendar shown when a stage section is expanded in the
-// Time view's edit mode. Renders the typed editor for the selected set, the
-// time-axis grid with draggable blocks, and a list of any sets without a time
-// yet (assign one via the typed inputs and they join the calendar).
+// Time view's edit mode: the time-axis grid with draggable blocks, plus any sets
+// without a time yet (tap one to set its time via the editor sheet).
 export default function StageCalendar({
-  stage, sets, draft, official, winLo, winHi, pxPerMin,
-  selectedId, onSelect, onSet, onField, onReset,
+  stage, sets, draft, winLo, winHi, pxPerMin, selectedId, onSelect, onSet,
 }) {
   const color = STAGES[stage]?.color || tmrwGold;
   const valueOf = (s) => draft[s.id] ?? { start: s.start || null, end: s.end || null };
@@ -106,46 +124,15 @@ export default function StageCalendar({
   const tba = sets.filter(s => !hasTime(valueOf(s)));
   const height = (winHi - winLo) * pxPerMin;
 
-  // Hour gridlines across the day window.
   const ticks = [];
   for (let t = Math.ceil(winLo / 60) * 60; t <= winHi; t += 60) ticks.push(t);
 
-  const selected = selectedId && sets.some(s => s.id === selectedId) ? sets.find(s => s.id === selectedId) : null;
-  const selVal = selected ? valueOf(selected) : null;
-  const selChanged = selected && official.get(selected.id) && !same(selVal, official.get(selected.id));
-
-  const timeInput = {
-    ...mono, fontSize: 13, color: ink, backgroundColor: tmrwBg,
-    border: `1px solid ${rule}`, borderRadius: 6, padding: '7px 8px', minHeight: 40, colorScheme: 'dark', width: 96,
-  };
-
   return (
     <div style={{ borderTop: `1px solid ${rule}`, padding: 12 }}>
-      {/* Typed editor for the selected set — the precise / accessible path. */}
-      {selected ? (
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', marginBottom: 12, padding: '10px 12px', borderRadius: 8, border: `1px solid ${color}66`, backgroundColor: tmrwBg }}>
-          <span style={{ ...sans, fontSize: 13, fontWeight: 700, color: ink, flex: '1 1 100px', minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{selected.name}</span>
-          <input type="time" aria-label={`${selected.name} start time`} value={selVal.start || ''} onChange={(e) => onField(selected.id, 'start', e.target.value)} style={timeInput} />
-          <span aria-hidden="true" style={{ color: muted }}>–</span>
-          <input type="time" aria-label={`${selected.name} end time`} value={selVal.end || ''} onChange={(e) => onField(selected.id, 'end', e.target.value)} style={timeInput} />
-          {selChanged && (
-            <button type="button" onClick={() => onReset(selected.id)} aria-label={`Reset ${selected.name} to the official time`} title="Reset to official time"
-              style={{ minWidth: 40, minHeight: 40, display: 'flex', alignItems: 'center', justifyContent: 'center', border: 'none', background: 'none', cursor: 'pointer', color: muted }}>
-              <ArrowCounterClockwise size={16} weight="bold" />
-            </button>
-          )}
-          <button type="button" onClick={() => onSelect(null)} aria-label="Done editing this set"
-            style={{ minWidth: 40, minHeight: 40, display: 'flex', alignItems: 'center', justifyContent: 'center', border: 'none', background: 'none', cursor: 'pointer', color: muted }}>
-            <X size={16} weight="bold" />
-          </button>
-        </div>
-      ) : (
-        <div style={{ ...mono, fontSize: 10, color: muted, letterSpacing: '0.04em', marginBottom: 10 }}>
-          Drag a set to reschedule · drag its ends to trim · tap to type
-        </div>
-      )}
+      <div style={{ ...mono, fontSize: 10, color: muted, letterSpacing: '0.04em', marginBottom: 10 }}>
+        Tap a set to edit its time · press &amp; hold to drag
+      </div>
 
-      {/* Time-axis grid */}
       {placed.length > 0 && (
         <div style={{ position: 'relative', height, marginLeft: 44 }}>
           {ticks.map(t => {
@@ -164,25 +151,20 @@ export default function StageCalendar({
         </div>
       )}
 
-      {/* Sets without a time yet — assign one and they appear on the calendar. */}
+      {/* Sets without a time yet — tap to assign one; they then join the grid. */}
       {tba.length > 0 && (
         <div style={{ marginTop: placed.length > 0 ? 16 : 0 }}>
           <div style={{ ...mono, fontSize: 9, letterSpacing: '0.08em', textTransform: 'uppercase', color: muted, marginBottom: 6, display: 'inline-flex', alignItems: 'center', gap: 5 }}>
             <Clock size={12} weight="regular" /> No set time yet
           </div>
-          {tba.map(s => {
-            const v = valueOf(s);
-            return (
-              <div key={s.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, flexWrap: 'wrap', padding: '8px 0' }}>
-                <span style={{ ...sans, fontSize: 13, fontWeight: 600, color: ink, flex: '1 1 100px', minWidth: 0 }}>{s.name}</span>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                  <input type="time" aria-label={`${s.name} start time`} value={v.start || ''} onChange={(e) => onField(s.id, 'start', e.target.value)} style={timeInput} />
-                  <span aria-hidden="true" style={{ color: muted }}>–</span>
-                  <input type="time" aria-label={`${s.name} end time`} value={v.end || ''} onChange={(e) => onField(s.id, 'end', e.target.value)} style={timeInput} />
-                </div>
-              </div>
-            );
-          })}
+          {tba.map(s => (
+            <button key={s.id} type="button" onClick={() => onSelect(s.id)}
+              aria-label={`${s.name}, set time TBA. Tap to set a time.`}
+              style={{ width: '100%', textAlign: 'left', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, padding: '10px 12px', minHeight: 44, borderRadius: 8, border: `1px solid ${rule}`, backgroundColor: tmrwBg, cursor: 'pointer', marginBottom: 6 }}>
+              <span style={{ ...sans, fontSize: 13, fontWeight: 600, color: ink, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{s.name}</span>
+              <span style={{ ...mono, fontSize: 10, color: muted, flexShrink: 0 }}>Set time</span>
+            </button>
+          ))}
         </div>
       )}
     </div>
