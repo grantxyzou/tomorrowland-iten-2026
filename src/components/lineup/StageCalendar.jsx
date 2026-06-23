@@ -1,4 +1,4 @@
-import { memo, useRef } from 'react';
+import { memo, useRef, useState } from 'react';
 import { ArrowCounterClockwise, X, Clock } from '@phosphor-icons/react';
 import { STAGES } from '../../data/lineup.js';
 import { mono, sans, ink, muted, rule, tmrwBg, tmrwGold, bodyMuted } from './theme.js';
@@ -14,6 +14,9 @@ const hasTime = (v) => Boolean(v?.start && v?.end);
 // drag) selects the block to reveal its typed editor.
 const CalBlock = memo(function CalBlock({ set, value, color, winLo, winHi, pxPerMin, selected, onSet, onSelect }) {
   const drag = useRef(null);
+  // `grab` is the lift state the instant you press (kind tells body vs edge), so
+  // there's immediate "I've got it" feedback before any movement.
+  const [grab, setGrab] = useState(null);
   const [st, en] = normSpan({ start: value.start, end: value.end });
   const top = (st - winLo) * pxPerMin;
   const height = Math.max((en - st) * pxPerMin, 22);
@@ -21,6 +24,8 @@ const CalBlock = memo(function CalBlock({ set, value, color, winLo, winHi, pxPer
   const begin = (kind) => (e) => {
     e.stopPropagation();
     drag.current = { kind, startY: e.clientY, st0: st, en0: en, moved: false };
+    setGrab(kind);
+    if (navigator.vibrate) { try { navigator.vibrate(10); } catch {} } // light haptic on grab
     try { e.currentTarget.setPointerCapture(e.pointerId); } catch {}
   };
   const move = (e) => {
@@ -44,33 +49,43 @@ const CalBlock = memo(function CalBlock({ set, value, color, winLo, winHi, pxPer
   const end = (e) => {
     const d = drag.current;
     drag.current = null;
+    setGrab(null);
     try { e.currentTarget.releasePointerCapture(e.pointerId); } catch {}
     if (d && !d.moved) onSelect(selected ? null : set.id);
   };
+  const cancel = (e) => {
+    drag.current = null;
+    setGrab(null);
+    try { e.currentTarget.releasePointerCapture(e.pointerId); } catch {}
+  };
 
+  const lifted = grab === 'move';
   const grip = { position: 'absolute', left: 0, right: 0, height: 16, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'ns-resize', touchAction: 'none' };
-  const gripBar = { width: 26, height: 3, borderRadius: 2, backgroundColor: `${color}cc` };
+  const gripBar = (edge) => ({ width: 26, height: 3, borderRadius: 2, backgroundColor: grab === edge ? '#fff' : `${color}cc`, boxShadow: grab === edge ? `0 0 6px ${color}` : 'none' });
 
   return (
     <div
-      onPointerDown={begin('move')} onPointerMove={move} onPointerUp={end}
+      onPointerDown={begin('move')} onPointerMove={move} onPointerUp={end} onPointerCancel={cancel}
       role="button" aria-label={`${set.name}, ${value.start}–${value.end}. Drag to reschedule, or tap to type the time.`}
       style={{
         position: 'absolute', top, height, left: 4, right: 4, boxSizing: 'border-box',
-        backgroundColor: `${color}33`, borderLeft: `3px solid ${color}`, borderRadius: 6,
-        boxShadow: selected ? `0 0 0 2px ${color}, 0 4px 14px rgba(0,0,0,0.4)` : 'none',
-        cursor: 'grab', touchAction: 'none', overflow: 'hidden', userSelect: 'none',
+        backgroundColor: grab ? `${color}59` : `${color}33`, borderLeft: `${grab ? 4 : 3}px solid ${color}`, borderRadius: 6,
+        boxShadow: grab ? `0 10px 24px rgba(0,0,0,0.55), 0 0 0 2px ${color}` : selected ? `0 0 0 2px ${color}, 0 4px 14px rgba(0,0,0,0.4)` : 'none',
+        transform: lifted ? 'scale(1.03)' : 'none',
+        transition: 'transform var(--dur-fast) var(--ease-out), box-shadow var(--dur-fast) var(--ease-out), background-color var(--dur-fast) var(--ease-out)',
+        zIndex: grab ? 5 : selected ? 2 : 1,
+        cursor: grab ? 'grabbing' : 'grab', touchAction: 'none', overflow: 'hidden', userSelect: 'none',
         display: 'flex', flexDirection: 'column', justifyContent: 'center', padding: '0 10px',
       }}>
       {/* top resize grip — change start */}
-      <div onPointerDown={begin('start')} onPointerMove={move} onPointerUp={end} data-handle="start" style={{ ...grip, top: 0 }} aria-hidden="true">
-        <span style={gripBar} />
+      <div onPointerDown={begin('start')} onPointerMove={move} onPointerUp={end} onPointerCancel={cancel} data-handle="start" style={{ ...grip, top: 0 }} aria-hidden="true">
+        <span style={gripBar('start')} />
       </div>
       <div style={{ ...sans, fontSize: 12, fontWeight: 700, color: ink, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{set.name}</div>
-      <div style={{ ...mono, fontSize: 10, color: bodyMuted, marginTop: 1 }}>{value.start} – {value.end}</div>
+      <div style={{ ...mono, fontSize: 10, color: grab ? ink : bodyMuted, marginTop: 1 }}>{value.start} – {value.end}</div>
       {/* bottom resize grip — change end */}
-      <div onPointerDown={begin('end')} onPointerMove={move} onPointerUp={end} data-handle="end" style={{ ...grip, bottom: 0 }} aria-hidden="true">
-        <span style={gripBar} />
+      <div onPointerDown={begin('end')} onPointerMove={move} onPointerUp={end} onPointerCancel={cancel} data-handle="end" style={{ ...grip, bottom: 0 }} aria-hidden="true">
+        <span style={gripBar('end')} />
       </div>
     </div>
   );
