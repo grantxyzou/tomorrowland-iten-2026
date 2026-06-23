@@ -55,6 +55,25 @@ body {
 button { transition: transform var(--dur-press) var(--ease-out); }
 button:active { transform: scale(0.97); }
 
+/* Kill the 300ms tap delay and stop double-tap text selection on controls
+   (we provide our own press/focus feedback). */
+button, [role="button"], [role="tab"], [role="option"] {
+  touch-action: manipulation;
+  -webkit-user-select: none;
+  user-select: none;
+}
+
+/* Visually hidden, but available to screen readers (page h1, etc.). */
+.sr-only {
+  position: absolute;
+  width: 1px; height: 1px;
+  padding: 0; margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
 /* Opacity fade-in for async/swapped content (weather pills, images,
    crossfades). Newly-mounted elements start transparent and ease in. */
 .fx-fade { transition: opacity var(--dur-base) var(--ease-out); }

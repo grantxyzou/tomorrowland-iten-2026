@@ -136,15 +136,23 @@ export function usePicks() {
     });
   }, [bulkSet]);
 
-  // Initial load + polling + refetch on tab focus.
+  // Initial load + visibility-aware polling. The 5s poll pauses while the tab is
+  // hidden (saves battery + network on a phone in your pocket); on returning we
+  // refetch immediately and resume — so it still feels live.
   useEffect(() => {
+    let id = null;
+    const start = () => { if (id == null) id = setInterval(fetchPicks, POLL_MS); };
+    const stop  = () => { if (id != null) { clearInterval(id); id = null; } };
+    const onVisible = () => {
+      if (document.visibilityState === 'visible') { fetchPicks(); start(); }
+      else stop();
+    };
     fetchPicks();
-    const id = setInterval(fetchPicks, POLL_MS);
-    const onVisible = () => { if (document.visibilityState === 'visible') fetchPicks(); };
+    if (document.visibilityState === 'visible') start();
     document.addEventListener('visibilitychange', onVisible);
     window.addEventListener('focus', fetchPicks);
     return () => {
-      clearInterval(id);
+      stop();
       document.removeEventListener('visibilitychange', onVisible);
       window.removeEventListener('focus', fetchPicks);
     };
