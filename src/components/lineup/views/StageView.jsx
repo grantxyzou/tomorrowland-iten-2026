@@ -1,0 +1,85 @@
+import { STAGES } from '../../../data/lineup.js';
+import { mono, sans, display, ink, muted, rule, paper, tmrwBg, tmrwGold, STAGE_ORDER } from '../theme.js';
+import ArtistRow from '../ArtistRow.jsx';
+import { StageSpotify } from '../SpotifyExport.jsx';
+
+// STAGE (browse) view — count + search + expand-all controls, then a collapsible
+// section per stage. Your picks highlight inline for the active person.
+export default function StageView({
+  groups, browseLiveCount, dayCount, forceOpen, search, setSearch,
+  searchOpen, setSearchOpen, searchPresent, openStages, setOpenStages,
+  toggleStage, myColor, picks, activePerson, rowProps, notify,
+}) {
+  return (
+    <>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: searchOpen ? 10 : 8, flexWrap: 'wrap' }}>
+        <span style={{ ...mono, fontSize: 10, color: muted }}>
+          {browseLiveCount}{browseLiveCount !== dayCount ? ` / ${dayCount}` : ''} artists · {groups.length} stage{groups.length === 1 ? '' : 's'}
+        </span>
+        <button onClick={() => setSearchOpen(o => !o)} aria-expanded={searchOpen} aria-label="Search artists"
+          style={{ marginLeft: 'auto', minWidth: 44, minHeight: 44, display: 'flex', alignItems: 'center', justifyContent: 'center', border: 'none', background: 'none', color: searchOpen ? ink : muted, fontSize: 17, cursor: 'pointer' }}>⌕</button>
+        {!forceOpen && (
+          <button onClick={() => setOpenStages(openStages.size >= groups.length ? new Set() : new Set(STAGE_ORDER))}
+            style={{ minHeight: 44, padding: '0 4px', border: 'none', background: 'none', color: myColor, ...mono, fontSize: 10, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', cursor: 'pointer', transition: 'color var(--dur-base) var(--ease-out)' }}>
+            {openStages.size >= groups.length ? 'Collapse all' : 'Expand all'}
+          </button>
+        )}
+      </div>
+      {searchPresent && (
+        <div data-open={searchOpen} className="fx-pop" style={{ position: 'relative', marginBottom: 12 }}>
+          <span style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', fontSize: 13, color: muted, pointerEvents: 'none' }}>⌕</span>
+          <input autoFocus value={search} onChange={e => setSearch(e.target.value)} placeholder="Search artists…"
+            type="search" inputMode="search" aria-label="Search artists"
+            onKeyDown={e => { if (e.key === 'Escape') { setSearch(''); setSearchOpen(false); } }}
+            style={{ width: '100%', boxSizing: 'border-box', padding: '10px 46px 10px 30px', minHeight: 44, borderRadius: 8, border: `1px solid ${rule}`, backgroundColor: tmrwBg, color: ink, fontSize: 16, ...sans }} />
+          <button onClick={() => { setSearch(''); setSearchOpen(false); }} aria-label="Close search"
+            style={{ position: 'absolute', right: 2, top: '50%', transform: 'translateY(-50%)', border: 'none', background: 'none', color: muted, fontSize: 18, lineHeight: 1, cursor: 'pointer', width: 44, height: 44, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>×</button>
+        </div>
+      )}
+
+      {groups.length === 0 ? (
+        <div style={{ textAlign: 'center', padding: '40px 16px', color: muted }}>
+          <div style={{ fontSize: 28, marginBottom: 8 }}>🔍</div>
+          <div style={{ fontSize: 14 }}>No artists match "{search}".</div>
+        </div>
+      ) : (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+          {groups.map(({ stage, sets: stageSets }, idx) => {
+            const color = STAGES[stage]?.color || tmrwGold;
+            const open  = forceOpen || openStages.has(stage);
+            const pickedSets = stageSets.filter(s => picks[s.id]?.[activePerson]);
+            const picked = pickedSets.length;
+            const newCount  = stageSets.filter(s => s.status === 'new').length;
+            const liveCount = stageSets.filter(s => s.status !== 'deleted').length;
+            return (
+              <section key={stage} className="fx-enter" style={{ animationDelay: `${Math.min(idx, 8) * 40}ms`, borderRadius: 10, border: `1px solid ${rule}`, overflow: 'hidden', backgroundColor: paper }}>
+                <button onClick={() => !forceOpen && toggleStage(stage)} aria-expanded={open}
+                  aria-label={`${stage}, ${liveCount} artists${newCount > 0 ? `, ${newCount} newly added` : ''}${picked > 0 ? `, ${picked} of your picks` : ''}`}
+                  style={{ width: '100%', textAlign: 'left', cursor: forceOpen ? 'default' : 'pointer', display: 'flex', alignItems: 'center', gap: 10, padding: '12px 16px', minHeight: 44, border: 'none', background: 'none' }}>
+                  <span aria-hidden="true" style={{ width: 10, height: 10, borderRadius: '50%', backgroundColor: color, boxShadow: `0 0 8px ${color}`, flexShrink: 0 }} />
+                  <span aria-hidden="true" style={{ ...display, fontSize: 16, fontWeight: 700, color: ink, letterSpacing: '0.01em', flex: 1 }}>{stage}</span>
+                  {newCount > 0 && (
+                    <span aria-hidden="true" style={{ ...mono, fontSize: 9, fontWeight: 700, letterSpacing: '0.06em', color: tmrwBg, backgroundColor: myColor, borderRadius: 999, padding: '2.5px 7px', transition: 'background-color var(--dur-base) var(--ease-out)' }}>+{newCount} NEW</span>
+                  )}
+                  {picked > 0 && (
+                    <span aria-hidden="true" style={{ ...mono, fontSize: 10, fontWeight: 700, color: tmrwBg, backgroundColor: myColor, borderRadius: 999, padding: '2px 7px' }}>★ {picked}</span>
+                  )}
+                  <span aria-hidden="true" style={{ ...mono, fontSize: 11, color: muted }}>{liveCount}</span>
+                  <span aria-hidden="true" style={{ fontSize: 11, color: muted, transform: open ? 'rotate(90deg)' : 'none', transition: 'transform var(--dur-fast) var(--ease-in-out)' }}>▶</span>
+                </button>
+                {open && (
+                  <div className="fx-collapse" data-open="true">
+                    <div style={{ borderTop: `1px solid ${rule}` }}>
+                      {stageSets.map(set => <ArtistRow key={set.id} {...rowProps(set)} showStage={false} />)}
+                      {picked > 0 && <StageSpotify stage={stage} pickedSets={pickedSets} onCopied={notify} />}
+                    </div>
+                  </div>
+                )}
+              </section>
+            );
+          })}
+        </div>
+      )}
+    </>
+  );
+}
