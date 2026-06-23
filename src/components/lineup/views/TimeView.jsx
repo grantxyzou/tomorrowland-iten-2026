@@ -129,7 +129,7 @@ export default function TimeView({
         display: 'inline-flex', alignItems: 'center', gap: 6,
       }}>
       {editTimes ? <X size={13} weight="bold" /> : <PencilSimple size={13} weight="bold" />}
-      {editTimes ? 'Cancel' : 'Edit times'}
+      {editTimes ? 'Cancel' : 'Edit set times'}
     </button>
   );
 
