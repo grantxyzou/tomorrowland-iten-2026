@@ -85,6 +85,57 @@ function stageOrder(a, b) {
   return a.name.localeCompare(b.name);
 }
 
+// Regroup the pairwise `clashes` ({ a, b, shared }) into connected components —
+// any sets joined by an overlap edge become one "overlap window". A popular set
+// that overlaps several others appears ONCE in its cluster instead of repeating
+// across N pairs. Returns each cluster sorted by start time:
+//   { sets:[…sorted], window:[startMin,endMin], shared:[…people] }
+function conflictClusters(clashes) {
+  if (!clashes.length) return [];
+  const setById = new Map();   // id → set object
+  const adj = new Map();       // id → Set(neighbour ids)
+  const edgeShared = new Map(); // id → Set(people sharing any of its edges)
+  const link = (id) => { if (!adj.has(id)) adj.set(id, new Set()); if (!edgeShared.has(id)) edgeShared.set(id, new Set()); };
+  for (const { a, b, shared } of clashes) {
+    setById.set(a.id, a); setById.set(b.id, b);
+    link(a.id); link(b.id);
+    adj.get(a.id).add(b.id); adj.get(b.id).add(a.id);
+    for (const p of shared) { edgeShared.get(a.id).add(p); edgeShared.get(b.id).add(p); }
+  }
+
+  const seen = new Set();
+  const clusters = [];
+  for (const id of adj.keys()) {
+    if (seen.has(id)) continue;
+    // BFS the component.
+    const queue = [id], comp = [];
+    seen.add(id);
+    while (queue.length) {
+      const cur = queue.shift();
+      comp.push(cur);
+      for (const nb of adj.get(cur)) if (!seen.has(nb)) { seen.add(nb); queue.push(nb); }
+    }
+    const compSets = comp.map(cid => setById.get(cid)).sort((x, y) => sortKey(x) - sortKey(y) || x.name.localeCompare(y.name));
+    let lo = Infinity, hi = -Infinity;
+    const shared = new Set();
+    for (const cid of comp) {
+      const [st, en] = normSpan(setById.get(cid));
+      if (st < lo) lo = st;
+      if (en > hi) hi = en;
+      for (const p of edgeShared.get(cid)) shared.add(p);
+    }
+    clusters.push({ sets: compSets, window: [lo, hi], shared: PEOPLE.filter(p => shared.has(p)) });
+  }
+  // Earliest window first.
+  return clusters.sort((c1, c2) => c1.window[0] - c2.window[0]);
+}
+
+// minutes-since-midnight → "HH:MM" (clusters can run past 24:00 → wrap).
+function minToLabel(m) {
+  const mm = ((m % 1440) + 1440) % 1440;
+  return `${String(Math.floor(mm / 60)).padStart(2, '0')}:${String(mm % 60).padStart(2, '0')}`;
+}
+
 // ── Change tag ───────────────────────────────────────────────
 // Tiny pill that flags how an entry differs from the previous roster
 // after the official sync: NEW (added), EDITED (renamed), REMOVED (dropped).
@@ -153,7 +204,7 @@ function ArtistRow({ set, myColor, myPick, others, isClash, showStage, onToggle 
             </span>
           )}
           <span>{timeLabel(set)}</span>
-          {isClash && <span style={{ color: clashRed, fontWeight: 700 }}>⚡ CONFLICT</span>}
+          {isClash && <span style={{ color: clashRed, fontWeight: 700 }}>⚡ OVERLAP</span>}
         </div>
       </div>
       <div style={{ display: 'flex', alignItems: 'center', gap: 4, flexShrink: 0 }}>
@@ -271,6 +322,8 @@ export default function LineupTab() {
     return out;
   }, [activeDay, picks]);
   const clashSetIds = new Set(clashes.flatMap(c => [c.a.id, c.b.id]));
+  // Regroup pairwise clashes into time-window clusters for the Overlaps view.
+  const clusters = useMemo(() => conflictClusters(clashes), [clashes]);
 
   // Crew consensus for the active day.
   const crew = useMemo(() => {
@@ -541,7 +594,7 @@ export default function LineupTab() {
         <div>
           {!dayHasTimes && (
             <div style={{ ...mono, fontSize: 11, color: muted, lineHeight: 1.5, marginBottom: 12, padding: '10px 12px', border: `1px solid ${rule}`, borderRadius: 8 }}>
-              ⏱ Set times not announced yet — showing alphabetically. This view becomes a chronological timeline (with clash highlighting) once times drop.
+              ⏱ Set times not announced yet — showing alphabetically. This view becomes a chronological timeline (with overlap highlighting) once times drop.
             </div>
           )}
           <section style={{ borderRadius: 10, border: `1px solid ${rule}`, overflow: 'hidden', backgroundColor: paper }}>
@@ -562,45 +615,19 @@ export default function LineupTab() {
               </div>
             ))}
           </div>
-          {/* Clash overview */}
+          {/* Overlaps — shared picks that land at the same time */}
           <div>
-            <div style={{ ...mono, fontSize: 10, color: muted, letterSpacing: '0.18em', textTransform: 'uppercase', marginBottom: 8 }}>⚡ Time conflicts</div>
+            <div style={{ ...mono, fontSize: 10, color: muted, letterSpacing: '0.18em', textTransform: 'uppercase', marginBottom: 8 }}>⚡ Overlaps</div>
             {!dayHasTimes ? (
               <div style={{ ...mono, fontSize: 11, color: muted, padding: '10px 12px', border: `1px solid ${rule}`, borderRadius: 8 }}>
-                No conflicts to detect yet — set times aren’t announced. Overlaps in your shared picks will appear here automatically once times drop.
+                No overlaps to flag yet — set times aren’t announced. Shared picks that land at the same time show up here once times drop.
               </div>
             ) : clashes.length === 0 ? (
               <div style={{ ...mono, fontSize: 11, color: muted, padding: '10px 12px', border: `1px solid ${rule}`, borderRadius: 8 }}>
-                No time conflicts — your shared picks don’t overlap. 🎉
+                No overlaps — none of your shared picks land at the same time. 🎉
               </div>
             ) : (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-                {clashes.map((c, i) => (
-                  <div key={i} style={{ backgroundColor: tmrwBg, border: `1px solid ${clashRed}55`, borderRadius: 10, overflow: 'hidden' }}>
-                    {/* Header — what it is + exactly who it hits */}
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', padding: '8px 12px', borderBottom: `1px solid ${rule}`, backgroundColor: `${clashRed}14` }}>
-                      <span style={{ ...mono, fontSize: 9.5, fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: clashRed }}>⚡ Time conflict</span>
-                      <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, flexWrap: 'wrap', marginLeft: 'auto' }}>
-                        <span style={{ ...mono, fontSize: 9, letterSpacing: '0.08em', textTransform: 'uppercase', color: muted }}>Both picked by</span>
-                        {c.shared.map(p => (
-                          <span key={p} style={{ display: 'inline-flex', alignItems: 'center', gap: 4, ...mono, fontSize: 10, fontWeight: 700, color: PERSON_COLORS[p] }}>
-                            <span aria-hidden="true" style={{ width: 6, height: 6, borderRadius: '50%', backgroundColor: PERSON_COLORS[p] }} />{p}
-                          </span>
-                        ))}
-                      </span>
-                    </div>
-                    {/* The two overlapping sets — artist (left) and its time (right)
-                        line up across both rows for a quick this-or-that read. */}
-                    <ConflictOption set={c.a} />
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '0 12px' }}>
-                      <span style={{ flex: 1, height: 1, backgroundColor: rule }} />
-                      <span style={{ ...mono, fontSize: 9, fontWeight: 700, letterSpacing: '0.14em', color: clashRed }}>VS</span>
-                      <span style={{ flex: 1, height: 1, backgroundColor: rule }} />
-                    </div>
-                    <ConflictOption set={c.b} />
-                  </div>
-                ))}
-              </div>
+              <ConflictCombo clusters={clusters} picks={picks} me={activePerson} />
             )}
           </div>
 
@@ -655,19 +682,112 @@ export default function LineupTab() {
   );
 }
 
-// One side of a time conflict — stage swatch + artist name (kept fully legible
-// in cream) on the left, its set time on the right. Both rows share the layout
-// so names and times line up column-wise for an at-a-glance comparison.
-function ConflictOption({ set }) {
-  const stageColor = STAGES[set.stage]?.color || tmrwGold;
+// ── Overlaps view ────────────────────────────────────────────
+// The Crew "Overlaps" section: shared picks that land at the same time, grouped
+// into time-window clusters. Collapsed rows list the clashing artists; expanding
+// a window reveals a mini Gantt so the overlap is obvious at a glance.
+
+// Small reusable cluster of colour-coded person dots.
+function PersonDots({ people, size = 8 }) {
   return (
-    <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '9px 12px' }}>
-      <span aria-hidden="true" style={{ width: 8, height: 8, borderRadius: 2, backgroundColor: stageColor, flexShrink: 0 }} />
-      <div style={{ minWidth: 0, flex: 1 }}>
-        <div style={{ ...sans, fontSize: 14, fontWeight: 600, color: ink, letterSpacing: '-0.01em', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{set.name}</div>
-        <div style={{ ...mono, fontSize: 10, color: muted, marginTop: 1 }}>{set.stage}</div>
+    <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, flexShrink: 0 }}>
+      {people.map(p => (
+        <span key={p} title={p} aria-label={p} style={{ width: size, height: size, borderRadius: '50%', backgroundColor: PERSON_COLORS[p], display: 'inline-block' }} />
+      ))}
+    </span>
+  );
+}
+
+// Mini Gantt body for one cluster — hour ticks + a positioned bar per set,
+// shown when an overlap window is expanded.
+function ClusterGantt({ cl, picks }) {
+  const [lo, hi] = cl.window;
+  const span = Math.max(hi - lo, 1);
+  const ticks = [];
+  for (let t = Math.ceil(lo / 60) * 60; t <= hi; t += 60) ticks.push(t);
+  return (
+    <>
+      {/* hour grid labels */}
+      <div style={{ position: 'relative', height: 12, marginBottom: 2 }}>
+        {ticks.map(t => (
+          <span key={t} style={{ position: 'absolute', left: `${((t - lo) / span) * 100}%`, transform: 'translateX(-50%)', ...mono, fontSize: 8, color: muted }}>{minToLabel(t)}</span>
+        ))}
       </div>
-      <span style={{ ...mono, fontSize: 11.5, fontWeight: 700, color: ink, flexShrink: 0, whiteSpace: 'nowrap' }}>{set.start}–{set.end}</span>
+      {cl.sets.map(s => {
+        const [st, en] = normSpan(s);
+        const left = ((st - lo) / span) * 100;
+        const width = Math.max(((en - st) / span) * 100, 6);
+        const stageColor = STAGES[s.stage]?.color || tmrwGold;
+        const pickers = PEOPLE.filter(p => picks[s.id]?.[p]);
+        return (
+          <div key={s.id} style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 6 }}>
+            <PersonDots people={pickers} size={6} />
+            <div style={{ position: 'relative', flex: 1, height: 22, borderRadius: 5, backgroundColor: 'rgba(255,255,255,0.04)', overflow: 'hidden' }}>
+              <div style={{ position: 'absolute', top: 0, bottom: 0, left: `${left}%`, width: `${width}%`, backgroundColor: `${stageColor}33`, borderLeft: `3px solid ${stageColor}`, borderRadius: 4, display: 'flex', alignItems: 'center', padding: '0 6px' }}>
+                <span style={{ ...sans, fontSize: 11, fontWeight: 600, color: ink, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{s.name}</span>
+              </div>
+            </div>
+          </div>
+        );
+      })}
+    </>
+  );
+}
+
+// The Overlaps view — collapsible per-window rows (time + clashing artist names +
+// who's affected); expand a window to reveal its mini Gantt. `me` is the active
+// person, highlighted so you spot your own overlaps first.
+function ConflictCombo({ clusters, picks, me }) {
+  const [open, setOpen] = useState(() => new Set());
+  const perPerson = PEOPLE.map(p => ({ p, n: clusters.filter(cl => cl.shared.includes(p)).length })).filter(x => x.n > 0);
+  const toggle = (i) => setOpen(prev => { const next = new Set(prev); next.has(i) ? next.delete(i) : next.add(i); return next; });
+  // First two artist names, then "+N" — readable in one collapsed row.
+  const names = (cl) => {
+    const ns = cl.sets.map(s => s.name);
+    return ns.length <= 2 ? ns.join(', ') : `${ns.slice(0, 2).join(', ')} +${ns.length - 2}`;
+  };
+  return (
+    <div style={{ border: `1px solid ${clashRed}55`, borderRadius: 10, overflow: 'hidden', backgroundColor: tmrwBg }}>
+      {/* Header: how many to sort out + who's affected (you, ringed) */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap', padding: '10px 12px', backgroundColor: `${clashRed}14`, borderBottom: `1px solid ${rule}` }}>
+        <span style={{ ...sans, fontSize: 13, fontWeight: 700, color: ink }}>⚡ {clusters.length} to resolve</span>
+        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, flexWrap: 'wrap', marginLeft: 'auto' }}>
+          {perPerson.map(({ p, n }) => {
+            const isMe = p === me;
+            return (
+              <span key={p} style={{
+                display: 'inline-flex', alignItems: 'center', gap: 4, ...mono, fontSize: 10, fontWeight: 700,
+                color: isMe ? tmrwBg : PERSON_COLORS[p], backgroundColor: isMe ? PERSON_COLORS[p] : 'transparent',
+                borderRadius: 999, padding: isMe ? '2px 7px' : '2px 0',
+              }}>
+                {!isMe && <span aria-hidden="true" style={{ width: 6, height: 6, borderRadius: '50%', backgroundColor: PERSON_COLORS[p] }} />}
+                {isMe ? 'You' : p} {n}
+              </span>
+            );
+          })}
+        </span>
+      </div>
+      {clusters.map((cl, i) => {
+        const isOpen = open.has(i);
+        return (
+          <div key={i} style={{ borderTop: i === 0 ? 'none' : `1px solid ${rule}55` }}>
+            <button onClick={() => toggle(i)} aria-expanded={isOpen}
+              aria-label={`${minToLabel(cl.window[0])} to ${minToLabel(cl.window[1])}: ${cl.sets.map(s => s.name).join(', ')}. Tap to ${isOpen ? 'collapse' : 'expand'}.`}
+              style={{ width: '100%', textAlign: 'left', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 8, padding: '10px 12px', minHeight: 44, border: 'none', background: 'none' }}>
+              <span aria-hidden="true" style={{ fontSize: 10, color: muted, flexShrink: 0, transform: isOpen ? 'rotate(90deg)' : 'none', transition: 'transform var(--dur-fast) var(--ease-in-out)' }}>▶</span>
+              <span style={{ ...mono, fontSize: 11, fontWeight: 700, color: ink, flexShrink: 0, whiteSpace: 'nowrap' }}>{minToLabel(cl.window[0])}–{minToLabel(cl.window[1])}</span>
+              <span style={{ ...sans, fontSize: 13, fontWeight: 600, color: ink, flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{names(cl)}</span>
+              <PersonDots people={cl.shared} size={7} />
+            </button>
+            {isOpen && (
+              <div style={{ padding: '6px 12px 12px', borderTop: `1px solid ${rule}33` }}>
+                <div style={{ ...mono, fontSize: 9, letterSpacing: '0.08em', textTransform: 'uppercase', color: clashRed, marginBottom: 6 }}>Same time — pick one</div>
+                <ClusterGantt cl={cl} picks={picks} />
+              </div>
+            )}
+          </div>
+        );
+      })}
     </div>
   );
 }
@@ -1141,7 +1261,7 @@ function PartyMode({ activePerson, setActivePerson, activeDay, setActiveDay, pic
           </div>
         ) : (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-            {currents.map((s, i) => card(s, i === 0 ? (currents.length > 1 ? '▶ On now (conflict)' : '▶ On now') : '▶ Also now', clashRed, true))}
+            {currents.map((s, i) => card(s, i === 0 ? (currents.length > 1 ? '▶ On now (overlap)' : '▶ On now') : '▶ Also now', clashRed, true))}
             {nextUp && card(nextUp, '↑ Up next', gold, true)}
             {!currents.length && !nextUp && (
               <div style={{ ...mono, fontSize: 13, color: dim, textAlign: 'center', padding: '8px 0' }}>
