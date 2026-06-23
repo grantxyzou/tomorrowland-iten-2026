@@ -853,14 +853,22 @@ function normSpan(s) {
 // tap can't accidentally drop a set.
 function LaterTimeline({ sets: later, onRemove, surf, line, txt, dim, gold }) {
   const [selectedId, setSelectedId] = useState(null);
+  const selectedRef = useRef(null);
 
   const timed = later.filter(hasTime);
   const untimed = later.filter(s => !hasTime(s));
   const selected = timed.find(s => s.id === selectedId) || null;
 
+  // Pull the focused block into view so it isn't stranded behind the sheet.
+  useEffect(() => {
+    if (selectedId && selectedRef.current) {
+      selectedRef.current.scrollIntoView({ block: 'center', behavior: 'auto' });
+    }
+  }, [selectedId]);
+
   const PX_PER_MIN = 1.2; // ≈ 72px per hour — roomy enough to read while tired
   const GUTTER = 46;      // left column for the hour labels
-  const MIN_H = 52;       // keep short/late sets tall enough to read & tap
+  const MIN_H = 56;       // reserve room for a name line + the stage label
 
   let grid = null;
   if (timed.length > 0) {
@@ -914,22 +922,28 @@ function LaterTimeline({ sets: later, onRemove, surf, line, txt, dim, gold }) {
           const clash = cols > 1;
           const sel = s.id === selectedId;
           return (
-            <button key={s.id} aria-pressed={sel}
-              aria-label={`${s.name}, ${timeLabel(s)}, ${s.stage}${clash ? ', overlaps another pick' : ''}`}
+            <button key={s.id} aria-pressed={sel} ref={sel ? selectedRef : null}
+              aria-label={`${s.name}, ${timeLabel(s)}, ${s.stage}${clash ? ', overlaps another pick' : ''}. Tap to remove.`}
               onClick={() => setSelectedId(sel ? null : s.id)}
               style={{
                 position: 'absolute', top,
                 left: `calc(${GUTTER}px + ${col} * (100% - ${GUTTER}px) / ${cols} + 2px)`,
                 width: `calc((100% - ${GUTTER}px) / ${cols} - 4px)`,
                 height: h - 2, overflow: 'hidden', textAlign: 'left', cursor: 'pointer',
-                backgroundColor: surf, color: txt, borderRadius: 10, padding: '7px 9px',
+                display: 'flex', flexDirection: 'column', gap: 3,
+                backgroundColor: sel ? '#1d2a55' : surf, color: txt, borderRadius: 10, padding: '7px 9px',
                 border: sel ? `2px solid ${gold}` : clash ? `1px solid ${clashRed}` : `1px solid ${line}`,
                 borderLeft: `4px solid ${stageColor}`,
-                boxShadow: sel ? `0 0 0 2px ${gold}55` : 'none', ...sans,
+                boxShadow: sel ? `0 0 0 3px ${gold}55, 0 6px 20px rgba(6,9,24,0.5)` : 'none',
+                zIndex: sel ? 59 : 'auto', ...sans,
               }}>
-              <div style={{ fontSize: 15, fontWeight: 700, lineHeight: 1.1, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{s.name}</div>
-              <div style={{ ...mono, fontSize: 11, fontWeight: 700, color: clash ? clashRed : gold, marginTop: 3 }}>{s.start}–{s.end}</div>
-              <div style={{ ...mono, fontSize: 10, color: dim, marginTop: 2, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{s.stage}</div>
+              {/* affordance: this block has actions */}
+              <span aria-hidden="true" style={{ position: 'absolute', top: 5, right: 7, ...mono, fontSize: 14, fontWeight: 700, lineHeight: 1, color: dim }}>⋯</span>
+              <div style={{ flex: '1 1 auto', minHeight: 0, fontSize: 15, fontWeight: 700, lineHeight: 1.12, paddingRight: 12, display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>{s.name}</div>
+              <div style={{ flexShrink: 0, display: 'flex', alignItems: 'center', gap: 5, ...mono, fontSize: 10, color: dim, whiteSpace: 'nowrap', overflow: 'hidden' }}>
+                <span aria-hidden="true" style={{ width: 7, height: 7, borderRadius: 2, backgroundColor: stageColor, flexShrink: 0 }} />
+                <span style={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>{s.stage}</span>
+              </div>
             </button>
           );
         })}
@@ -939,6 +953,11 @@ function LaterTimeline({ sets: later, onRemove, surf, line, txt, dim, gold }) {
 
   return (
     <div>
+      {timed.length > 0 && !selected && (
+        <div style={{ ...mono, fontSize: 11, color: dim, marginTop: 4, marginBottom: 2, display: 'flex', alignItems: 'center', gap: 6 }}>
+          <span aria-hidden="true">⋯</span> Tap a set to remove it
+        </div>
+      )}
       {grid}
       {untimed.map(s => (
         <div key={s.id} style={{ marginTop: 8, backgroundColor: surf, border: `1px solid ${line}`, borderRadius: 10, padding: '10px 12px' }}>
@@ -947,22 +966,43 @@ function LaterTimeline({ sets: later, onRemove, surf, line, txt, dim, gold }) {
         </div>
       ))}
       {selected && (
-        <div role="region" aria-label="Remove set from plan"
-          style={{ marginTop: 14, padding: 12, borderRadius: 12, backgroundColor: surf, border: `1px solid ${clashRed}` }}>
-          <div style={{ fontSize: 14, color: dim, marginBottom: 10, ...sans }}>
-            Remove <strong style={{ color: txt }}>{selected.name}</strong> from your plan?
+        <>
+          {/* Scrim — dims everything, taps to dismiss; the focused block pokes
+              through above it (zIndex 59) so it stays spotlit. */}
+          <div onClick={() => setSelectedId(null)} aria-hidden="true" className="fx-fade"
+            style={{ position: 'fixed', inset: 0, zIndex: 58, backgroundColor: 'rgba(6,9,24,0.62)' }} />
+          {/* Bottom action sheet — anchored to the viewport so it's always fully
+              on-screen, clear of the home indicator. */}
+          <div role="region" aria-label="Remove set from plan" className="fx-fade"
+            style={{
+              position: 'fixed', left: 0, right: 0, bottom: 0, zIndex: 60,
+              backgroundColor: surf, borderTop: `3px solid ${clashRed}`,
+              borderTopLeftRadius: 18, borderTopRightRadius: 18,
+              boxShadow: '0 -10px 40px rgba(6,9,24,0.6)',
+              padding: '16px max(16px, env(safe-area-inset-right)) calc(16px + env(safe-area-inset-bottom)) max(16px, env(safe-area-inset-left))',
+            }}>
+            <div style={{ maxWidth: 520, margin: '0 auto' }}>
+              <div style={{ fontSize: 20, fontWeight: 700, color: txt, lineHeight: 1.15, ...sans }}>{selected.name}</div>
+              <div style={{ ...mono, fontSize: 12, color: dim, marginTop: 6, display: 'flex', alignItems: 'center', gap: 7, flexWrap: 'wrap' }}>
+                <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5 }}>
+                  <span aria-hidden="true" style={{ width: 8, height: 8, borderRadius: 2, backgroundColor: STAGES[selected.stage]?.color || gold }} />
+                  {selected.stage}
+                </span>
+                <span style={{ color: gold, fontWeight: 700 }}>{selected.start}–{selected.end}</span>
+              </div>
+              <div style={{ display: 'flex', gap: 10, marginTop: 16 }}>
+                <button onClick={() => { onRemove(selected); setSelectedId(null); }}
+                  style={{ flex: 2, minHeight: 52, borderRadius: 12, border: 'none', backgroundColor: clashRed, color: '#1a0c0c', ...sans, fontSize: 16, fontWeight: 700, cursor: 'pointer' }}>
+                  ✕ Remove from plan
+                </button>
+                <button onClick={() => setSelectedId(null)}
+                  style={{ flex: 1, minHeight: 52, borderRadius: 12, border: `1px solid ${line}`, backgroundColor: 'transparent', color: txt, ...sans, fontSize: 16, fontWeight: 700, cursor: 'pointer' }}>
+                  Cancel
+                </button>
+              </div>
+            </div>
           </div>
-          <div style={{ display: 'flex', gap: 10 }}>
-            <button onClick={() => { onRemove(selected); setSelectedId(null); }}
-              style={{ flex: 2, minHeight: 48, borderRadius: 10, border: 'none', backgroundColor: clashRed, color: '#1a0c0c', ...sans, fontSize: 15, fontWeight: 700, cursor: 'pointer' }}>
-              ✕ Remove from plan
-            </button>
-            <button onClick={() => setSelectedId(null)}
-              style={{ flex: 1, minHeight: 48, borderRadius: 10, border: `1px solid ${line}`, backgroundColor: 'transparent', color: txt, ...sans, fontSize: 15, fontWeight: 700, cursor: 'pointer' }}>
-              Cancel
-            </button>
-          </div>
-        </div>
+        </>
       )}
     </div>
   );
