@@ -1,3 +1,4 @@
+import { Lightning, Handshake } from '@phosphor-icons/react';
 import { PEOPLE, STAGES } from '../../../data/lineup.js';
 import { mono, sans, ink, muted, rule, paper, tmrwGold, tmrwBg, PERSON_COLORS } from '../theme.js';
 import { timeLabel } from '../time.js';
@@ -54,14 +55,14 @@ export default function CrewView({ crew, totalPicks, clashes, clusters, picks, d
       </div>
       {/* Overlaps — shared picks that land at the same time */}
       <div>
-        <div style={{ ...mono, fontSize: 10, color: muted, letterSpacing: '0.18em', textTransform: 'uppercase', marginBottom: 8 }}>⚡ Overlaps</div>
+        <div style={{ ...mono, fontSize: 10, color: muted, letterSpacing: '0.18em', textTransform: 'uppercase', marginBottom: 8, display: 'inline-flex', alignItems: 'center', gap: 5 }}><Lightning size={13} weight="bold" /> Overlaps</div>
         {!dayHasTimes ? (
           <div style={{ ...mono, fontSize: 11, color: muted, padding: '10px 12px', border: `1px solid ${rule}`, borderRadius: 8 }}>
             No overlaps to flag yet — set times aren’t announced. Shared picks that land at the same time show up here once times drop.
           </div>
         ) : clashes.length === 0 ? (
           <div style={{ ...mono, fontSize: 11, color: muted, padding: '10px 12px', border: `1px solid ${rule}`, borderRadius: 8 }}>
-            No overlaps — none of your shared picks land at the same time. 🎉
+            No overlaps — none of your shared picks land at the same time.
           </div>
         ) : (
           <ConflictCombo clusters={clusters} picks={picks} me={activePerson} />
@@ -75,7 +76,7 @@ export default function CrewView({ crew, totalPicks, clashes, clusters, picks, d
 
       {crew.all3.length === 0 && crew.two.length === 0 && (
         <div style={{ textAlign: 'center', padding: '24px 16px', color: muted }}>
-          <div style={{ fontSize: 28, marginBottom: 8 }}>🤝</div>
+          <Handshake size={30} weight="regular" style={{ marginBottom: 8 }} />
           <div style={{ fontSize: 14 }}>Once you’ve each made picks, your overlaps show up here.</div>
         </div>
       )}

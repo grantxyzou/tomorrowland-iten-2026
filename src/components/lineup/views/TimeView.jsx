@@ -1,3 +1,4 @@
+import { Headphones, Clock } from '@phosphor-icons/react';
 import { mono, muted, rule, paper } from '../theme.js';
 import ArtistRow from '../ArtistRow.jsx';
 
@@ -6,7 +7,7 @@ export default function TimeView({ timeline, dayHasTimes, activePerson, dayLabel
   if (timeline.length === 0) {
     return (
       <div style={{ textAlign: 'center', padding: '40px 16px', color: muted }}>
-        <div style={{ fontSize: 28, marginBottom: 8 }}>🎧</div>
+        <Headphones size={30} weight="regular" style={{ marginBottom: 8 }} />
         <div style={{ fontSize: 14 }}>{activePerson} hasn't picked anyone for {dayLabel} yet.<br />Add some from the Stage tab.</div>
       </div>
     );
@@ -17,8 +18,9 @@ export default function TimeView({ timeline, dayHasTimes, activePerson, dayLabel
         {activePerson}'s plan · {timeline.length} pick{timeline.length === 1 ? '' : 's'}
       </div>
       {!dayHasTimes && (
-        <div style={{ ...mono, fontSize: 11, color: muted, lineHeight: 1.5, marginBottom: 12, padding: '10px 12px', border: `1px solid ${rule}`, borderRadius: 8 }}>
-          ⏱ Set times not announced yet — showing alphabetically. This view becomes a chronological timeline (with overlap highlighting) once times drop.
+        <div style={{ ...mono, fontSize: 11, color: muted, lineHeight: 1.5, marginBottom: 12, padding: '10px 12px', border: `1px solid ${rule}`, borderRadius: 8, display: 'flex', alignItems: 'flex-start', gap: 7 }}>
+          <Clock size={15} weight="regular" style={{ flexShrink: 0, marginTop: 1 }} />
+          <span>Set times not announced yet — showing alphabetically. This view becomes a chronological timeline (with overlap highlighting) once times drop.</span>
         </div>
       )}
       <section style={{ borderRadius: 10, border: `1px solid ${rule}`, overflow: 'hidden', backgroundColor: paper }}>

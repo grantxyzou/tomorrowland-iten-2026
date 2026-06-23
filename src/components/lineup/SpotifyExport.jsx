@@ -1,4 +1,5 @@
 import { useState, useMemo } from 'react';
+import { SpotifyLogo, Check } from '@phosphor-icons/react';
 import { mono, sans, ink, muted, rule, paper, tmrwBg, spotifyDot, spotifyInk } from './theme.js';
 
 // ── Spotify prompt ───────────────────────────────────────────
@@ -67,7 +68,7 @@ export default function SpotifyExport({ person, mySets, onCopied }) {
   return (
     <section style={{ marginTop: 28, border: `1px solid ${rule}`, borderRadius: 10, padding: 14, backgroundColor: paper }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
-        <span aria-hidden="true" style={{ width: 10, height: 10, borderRadius: '50%', backgroundColor: spotifyDot, display: 'inline-block' }} />
+        <SpotifyLogo aria-hidden="true" size={16} weight="fill" color={spotifyDot} />
         <span style={{ ...mono, fontSize: 10, color: muted, letterSpacing: '0.16em', textTransform: 'uppercase' }}>Spotify playlist</span>
       </div>
       <p style={{ fontSize: 14, color: ink, lineHeight: 1.45, margin: '0 0 12px' }}>
@@ -75,8 +76,8 @@ export default function SpotifyExport({ person, mySets, onCopied }) {
       </p>
       <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
         <button onClick={copy}
-          style={{ minHeight: 44, padding: '0 18px', border: 'none', borderRadius: 8, backgroundColor: spotifyInk, color: '#fff', ...sans, fontSize: 14, fontWeight: 700, cursor: 'pointer' }}>
-          {copied ? 'Copied ✓' : 'Copy prompt'}
+          style={{ minHeight: 44, padding: '0 18px', border: 'none', borderRadius: 8, backgroundColor: spotifyInk, color: '#fff', ...sans, fontSize: 14, fontWeight: 700, cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+          {copied ? <><Check size={15} weight="bold" /> Copied</> : 'Copy prompt'}
         </button>
         <button onClick={() => setShowText(s => !s)} aria-expanded={showText}
           style={{ minHeight: 44, padding: '0 14px', border: `1px solid ${rule}`, borderRadius: 8, background: 'none', color: ink, ...mono, fontSize: 11, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', cursor: 'pointer' }}>
@@ -102,13 +103,13 @@ export function StageSpotify({ stage, pickedSets, onCopied }) {
   return (
     <div style={{ borderTop: `1px solid ${rule}`, padding: '10px 14px', backgroundColor: 'rgba(255,255,255,0.04)' }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
-        <span aria-hidden="true" style={{ width: 8, height: 8, borderRadius: '50%', backgroundColor: spotifyDot, display: 'inline-block' }} />
+        <SpotifyLogo aria-hidden="true" size={14} weight="fill" color={spotifyDot} />
         <span style={{ ...mono, fontSize: 10, color: muted, letterSpacing: '0.12em', textTransform: 'uppercase', flex: 1, minWidth: 110 }}>
           {stage} playlist · {n} artist{n === 1 ? '' : 's'}
         </span>
         <button onClick={copy}
-          style={{ minHeight: 40, padding: '0 14px', border: 'none', borderRadius: 8, backgroundColor: spotifyInk, color: '#fff', ...sans, fontSize: 12, fontWeight: 700, cursor: 'pointer' }}>
-          {copied ? 'Copied ✓' : 'Copy prompt'}
+          style={{ minHeight: 40, padding: '0 14px', border: 'none', borderRadius: 8, backgroundColor: spotifyInk, color: '#fff', ...sans, fontSize: 12, fontWeight: 700, cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: 5 }}>
+          {copied ? <><Check size={13} weight="bold" /> Copied</> : 'Copy prompt'}
         </button>
         <button onClick={() => setShowText(s => !s)} aria-expanded={showText}
           style={{ minHeight: 40, padding: '0 10px', border: `1px solid ${rule}`, borderRadius: 8, background: 'none', color: ink, ...mono, fontSize: 10, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', cursor: 'pointer' }}>
