@@ -3,12 +3,14 @@ import { CaretDown, Check, MusicNotes, Moon, X } from '@phosphor-icons/react';
 import { usePresence } from '../hooks/usePresence.js';
 import { sets, STAGES, PEOPLE, LINEUP_STATUS } from '../data/lineup.js';
 import { usePicks } from '../hooks/usePicks.js';
+import { useLineupOverrides } from '../hooks/useLineupOverrides.js';
+import { useCrewStatus } from '../hooks/useCrewStatus.js';
 import { TomorrowlandMark } from './BrandMarks.jsx';
 import {
   mono, sans, display, tmrwBg, ink, muted, rule, clashRed,
   PERSON_COLORS, FRAME, DAYS, VIEWS, STAGE_ORDER, ME_KEY,
 } from './lineup/theme.js';
-import { hasTime, sortKey, timesOverlap, stageOrder, conflictClusters } from './lineup/time.js';
+import { hasTime, sortKey, timesOverlap, stageOrder, conflictClusters, applyOverrides } from './lineup/time.js';
 import SpotifyExport from './lineup/SpotifyExport.jsx';
 import PartyMode from './lineup/PartyMode.jsx';
 import StageView from './lineup/views/StageView.jsx';
@@ -34,6 +36,13 @@ export default function LineupTab() {
 
   // Shared picks, synced to the server in near-real-time.
   const { picks, status, togglePick, clearMine, restoreMine, online, syncing, pendingCount } = usePicks();
+  // Live set-time overrides, layered onto the bundled lineup at runtime so the
+  // crew can fix a revised timetable without a redeploy (falls back to bundled
+  // baseline times offline). All the day/timeline/clash memos derive from this.
+  const overrides = useLineupOverrides();
+  const effectiveSets = useMemo(() => applyOverrides(sets, overrides), [overrides]);
+  // Lightweight crew status board (where are you / what are you doing).
+  const crewStatus = useCrewStatus();
   // Unified bottom-screen toast. { msg, action?: { label, run }, duration }
   const [toast, setToast] = useState(null);
   const notify = useCallback((msg, opts) => setToast({ msg, duration: 2500, ...opts }), []);
@@ -94,7 +103,7 @@ export default function LineupTab() {
   const q = search.trim().toLowerCase();
   const myColor = PERSON_COLORS[activePerson];
   const forceOpen = q.length > 0;
-  const dayHasTimes = useMemo(() => sets.some(s => s.day === activeDay && hasTime(s)), [activeDay]);
+  const dayHasTimes = useMemo(() => effectiveSets.some(s => s.day === activeDay && hasTime(s)), [activeDay, effectiveSets]);
   const dayLabel = DAYS.find(d => d.id === activeDay)?.label || '';
 
   const toggleStage = useCallback((stage) => {
@@ -108,8 +117,8 @@ export default function LineupTab() {
   // STAGE (browse) — every artist for the day, search-filtered. Your picks
   // highlight inline for whoever the "I'm ___" dropdown says you are.
   const browseSets = useMemo(() =>
-    sets.filter(s => s.day === activeDay && (!q || s.name.toLowerCase().includes(q))),
-    [activeDay, q]
+    effectiveSets.filter(s => s.day === activeDay && (!q || s.name.toLowerCase().includes(q))),
+    [activeDay, q, effectiveSets]
   );
   const groups = useMemo(() =>
     STAGE_ORDER
@@ -121,19 +130,19 @@ export default function LineupTab() {
   // TIME (my plan) — the dropdown person's picks for the day, in time order.
   // No separate "my picks" filter: the dropdown IS the lens.
   const timeline = useMemo(() => {
-    const arr = sets.filter(s => s.day === activeDay && picks[s.id]?.[activePerson]);
+    const arr = effectiveSets.filter(s => s.day === activeDay && picks[s.id]?.[activePerson]);
     if (dayHasTimes) arr.sort((a, b) => sortKey(a) - sortKey(b) || a.name.localeCompare(b.name));
     else arr.sort((a, b) => a.name.localeCompare(b.name));
     return arr;
-  }, [activeDay, picks, activePerson, dayHasTimes]);
+  }, [activeDay, picks, activePerson, dayHasTimes, effectiveSets]);
 
-  const dayCount = useMemo(() => sets.filter(s => s.day === activeDay && s.status !== 'deleted').length, [activeDay]);
+  const dayCount = useMemo(() => effectiveSets.filter(s => s.day === activeDay && s.status !== 'deleted').length, [activeDay, effectiveSets]);
   const browseLiveCount = useMemo(() => browseSets.filter(s => s.status !== 'deleted').length, [browseSets]);
 
   // Clash detection — dormant until set times exist.
   const clashes = useMemo(() => {
     const out = [];
-    const ds = sets.filter(s => s.day === activeDay && hasTime(s));
+    const ds = effectiveSets.filter(s => s.day === activeDay && hasTime(s));
     for (let i = 0; i < ds.length; i++) {
       for (let j = i + 1; j < ds.length; j++) {
         const a = ds[i], b = ds[j];
@@ -143,14 +152,14 @@ export default function LineupTab() {
       }
     }
     return out;
-  }, [activeDay, picks]);
+  }, [activeDay, picks, effectiveSets]);
   const clashSetIds = useMemo(() => new Set(clashes.flatMap(c => [c.a.id, c.b.id])), [clashes]);
   // Regroup pairwise clashes into time-window clusters for the Overlaps view.
   const clusters = useMemo(() => conflictClusters(clashes), [clashes]);
 
   // Crew consensus for the active day.
   const crew = useMemo(() => {
-    const ds = sets.filter(s => s.day === activeDay);
+    const ds = effectiveSets.filter(s => s.day === activeDay);
     const all3 = [], two = [];
     for (const s of ds) {
       const pickers = PEOPLE.filter(p => picks[s.id]?.[p]);
@@ -158,15 +167,15 @@ export default function LineupTab() {
       else if (pickers.length === 2) two.push({ set: s, pickers });
     }
     return { all3, two };
-  }, [activeDay, picks]);
+  }, [activeDay, picks, effectiveSets]);
 
   const totalPicks = useMemo(() =>
-    PEOPLE.reduce((acc, p) => { acc[p] = sets.filter(s => picks[s.id]?.[p]).length; return acc; }, {}),
-    [picks]
+    PEOPLE.reduce((acc, p) => { acc[p] = effectiveSets.filter(s => picks[s.id]?.[p]).length; return acc; }, {}),
+    [picks, effectiveSets]
   );
 
   // The active person's full selection across all three days — feeds Spotify.
-  const mySets = useMemo(() => sets.filter(s => picks[s.id]?.[activePerson]), [picks, activePerson]);
+  const mySets = useMemo(() => effectiveSets.filter(s => picks[s.id]?.[activePerson]), [picks, activePerson, effectiveSets]);
 
   // Stable per-set prop factory so memoized ArtistRows don't re-render on every
   // 5s picks-poll. Recomputes only when the picks/person/clashes actually change.
@@ -182,6 +191,7 @@ export default function LineupTab() {
   // Stable onExit so PartyMode's scroll-lock effect doesn't re-run on each poll.
   if (party) return (
     <PartyMode
+      sets={effectiveSets}
       activePerson={activePerson} setActivePerson={setActivePerson}
       activeDay={activeDay} setActiveDay={setActiveDay}
       picks={picks} togglePick={togglePick} onExit={exitParty}
@@ -354,7 +364,8 @@ export default function LineupTab() {
 
       {view === 'crew' && (
         <CrewView crew={crew} totalPicks={totalPicks} clashes={clashes} clusters={clusters}
-          picks={picks} dayHasTimes={dayHasTimes} activePerson={activePerson} myColor={myColor} />
+          picks={picks} dayHasTimes={dayHasTimes} activePerson={activePerson} myColor={myColor}
+          crewStatus={crewStatus} notify={notify} />
       )}
 
       {/* Spotify — build a playlist prompt from this person's picks */}

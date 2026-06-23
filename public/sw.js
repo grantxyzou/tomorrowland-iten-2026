@@ -12,9 +12,9 @@
  *
  * Bump VERSION to invalidate all caches on a future change.
  */
-const VERSION = 'v1';
+const VERSION = 'v2';
 const SHELL  = `tml-shell-${VERSION}`;   // app shell + same-origin assets
-const API    = `tml-api-${VERSION}`;     // last-known /api/picks
+const API    = `tml-api-${VERSION}`;     // last-known /api/* (picks, lineup, status)
 const FONTS  = `tml-fonts-${VERSION}`;   // Google Fonts
 const KEEP   = new Set([SHELL, API, FONTS]);
 const SHELL_URL = '/index.html';
