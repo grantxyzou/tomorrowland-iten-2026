@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo, useRef } from 'react';
 import { Moon, X, Headphones, Play, ArrowUp, DotsThree } from '@phosphor-icons/react';
-import { sets, STAGES, PEOPLE } from '../../data/lineup.js';
+import { STAGES, PEOPLE } from '../../data/lineup.js';
 import { sans, mono, clashRed, PERSON_COLORS, DAYS } from './theme.js';
 import { hasTime, timeLabel, sortKey, normSpan, fmtClock } from './time.js';
 
@@ -170,7 +170,7 @@ function LaterTimeline({ sets: later, onRemove, surf, line, txt, dim, gold }) {
 // Full-screen, high-contrast, large-type "where do I go next" view for use at
 // the festival at night. Dormant set times mean it shows the ordered plan;
 // once real times drop, NOW / NEXT light up against the live clock.
-export default function PartyMode({ activePerson, setActivePerson, activeDay, setActiveDay, picks, togglePick, onExit }) {
+export default function PartyMode({ sets, activePerson, setActivePerson, activeDay, setActiveDay, picks, togglePick, onExit }) {
   // The clock only shows HH:MM, so tick once per minute (aligned to the
   // boundary) instead of every second — far less re-rendering / battery use.
   const [now, setNow] = useState(() => new Date());

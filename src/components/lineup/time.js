@@ -43,6 +43,24 @@ export function fmtClock(d) {
   return d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false });
 }
 
+// Overlay live set-time overrides (from /api/lineup) on top of the bundled
+// baseline `sets`. Each override is keyed by set id and may patch start/end/
+// status/stage/day. The bundled value wins where no override exists, so a
+// missing or failed fetch (overrides === {}) returns the baseline unchanged —
+// fully offline-safe. Returns the SAME array reference when there's nothing to
+// apply, so downstream `useMemo`s don't needlessly recompute.
+export function applyOverrides(sets, overrides) {
+  if (!overrides || !Object.keys(overrides).length) return sets;
+  let changed = false;
+  const next = sets.map((s) => {
+    const o = overrides[s.id];
+    if (!o) return s;
+    changed = true;
+    return { ...s, ...o };
+  });
+  return changed ? next : sets;
+}
+
 // Regroup the pairwise `clashes` ({ a, b, shared }) into connected components —
 // any sets joined by an overlap edge become one "overlap window". A popular set
 // that overlaps several others appears ONCE in its cluster instead of repeating
