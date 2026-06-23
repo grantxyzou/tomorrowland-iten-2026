@@ -1,8 +1,10 @@
-import { memo, useEffect, useMemo, useState } from 'react';
-import { Headphones, Clock, PencilSimple, Check, X, ArrowCounterClockwise } from '@phosphor-icons/react';
-import { mono, muted, rule, paper, ink, tmrwBg, bodyMuted } from '../theme.js';
+import { useEffect, useMemo, useState } from 'react';
+import { Headphones, Clock, PencilSimple, Check, X, CaretRight } from '@phosphor-icons/react';
+import { mono, display, muted, rule, paper, ink, tmrwBg, tmrwGold, bodyMuted, STAGE_ORDER } from '../theme.js';
 import { STAGES, sets as BASELINE } from '../../../data/lineup.js';
+import { normSpan } from '../time.js';
 import ArtistRow from '../ArtistRow.jsx';
+import StageCalendar from '../StageCalendar.jsx';
 
 // The bundled lineup is the "official" baseline. We diff against it so "reset"
 // truly restores the shipped time (independent of what's currently published),
@@ -12,47 +14,12 @@ const OFFICIAL = new Map(BASELINE.map(s => [s.id, { start: s.start || null, end:
 const norm = (v) => v || null;
 const same = (a, b) => norm(a.start) === norm(b.start) && norm(a.end) === norm(b.end);
 
-// One editable row: artist + stage on the left, native start/end time pickers on
-// the right (the OS time wheel on mobile; they return "HH:MM", exactly what we
-// store). A "reset to official" control appears only when the row differs from
-// the bundled time.
-const TimeEditorRow = memo(function TimeEditorRow({ set, value, official, onField, onReset }) {
-  const stageColor = STAGES[set.stage]?.color || muted;
-  const showReset = official && !same(value, official);
-  const inputStyle = {
-    ...mono, fontSize: 13, color: ink, backgroundColor: tmrwBg,
-    border: `1px solid ${rule}`, borderRadius: 6, padding: '7px 8px',
-    minHeight: 40, colorScheme: 'dark', width: 96,
-  };
-  return (
-    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, flexWrap: 'wrap', padding: '10px 14px', borderTop: `1px solid ${rule}55` }}>
-      <div style={{ minWidth: 96, flex: '1 1 120px' }}>
-        <div style={{ fontSize: 14, fontWeight: 600, color: ink, letterSpacing: '-0.01em' }}>{set.name}</div>
-        <div style={{ ...mono, fontSize: 10, color: muted, marginTop: 2, display: 'inline-flex', alignItems: 'center', gap: 4 }}>
-          <span aria-hidden="true" style={{ width: 7, height: 7, borderRadius: 2, backgroundColor: stageColor, display: 'inline-block' }} />
-          {set.stage}
-        </div>
-      </div>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0 }}>
-        <input type="time" aria-label={`${set.name} start time`} value={value.start || ''}
-          onChange={(e) => onField(set.id, 'start', e.target.value)} style={inputStyle} />
-        <span aria-hidden="true" style={{ color: muted }}>–</span>
-        <input type="time" aria-label={`${set.name} end time`} value={value.end || ''}
-          onChange={(e) => onField(set.id, 'end', e.target.value)} style={inputStyle} />
-        <button type="button" onClick={() => onReset(set.id)} aria-label={`Reset ${set.name} to the official time`}
-          title="Reset to official time"
-          style={{ minWidth: 40, minHeight: 40, display: 'flex', alignItems: 'center', justifyContent: 'center', border: 'none', background: 'none', cursor: showReset ? 'pointer' : 'default', color: showReset ? muted : 'transparent', padding: 0 }}
-          disabled={!showReset}>
-          <ArrowCounterClockwise size={16} weight="bold" />
-        </button>
-      </div>
-    </div>
-  );
-});
+const PX_PER_MIN = 1.6; // a 60-min set ≈ 96px — a comfortable drag target
 
 // TIME view. Read mode: the active person's picks for the day, in time order.
-// Edit mode ("Edit times"): the full day's timetable, editable, staged until you
-// publish the correction to everyone.
+// Edit mode ("Edit times"): the day's timetable as collapsible per-stage
+// calendars — drag set blocks to reschedule (or type exact times) — staged
+// until you publish the correction to everyone.
 export default function TimeView({
   timeline, dayHasTimes, activePerson, dayLabel, rowProps,
   activeDay, myColor, editTimes, setEditTimes, daySets, overrides, publishOverrides, notify,
@@ -60,13 +27,17 @@ export default function TimeView({
   // Staged edits: setId → { start, end }. Holds only rows the user has touched.
   const [draft, setDraft] = useState({});
   const [publishing, setPublishing] = useState(false);
+  const [openStages, setOpenStages] = useState(() => new Set());
+  const [selectedId, setSelectedId] = useState(null);
 
   // Switching day (or leaving edit mode) abandons in-progress edits, so you
   // never accidentally publish edits made while looking at a different day.
-  useEffect(() => { setDraft({}); }, [activeDay, editTimes]);
+  useEffect(() => { setDraft({}); setSelectedId(null); }, [activeDay, editTimes]);
 
   const setMap = useMemo(() => new Map(daySets.map(s => [s.id, s])), [daySets]);
 
+  // Set both ends at once (drag) or one field at a time (typed inputs).
+  const onSet = (id, next) => setDraft(d => ({ ...d, [id]: { start: next.start || null, end: next.end || null } }));
   const onField = (id, field, val) => {
     setDraft(d => {
       const s = setMap.get(id);
@@ -78,14 +49,41 @@ export default function TimeView({
     const off = OFFICIAL.get(id) || { start: null, end: null };
     setDraft(d => ({ ...d, [id]: { start: off.start, end: off.end } }));
   };
+  const toggleStage = (stage) => setOpenStages(prev => {
+    const next = new Set(prev);
+    next.has(stage) ? next.delete(stage) : next.add(stage);
+    return next;
+  });
+
+  // Stages present today, in the canonical order, each with its sets.
+  const stageGroups = useMemo(() => {
+    const m = new Map();
+    for (const s of daySets) { if (!m.has(s.stage)) m.set(s.stage, []); m.get(s.stage).push(s); }
+    return STAGE_ORDER.filter(st => m.has(st)).map(st => ({ stage: st, sets: m.get(st) }));
+  }, [daySets]);
+
+  // Shared day window (normalized minutes, early-AM treated as late) so every
+  // stage calendar uses the same vertical scale. Padded 30 min each side.
+  const [winLo, winHi] = useMemo(() => {
+    let lo = Infinity, hi = -Infinity;
+    for (const s of daySets) {
+      if (s.start && s.end) { const [a, b] = normSpan(s); if (a < lo) lo = a; if (b > hi) hi = b; }
+    }
+    if (!isFinite(lo)) { lo = 14 * 60; hi = 26 * 60; } // sensible festival evening when no times yet
+    return [lo - 30, hi + 30];
+  }, [daySets]);
 
   // A row counts as a pending change when its displayed value differs from the
   // currently-published (effective) time — that's what will actually change for
   // the crew. Resetting an overridden set back to official counts too.
-  const pending = useMemo(
-    () => daySets.filter(s => draft[s.id] && !same(draft[s.id], { start: s.start, end: s.end })),
-    [daySets, draft]
-  );
+  const pendingIds = useMemo(() => {
+    const ids = new Set();
+    for (const s of daySets) {
+      const d = draft[s.id];
+      if (d && !same(d, { start: s.start, end: s.end })) ids.add(s.id);
+    }
+    return ids;
+  }, [daySets, draft]);
 
   const doPublish = async () => {
     const merged = { ...overrides };
@@ -104,9 +102,9 @@ export default function TimeView({
     const ok = await publishOverrides(merged);
     setPublishing(false);
     if (ok) {
-      setDraft({});
-      setEditTimes(false);
-      notify(`Published ${pending.length} set-time update${pending.length === 1 ? '' : 's'} to the crew`);
+      const n = pendingIds.size;
+      setDraft({}); setSelectedId(null); setEditTimes(false);
+      notify(`Published ${n} set-time update${n === 1 ? '' : 's'} to the crew`);
     } else {
       notify("Couldn't reach the server — try again when you're back online", { duration: 4000 });
     }
@@ -136,30 +134,61 @@ export default function TimeView({
     </div>
   );
 
-  // ── Edit mode: the full day's timetable, editable ──
+  // ── Edit mode: collapsible per-stage drag calendars ──
   if (editTimes) {
     return (
       <div>
         {header}
-        <div style={{ ...mono, fontSize: 11, color: muted, lineHeight: 1.5, marginBottom: 12, padding: '10px 12px', border: `1px solid ${rule}`, borderRadius: 8, display: 'flex', alignItems: 'flex-start', gap: 7 }}>
-          <Clock size={15} weight="regular" style={{ flexShrink: 0, marginTop: 1 }} />
-          <span>Fix a revised set time, then publish — every phone updates within a minute. Changes are shared with the whole crew.</span>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, ...mono, fontSize: 11, color: muted, lineHeight: 1.5, marginBottom: 12, padding: '10px 12px', border: `1px solid ${rule}`, borderRadius: 8 }}>
+          <span style={{ display: 'flex', alignItems: 'flex-start', gap: 7 }}>
+            <Clock size={15} weight="regular" style={{ flexShrink: 0, marginTop: 1 }} />
+            <span>Expand a stage and drag a set to fix its time, then publish — shared with the whole crew.</span>
+          </span>
+          {stageGroups.length > 1 && (
+            <button type="button" onClick={() => setOpenStages(openStages.size >= stageGroups.length ? new Set() : new Set(stageGroups.map(g => g.stage)))}
+              style={{ flexShrink: 0, minHeight: 36, padding: '0 4px', border: 'none', background: 'none', color: myColor, ...mono, fontSize: 10, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', cursor: 'pointer' }}>
+              {openStages.size >= stageGroups.length ? 'Collapse all' : 'Expand all'}
+            </button>
+          )}
         </div>
-        <section style={{ borderRadius: 10, border: `1px solid ${rule}`, overflow: 'hidden', backgroundColor: paper }}>
-          {daySets.map(set => {
-            const val = draft[set.id] ?? { start: set.start || null, end: set.end || null };
-            return <TimeEditorRow key={set.id} set={set} value={val} official={OFFICIAL.get(set.id)} onField={onField} onReset={onReset} />;
+
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+          {stageGroups.map(({ stage, sets: stageSets }) => {
+            const color = STAGES[stage]?.color || tmrwGold;
+            const open = openStages.has(stage);
+            const edited = stageSets.some(s => pendingIds.has(s.id));
+            return (
+              <section key={stage} style={{ borderRadius: 10, border: `1px solid ${rule}`, overflow: 'hidden', backgroundColor: paper }}>
+                <button onClick={() => toggleStage(stage)} aria-expanded={open}
+                  aria-label={`${stage}, ${stageSets.length} sets${edited ? ', edited' : ''}`}
+                  style={{ width: '100%', textAlign: 'left', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 10, padding: '12px 16px', minHeight: 44, border: 'none', background: 'none' }}>
+                  <span aria-hidden="true" style={{ width: 10, height: 10, borderRadius: '50%', backgroundColor: color, boxShadow: `0 0 8px ${color}`, flexShrink: 0 }} />
+                  <span aria-hidden="true" style={{ ...display, fontSize: 16, fontWeight: 700, color: ink, letterSpacing: '0.01em', flex: 1 }}>{stage}</span>
+                  {edited && <span aria-hidden="true" title="Edited" style={{ width: 8, height: 8, borderRadius: '50%', backgroundColor: myColor }} />}
+                  <span aria-hidden="true" style={{ ...mono, fontSize: 11, color: muted }}>{stageSets.length}</span>
+                  <CaretRight aria-hidden="true" size={14} weight="bold" color={muted} style={{ flexShrink: 0, transform: open ? 'rotate(90deg)' : 'none', transition: 'transform var(--dur-fast) var(--ease-in-out)' }} />
+                </button>
+                {open && (
+                  <StageCalendar
+                    stage={stage} sets={stageSets} draft={draft} official={OFFICIAL}
+                    winLo={winLo} winHi={winHi} pxPerMin={PX_PER_MIN}
+                    selectedId={selectedId} onSelect={setSelectedId}
+                    onSet={onSet} onField={onField} onReset={onReset}
+                  />
+                )}
+              </section>
+            );
           })}
-        </section>
+        </div>
 
         {/* Sticky publish bar — appears once there's something to publish. */}
-        {pending.length > 0 && (
+        {pendingIds.size > 0 && (
           <div style={{ position: 'sticky', bottom: 'calc(8px + env(safe-area-inset-bottom))', marginTop: 12, zIndex: 20, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, padding: '10px 12px', borderRadius: 10, border: `1px solid ${myColor}66`, backgroundColor: '#0c1126', boxShadow: '0 6px 20px rgba(0,0,0,0.5)' }}>
             <span style={{ ...mono, fontSize: 11, color: bodyMuted }}>
-              {pending.length} change{pending.length === 1 ? '' : 's'} ready
+              {pendingIds.size} change{pendingIds.size === 1 ? '' : 's'} ready
             </span>
             <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-              <button type="button" onClick={() => setDraft({})} disabled={publishing}
+              <button type="button" onClick={() => { setDraft({}); setSelectedId(null); }} disabled={publishing}
                 style={{ minHeight: 40, padding: '0 12px', border: 'none', background: 'none', color: muted, ...mono, fontSize: 11, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', cursor: 'pointer' }}>
                 Cancel
               </button>
