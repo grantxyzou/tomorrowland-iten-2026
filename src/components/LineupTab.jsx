@@ -39,8 +39,12 @@ export default function LineupTab() {
   // Live set-time overrides, layered onto the bundled lineup at runtime so the
   // crew can fix a revised timetable without a redeploy (falls back to bundled
   // baseline times offline). All the day/timeline/clash memos derive from this.
-  const overrides = useLineupOverrides();
+  const { overrides, publish: publishOverrides } = useLineupOverrides();
   const effectiveSets = useMemo(() => applyOverrides(sets, overrides), [overrides]);
+  // In-app set-time editor (Time view). Open to anyone — same trust model as the
+  // shared picks. Toggling on swaps the Time view to the full day's timetable,
+  // editable, and stages edits until published.
+  const [editTimes, setEditTimes] = useState(false);
   // Lightweight crew status board (where are you / what are you doing).
   const crewStatus = useCrewStatus();
   // Unified bottom-screen toast. { msg, action?: { label, run }, duration }
@@ -135,6 +139,13 @@ export default function LineupTab() {
     else arr.sort((a, b) => a.name.localeCompare(b.name));
     return arr;
   }, [activeDay, picks, activePerson, dayHasTimes, effectiveSets]);
+
+  // Full day's timetable (all stages, time-ordered) for the Time view's edit
+  // mode — so any official time can be corrected, not just picked sets.
+  const daySets = useMemo(
+    () => effectiveSets.filter(s => s.day === activeDay && s.status !== 'deleted').sort(stageOrder),
+    [activeDay, effectiveSets]
+  );
 
   const dayCount = useMemo(() => effectiveSets.filter(s => s.day === activeDay && s.status !== 'deleted').length, [activeDay, effectiveSets]);
   const browseLiveCount = useMemo(() => browseSets.filter(s => s.status !== 'deleted').length, [browseSets]);
@@ -359,7 +370,12 @@ export default function LineupTab() {
       )}
 
       {view === 'time' && (
-        <TimeView timeline={timeline} dayHasTimes={dayHasTimes} activePerson={activePerson} dayLabel={dayLabel} rowProps={rowProps} />
+        <TimeView
+          timeline={timeline} dayHasTimes={dayHasTimes} activePerson={activePerson}
+          dayLabel={dayLabel} rowProps={rowProps} activeDay={activeDay} myColor={myColor}
+          editTimes={editTimes} setEditTimes={setEditTimes} daySets={daySets}
+          overrides={overrides} publishOverrides={publishOverrides} notify={notify}
+        />
       )}
 
       {view === 'crew' && (

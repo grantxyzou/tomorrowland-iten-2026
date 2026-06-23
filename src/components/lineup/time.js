@@ -39,6 +39,12 @@ export function minToLabel(m) {
   return `${String(Math.floor(mm / 60)).padStart(2, '0')}:${String(mm % 60).padStart(2, '0')}`;
 }
 
+// Round a minute value to the nearest `step` (used by the drag editor to snap
+// set times to tidy 5-minute boundaries).
+export function snap(min, step = 5) {
+  return Math.round(min / step) * step;
+}
+
 export function fmtClock(d) {
   return d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false });
 }
