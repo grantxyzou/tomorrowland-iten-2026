@@ -33,10 +33,18 @@ export default function LineupTab() {
   });
 
   // Shared picks, synced to the server in near-real-time.
-  const { picks, status, togglePick, clearMine, restoreMine } = usePicks();
+  const { picks, status, togglePick, clearMine, restoreMine, online, syncing, pendingCount } = usePicks();
   // Unified bottom-screen toast. { msg, action?: { label, run }, duration }
   const [toast, setToast] = useState(null);
   const notify = useCallback((msg, opts) => setToast({ msg, duration: 2500, ...opts }), []);
+
+  // When the offline outbox finishes draining (N>0 → 0), reassure the user
+  // their queued picks made it to the crew.
+  const prevPending = useRef(pendingCount);
+  useEffect(() => {
+    if (prevPending.current > 0 && pendingCount === 0) notify('All changes synced');
+    prevPending.current = pendingCount;
+  }, [pendingCount, notify]);
 
   // Auto-dismiss the toast.
   useEffect(() => {
@@ -292,11 +300,25 @@ export default function LineupTab() {
       {/* View by + live sync status — one line */}
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, marginBottom: 6 }}>
         <span style={{ ...mono, fontSize: 10, color: muted, letterSpacing: '0.18em', textTransform: 'uppercase' }}>View by</span>
-        <span role="status" aria-label={status === 'error' ? 'Offline — showing last synced picks' : status === 'ready' ? 'Live — synced with the crew' : 'Syncing'}
-          style={{ ...mono, fontSize: 11, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', display: 'inline-flex', alignItems: 'center', gap: 5, color: status === 'error' ? clashRed : status === 'ready' ? '#5cb85c' : muted, transition: 'color var(--dur-fast) var(--ease-out)' }}>
-          <span aria-hidden="true" style={{ width: 7, height: 7, borderRadius: '50%', backgroundColor: status === 'error' ? clashRed : status === 'ready' ? '#5cb85c' : muted, display: 'inline-block', transition: 'background-color var(--dur-fast) var(--ease-out)' }} />
-          {status === 'error' ? 'Offline' : status === 'ready' ? 'Live' : 'Syncing'}
-        </span>
+        {(() => {
+          // Queued local writes take priority in the chip — they're the thing
+          // a user on bad signal needs reassurance about. Otherwise fall back to
+          // the live/offline connection state.
+          const queued = pendingCount > 0;
+          const offline = !online || status === 'error';
+          const color = queued ? '#e8c25e' : offline ? clashRed : status === 'ready' ? '#5cb85c' : muted;
+          const label = queued ? (syncing ? 'Syncing…' : `${pendingCount} to sync`)
+            : offline ? 'Offline' : status === 'ready' ? 'Live' : 'Syncing';
+          const aria = queued ? `${pendingCount} change${pendingCount === 1 ? '' : 's'} waiting to sync — they'll send when you're back online`
+            : offline ? 'Offline — showing last synced picks' : status === 'ready' ? 'Live — synced with the crew' : 'Syncing';
+          return (
+            <span role="status" aria-label={aria}
+              style={{ ...mono, fontSize: 11, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', display: 'inline-flex', alignItems: 'center', gap: 5, color, transition: 'color var(--dur-fast) var(--ease-out)' }}>
+              <span aria-hidden="true" style={{ width: 7, height: 7, borderRadius: '50%', backgroundColor: color, display: 'inline-block', transition: 'background-color var(--dur-fast) var(--ease-out)' }} />
+              {label}
+            </span>
+          );
+        })()}
       </div>
       <div role="tablist" aria-label="View" style={{ display: 'flex', marginBottom: 16, border: `1px solid ${rule}`, borderRadius: 8, overflow: 'hidden' }}>
         {VIEWS.map((v, i) => {
