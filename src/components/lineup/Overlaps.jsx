@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { Lightning, CaretRight } from '@phosphor-icons/react';
 import { STAGES, PEOPLE } from '../../data/lineup.js';
 import { mono, sans, tmrwGold, tmrwBg, ink, muted, rule, clashRed, PERSON_COLORS } from './theme.js';
 import { normSpan, minToLabel } from './time.js';
@@ -71,7 +72,7 @@ export default function ConflictCombo({ clusters, picks, me }) {
     <div style={{ border: `1px solid ${clashRed}55`, borderRadius: 10, overflow: 'hidden', backgroundColor: tmrwBg }}>
       {/* Header: how many to sort out + who's affected (you, ringed) */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap', padding: '10px 12px', backgroundColor: `${clashRed}14`, borderBottom: `1px solid ${rule}` }}>
-        <span style={{ ...sans, fontSize: 13, fontWeight: 700, color: ink }}>⚡ {clusters.length} to resolve</span>
+        <span style={{ ...sans, fontSize: 13, fontWeight: 700, color: ink, display: 'inline-flex', alignItems: 'center', gap: 5 }}><Lightning size={14} weight="fill" color={clashRed} /> {clusters.length} to resolve</span>
         <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, flexWrap: 'wrap', marginLeft: 'auto' }}>
           {perPerson.map(({ p, n }) => {
             const isMe = p === me;
@@ -95,7 +96,7 @@ export default function ConflictCombo({ clusters, picks, me }) {
             <button onClick={() => toggle(i)} aria-expanded={isOpen}
               aria-label={`${minToLabel(cl.window[0])} to ${minToLabel(cl.window[1])}: ${cl.sets.map(s => s.name).join(', ')}. Tap to ${isOpen ? 'collapse' : 'expand'}.`}
               style={{ width: '100%', textAlign: 'left', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 8, padding: '10px 12px', minHeight: 44, border: 'none', background: 'none' }}>
-              <span aria-hidden="true" style={{ fontSize: 10, color: muted, flexShrink: 0, transform: isOpen ? 'rotate(90deg)' : 'none', transition: 'transform var(--dur-fast) var(--ease-in-out)' }}>▶</span>
+              <CaretRight aria-hidden="true" size={13} weight="bold" color={muted} style={{ flexShrink: 0, transform: isOpen ? 'rotate(90deg)' : 'none', transition: 'transform var(--dur-fast) var(--ease-in-out)' }} />
               <span style={{ ...mono, fontSize: 11, fontWeight: 700, color: ink, flexShrink: 0, whiteSpace: 'nowrap' }}>{minToLabel(cl.window[0])}–{minToLabel(cl.window[1])}</span>
               <span style={{ ...sans, fontSize: 13, fontWeight: 600, color: ink, flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{names(cl)}</span>
               <PersonDots people={cl.shared} size={7} />

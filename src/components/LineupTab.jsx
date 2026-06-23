@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo, useRef, useCallback } from 'react';
+import { CaretDown, Check, MusicNotes, Moon, X } from '@phosphor-icons/react';
 import { usePresence } from '../hooks/usePresence.js';
 import { sets, STAGES, PEOPLE, LINEUP_STATUS } from '../data/lineup.js';
 import { usePicks } from '../hooks/usePicks.js';
@@ -209,13 +210,13 @@ export default function LineupTab() {
       {/* One-time tip — slim and dismissible, not a dominant panel */}
       {LINEUP_STATUS !== 'official' && !tipDismissed && (
         <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 16, backgroundColor: 'rgba(255,255,255,0.06)', borderRadius: 8, padding: '6px 6px 6px 12px' }}>
-          <span aria-hidden="true" style={{ fontSize: 13 }}>🎵</span>
+          <MusicNotes aria-hidden="true" size={15} color={muted} style={{ flexShrink: 0 }} />
           <span style={{ fontSize: 12, color: muted, lineHeight: 1.35, flex: 1 }}>
             Tap an artist to add it to your picks. Set times TBA.
           </span>
           <button onClick={() => { setTipDismissed(true); try { localStorage.setItem('tml2026_tip', '1'); } catch {} }}
             aria-label="Dismiss tip"
-            style={{ flexShrink: 0, minWidth: 44, minHeight: 44, border: 'none', background: 'none', color: muted, fontSize: 18, lineHeight: 1, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>×</button>
+            style={{ flexShrink: 0, minWidth: 44, minHeight: 44, border: 'none', background: 'none', color: muted, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><X size={16} weight="bold" /></button>
         </div>
       )}
 
@@ -252,7 +253,7 @@ export default function LineupTab() {
               <span aria-hidden="true" style={{ width: 10, height: 10, borderRadius: '50%', backgroundColor: myColor, flexShrink: 0 }} />
               <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{activePerson}</span>
             </span>
-            <span aria-hidden="true" style={{ fontSize: 18, lineHeight: 1, color: muted, transform: whoOpen ? 'rotate(180deg)' : 'none', transition: 'transform var(--dur-fast) var(--ease-in-out)', flexShrink: 0 }}>▾</span>
+            <CaretDown aria-hidden="true" size={16} weight="bold" color={muted} style={{ transform: whoOpen ? 'rotate(180deg)' : 'none', transition: 'transform var(--dur-fast) var(--ease-in-out)', flexShrink: 0 }} />
           </button>
 
           {whoPresent && (
@@ -274,7 +275,7 @@ export default function LineupTab() {
                       <span aria-hidden="true" style={{ width: 10, height: 10, borderRadius: '50%', backgroundColor: ink2 }} />
                       {person}
                     </span>
-                    {active && <span aria-hidden="true">✓</span>}
+                    {active && <Check aria-hidden="true" size={15} weight="bold" />}
                   </button>
                 );
               })}
@@ -284,7 +285,7 @@ export default function LineupTab() {
 
         <button ref={partyBtnRef} onClick={() => setParty(true)} aria-label="Enter party mode"
           style={{ flexShrink: 0, minHeight: 48, padding: '0 16px', borderRadius: 8, border: `1px solid ${tmrwBg}`, backgroundColor: tmrwBg, color: myColor, ...mono, fontSize: 11, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: 6, whiteSpace: 'nowrap', transition: 'color var(--dur-base) var(--ease-out)' }}>
-          <span aria-hidden="true">🌙</span> Party mode
+          <Moon aria-hidden="true" size={14} weight="fill" /> Party mode
         </button>
       </div>
 

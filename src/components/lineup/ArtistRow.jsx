@@ -1,8 +1,8 @@
 import { memo } from 'react';
+import { Lightning } from '@phosphor-icons/react';
 import { STAGES } from '../../data/lineup.js';
 import { mono, tmrwGold, tmrwBg, bodyMuted, ink, muted, rule, clashRed, checkInk, PERSON_COLORS } from './theme.js';
 import { timeLabel } from './time.js';
-import StatusPill from './StatusPill.jsx';
 
 // ── Shared artist row ────────────────────────────────────────
 function ArtistRow({ set, myColor, myPick, others, isClash, showStage, onToggle }) {
@@ -21,7 +21,6 @@ function ArtistRow({ set, myColor, myPick, others, isClash, showStage, onToggle 
           <span style={{ fontSize: 15, fontWeight: 600, color: muted, letterSpacing: '-0.01em', textDecoration: 'line-through' }}>
             {set.name}
           </span>
-          <StatusPill status="deleted" />
         </div>
       </div>
     );
@@ -42,7 +41,6 @@ function ArtistRow({ set, myColor, myPick, others, isClash, showStage, onToggle 
           <span style={{ fontSize: 15, fontWeight: 600, color: myPick ? myColor : ink, letterSpacing: '-0.01em', transition: 'color var(--dur-base) var(--ease-out)' }}>
             {set.name}
           </span>
-          {(set.status === 'new' || set.status === 'edited') && <StatusPill status={set.status} accent={myColor} />}
         </div>
         <div style={{ ...mono, fontSize: 10, color: myPick ? bodyMuted : muted, marginTop: 2, display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
           {showStage && (
@@ -52,7 +50,7 @@ function ArtistRow({ set, myColor, myPick, others, isClash, showStage, onToggle 
             </span>
           )}
           <span>{timeLabel(set)}</span>
-          {isClash && <span style={{ color: clashRed, fontWeight: 700 }}>⚡ OVERLAP</span>}
+          {isClash && <span style={{ color: clashRed, fontWeight: 700, display: 'inline-flex', alignItems: 'center', gap: 3 }}><Lightning size={11} weight="fill" /> OVERLAP</span>}
         </div>
       </div>
       <div style={{ display: 'flex', alignItems: 'center', gap: 4, flexShrink: 0 }}>

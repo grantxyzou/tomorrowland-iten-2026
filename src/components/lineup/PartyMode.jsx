@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo, useRef } from 'react';
+import { Moon, X, Headphones, Play, ArrowUp, DotsThree } from '@phosphor-icons/react';
 import { sets, STAGES, PEOPLE } from '../../data/lineup.js';
 import { sans, mono, clashRed, PERSON_COLORS, DAYS } from './theme.js';
 import { hasTime, timeLabel, sortKey, normSpan, fmtClock } from './time.js';
@@ -95,7 +96,7 @@ function LaterTimeline({ sets: later, onRemove, surf, line, txt, dim, gold }) {
                 zIndex: sel ? 59 : 'auto', ...sans,
               }}>
               {/* affordance: this block has actions */}
-              <span aria-hidden="true" style={{ position: 'absolute', top: 5, right: 7, ...mono, fontSize: 14, fontWeight: 700, lineHeight: 1, color: dim }}>⋯</span>
+              <DotsThree aria-hidden="true" size={18} weight="bold" color={dim} style={{ position: 'absolute', top: 5, right: 6 }} />
               <div style={{ flex: '1 1 auto', minHeight: 0, fontSize: 15, fontWeight: 700, lineHeight: 1.12, paddingRight: 12, display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>{s.name}</div>
               <div style={{ flexShrink: 0, display: 'flex', alignItems: 'center', gap: 5, ...mono, fontSize: 10, color: dim, whiteSpace: 'nowrap', overflow: 'hidden' }}>
                 <span aria-hidden="true" style={{ width: 7, height: 7, borderRadius: 2, backgroundColor: stageColor, flexShrink: 0 }} />
@@ -112,7 +113,7 @@ function LaterTimeline({ sets: later, onRemove, surf, line, txt, dim, gold }) {
     <div>
       {timed.length > 0 && !selected && (
         <div style={{ ...mono, fontSize: 11, color: dim, marginTop: 4, marginBottom: 2, display: 'flex', alignItems: 'center', gap: 6 }}>
-          <span aria-hidden="true">⋯</span> Tap a set to remove it
+          <DotsThree aria-hidden="true" size={16} weight="bold" /> Tap a set to remove it
         </div>
       )}
       {grid}
@@ -149,8 +150,8 @@ function LaterTimeline({ sets: later, onRemove, surf, line, txt, dim, gold }) {
               </div>
               <div style={{ display: 'flex', gap: 10, marginTop: 16 }}>
                 <button onClick={() => { onRemove(selected); setSelectedId(null); }}
-                  style={{ flex: 2, minHeight: 52, borderRadius: 12, border: 'none', backgroundColor: clashRed, color: '#1a0c0c', ...sans, fontSize: 16, fontWeight: 700, cursor: 'pointer' }}>
-                  ✕ Remove from plan
+                  style={{ flex: 2, minHeight: 52, borderRadius: 12, border: 'none', backgroundColor: clashRed, color: '#1a0c0c', ...sans, fontSize: 16, fontWeight: 700, cursor: 'pointer', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 7 }}>
+                  <X size={17} weight="bold" /> Remove from plan
                 </button>
                 <button onClick={() => setSelectedId(null)}
                   style={{ flex: 1, minHeight: 52, borderRadius: 12, border: `1px solid ${line}`, backgroundColor: 'transparent', color: txt, ...sans, fontSize: 16, fontWeight: 700, cursor: 'pointer' }}>
@@ -230,7 +231,7 @@ export default function PartyMode({ activePerson, setActivePerson, activeDay, se
     return (
       <div key={s.id} style={{ backgroundColor: surf, border: `1px solid ${line}`, borderRadius: 14, padding: big ? '18px 18px' : '14px 16px' }}>
         {badge && (
-          <div style={{ ...mono, fontSize: 11, fontWeight: 700, letterSpacing: '0.18em', textTransform: 'uppercase', color: badgeColor, marginBottom: 6 }}>{badge}</div>
+          <div style={{ ...mono, fontSize: 11, fontWeight: 700, letterSpacing: '0.18em', textTransform: 'uppercase', color: badgeColor, marginBottom: 6, display: 'inline-flex', alignItems: 'center', gap: 5 }}>{badge}</div>
         )}
         <div style={{ fontSize: big ? 30 : 21, fontWeight: 700, color: txt, lineHeight: 1.1, letterSpacing: '-0.01em' }}>{s.name}</div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 8, flexWrap: 'wrap' }}>
@@ -255,10 +256,10 @@ export default function PartyMode({ activePerson, setActivePerson, activeDay, se
         <div style={{ maxWidth: 520, margin: '0 auto' }}>
           {/* Top bar */}
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
-            <span style={{ ...mono, fontSize: 11, fontWeight: 700, letterSpacing: '0.22em', textTransform: 'uppercase', color: gold }}>🌙 Party mode</span>
+            <span style={{ ...mono, fontSize: 11, fontWeight: 700, letterSpacing: '0.22em', textTransform: 'uppercase', color: gold, display: 'inline-flex', alignItems: 'center', gap: 6 }}><Moon size={13} weight="fill" /> Party mode</span>
             <button onClick={onExit} aria-label="Exit party mode"
-              style={{ minHeight: 44, padding: '0 16px', borderRadius: 999, border: `1px solid ${line}`, backgroundColor: surf, color: txt, ...mono, fontSize: 12, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', cursor: 'pointer' }}>
-              ✕ Exit
+              style={{ minHeight: 44, padding: '0 16px', borderRadius: 999, border: `1px solid ${line}`, backgroundColor: surf, color: txt, ...mono, fontSize: 12, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+              <X size={14} weight="bold" /> Exit
             </button>
           </div>
           {/* Live clock */}
@@ -303,7 +304,7 @@ export default function PartyMode({ activePerson, setActivePerson, activeDay, se
         {/* Plan */}
         {plan.length === 0 ? (
           <div style={{ textAlign: 'center', padding: '40px 16px', color: dim }}>
-            <div style={{ fontSize: 34, marginBottom: 10 }}>🎧</div>
+            <Headphones size={36} weight="regular" style={{ marginBottom: 10 }} />
             <div style={{ fontSize: 16, lineHeight: 1.5 }}>{activePerson} hasn't picked anyone for {dayLabel}.<br />Switch the day or who you are above.</div>
           </div>
         ) : !dayHasTimes ? (
@@ -315,8 +316,8 @@ export default function PartyMode({ activePerson, setActivePerson, activeDay, se
           </div>
         ) : (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-            {currents.map((s, i) => card(s, i === 0 ? (currents.length > 1 ? '▶ On now (overlap)' : '▶ On now') : '▶ Also now', clashRed, true))}
-            {nextUp && card(nextUp, '↑ Up next', gold, true)}
+            {currents.map((s, i) => card(s, <><Play size={11} weight="fill" /> {i === 0 ? (currents.length > 1 ? 'On now (overlap)' : 'On now') : 'Also now'}</>, clashRed, true))}
+            {nextUp && card(nextUp, <><ArrowUp size={11} weight="bold" /> Up next</>, gold, true)}
             {!currents.length && !nextUp && (
               <div style={{ ...mono, fontSize: 13, color: dim, textAlign: 'center', padding: '8px 0' }}>
                 Nothing live right now — your full plan for {dayLabel}:
