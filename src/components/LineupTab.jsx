@@ -63,6 +63,7 @@ const VIEWS = [
 
 // Bake-off: the four candidate conflict layouts (temporary; prune to the winner).
 const CONFLICT_VARIANTS = [
+  { id: 'combo',    label: 'Combo' },
   { id: 'cluster',  label: 'Cluster' },
   { id: 'rows',     label: 'Rows' },
   { id: 'timeline', label: 'Timeline' },
@@ -248,8 +249,8 @@ export default function LineupTab() {
   // Bake-off: which conflict layout to show. Persisted so it survives the 5s
   // picks poll / tab-refocus remount. (Temporary — pruned once a winner is chosen.)
   const [conflictVariant, setConflictVariant] = useState(() => {
-    try { const v = localStorage.getItem('tml2026_conflict_variant'); return CONFLICT_VARIANTS.some(o => o.id === v) ? v : 'cluster'; }
-    catch { return 'cluster'; }
+    try { const v = localStorage.getItem('tml2026_conflict_variant'); return CONFLICT_VARIANTS.some(o => o.id === v) ? v : 'combo'; }
+    catch { return 'combo'; }
   });
   useEffect(() => { try { localStorage.setItem('tml2026_conflict_variant', conflictVariant); } catch {} }, [conflictVariant]);
   const [tipDismissed, setTipDismissed] = useState(() => {
@@ -653,7 +654,7 @@ export default function LineupTab() {
                           flex: 1, padding: '7px 0', minHeight: 40, cursor: 'pointer', border: 'none',
                           borderLeft: i === 0 ? 'none' : `1px solid ${rule}`,
                           backgroundColor: active ? clashRed : 'transparent', color: active ? tmrwBg : muted,
-                          ...mono, fontSize: 9.5, fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase',
+                          ...mono, fontSize: 8.5, fontWeight: 700, letterSpacing: '0.02em', textTransform: 'uppercase',
                           transition: 'background-color var(--dur-base) var(--ease-out), color var(--dur-base) var(--ease-out)',
                         }}>
                         {v.label}
@@ -661,6 +662,7 @@ export default function LineupTab() {
                     );
                   })}
                 </div>
+                {conflictVariant === 'combo'    && <ConflictCombo clusters={clusters} picks={picks} />}
                 {conflictVariant === 'cluster'  && <ConflictClusters clusters={clusters} picks={picks} />}
                 {conflictVariant === 'rows'     && <ConflictRows clashes={clashes} />}
                 {conflictVariant === 'timeline' && <ConflictTimeline clusters={clusters} picks={picks} />}
@@ -822,48 +824,56 @@ function ConflictRows({ clashes }) {
   );
 }
 
+// Mini Gantt body for one cluster — hour ticks + a positioned bar per set.
+// No outer card/header, so it can sit inside the Timeline card or the Combo's
+// expanded window.
+function ClusterGantt({ cl, picks }) {
+  const [lo, hi] = cl.window;
+  const span = Math.max(hi - lo, 1);
+  const ticks = [];
+  for (let t = Math.ceil(lo / 60) * 60; t <= hi; t += 60) ticks.push(t);
+  return (
+    <>
+      {/* hour grid labels */}
+      <div style={{ position: 'relative', height: 12, marginBottom: 2 }}>
+        {ticks.map(t => (
+          <span key={t} style={{ position: 'absolute', left: `${((t - lo) / span) * 100}%`, transform: 'translateX(-50%)', ...mono, fontSize: 8, color: muted }}>{minToLabel(t)}</span>
+        ))}
+      </div>
+      {cl.sets.map(s => {
+        const [st, en] = normSpan(s);
+        const left = ((st - lo) / span) * 100;
+        const width = Math.max(((en - st) / span) * 100, 6);
+        const stageColor = STAGES[s.stage]?.color || tmrwGold;
+        const pickers = PEOPLE.filter(p => picks[s.id]?.[p]);
+        return (
+          <div key={s.id} style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 6 }}>
+            <PersonDots people={pickers} size={6} />
+            <div style={{ position: 'relative', flex: 1, height: 22, borderRadius: 5, backgroundColor: 'rgba(255,255,255,0.04)', overflow: 'hidden' }}>
+              <div style={{ position: 'absolute', top: 0, bottom: 0, left: `${left}%`, width: `${width}%`, backgroundColor: `${stageColor}33`, borderLeft: `3px solid ${stageColor}`, borderRadius: 4, display: 'flex', alignItems: 'center', padding: '0 6px' }}>
+                <span style={{ ...sans, fontSize: 11, fontWeight: 600, color: ink, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{s.name}</span>
+              </div>
+            </div>
+          </div>
+        );
+      })}
+    </>
+  );
+}
+
 // 3) TIMELINE — a mini Gantt per cluster; overlapping bars make the clash visual.
 function ConflictTimeline({ clusters, picks }) {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-      {clusters.map((cl, i) => {
-        const [lo, hi] = cl.window;
-        const span = Math.max(hi - lo, 1);
-        // Hour ticks spanning the window.
-        const ticks = [];
-        for (let t = Math.ceil(lo / 60) * 60; t <= hi; t += 60) ticks.push(t);
-        return (
-          <div key={i} style={{ backgroundColor: tmrwBg, border: `1px solid ${clashRed}55`, borderRadius: 10, padding: '10px 12px' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
-              <span style={{ ...mono, fontSize: 9.5, fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: clashRed }}>⚡ {minToLabel(lo)}–{minToLabel(hi)}</span>
-              <span style={{ marginLeft: 'auto' }}><PersonDots people={cl.shared} size={6} /></span>
-            </div>
-            {/* hour grid labels */}
-            <div style={{ position: 'relative', height: 12, marginBottom: 2 }}>
-              {ticks.map(t => (
-                <span key={t} style={{ position: 'absolute', left: `${((t - lo) / span) * 100}%`, transform: 'translateX(-50%)', ...mono, fontSize: 8, color: muted }}>{minToLabel(t)}</span>
-              ))}
-            </div>
-            {cl.sets.map(s => {
-              const [st, en] = normSpan(s);
-              const left = ((st - lo) / span) * 100;
-              const width = Math.max(((en - st) / span) * 100, 6);
-              const stageColor = STAGES[s.stage]?.color || tmrwGold;
-              const pickers = PEOPLE.filter(p => picks[s.id]?.[p]);
-              return (
-                <div key={s.id} style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 6 }}>
-                  <PersonDots people={pickers} size={6} />
-                  <div style={{ position: 'relative', flex: 1, height: 22, borderRadius: 5, backgroundColor: 'rgba(255,255,255,0.04)', overflow: 'hidden' }}>
-                    <div style={{ position: 'absolute', top: 0, bottom: 0, left: `${left}%`, width: `${width}%`, backgroundColor: `${stageColor}33`, borderLeft: `3px solid ${stageColor}`, borderRadius: 4, display: 'flex', alignItems: 'center', padding: '0 6px' }}>
-                      <span style={{ ...sans, fontSize: 11, fontWeight: 600, color: ink, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{s.name}</span>
-                    </div>
-                  </div>
-                </div>
-              );
-            })}
+      {clusters.map((cl, i) => (
+        <div key={i} style={{ backgroundColor: tmrwBg, border: `1px solid ${clashRed}55`, borderRadius: 10, padding: '10px 12px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
+            <span style={{ ...mono, fontSize: 9.5, fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: clashRed }}>⚡ {minToLabel(cl.window[0])}–{minToLabel(cl.window[1])}</span>
+            <span style={{ marginLeft: 'auto' }}><PersonDots people={cl.shared} size={6} /></span>
           </div>
-        );
-      })}
+          <ClusterGantt cl={cl} picks={picks} />
+        </div>
+      ))}
     </div>
   );
 }
@@ -907,6 +917,49 @@ function ConflictSummary({ clusters, picks }) {
                 </div>
               );
             })}
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+// 5) COMBO — Summary's collapsible per-window rows, but each expanded window
+// reveals the Timeline (mini Gantt) instead of a plain set list. Shortest default
+// footprint + the most glanceable detail on demand.
+function ConflictCombo({ clusters, picks }) {
+  const [open, setOpen] = useState(() => new Set());
+  const total = clusters.reduce((n, cl) => n + cl.sets.length, 0);
+  const perPerson = PEOPLE.map(p => ({ p, n: clusters.filter(cl => cl.shared.includes(p)).length })).filter(x => x.n > 0);
+  const toggle = (i) => setOpen(prev => { const next = new Set(prev); next.has(i) ? next.delete(i) : next.add(i); return next; });
+  return (
+    <div style={{ border: `1px solid ${clashRed}55`, borderRadius: 10, overflow: 'hidden', backgroundColor: tmrwBg }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap', padding: '10px 12px', backgroundColor: `${clashRed}14`, borderBottom: `1px solid ${rule}` }}>
+        <span style={{ ...sans, fontSize: 13, fontWeight: 700, color: ink }}>⚡ {clusters.length} conflict window{clusters.length === 1 ? '' : 's'} · {total} sets</span>
+        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', marginLeft: 'auto' }}>
+          {perPerson.map(({ p, n }) => (
+            <span key={p} style={{ display: 'inline-flex', alignItems: 'center', gap: 4, ...mono, fontSize: 10, fontWeight: 700, color: PERSON_COLORS[p] }}>
+              <span aria-hidden="true" style={{ width: 6, height: 6, borderRadius: '50%', backgroundColor: PERSON_COLORS[p] }} />{p} {n}
+            </span>
+          ))}
+        </span>
+      </div>
+      {clusters.map((cl, i) => {
+        const isOpen = open.has(i);
+        return (
+          <div key={i} style={{ borderTop: i === 0 ? 'none' : `1px solid ${rule}55` }}>
+            <button onClick={() => toggle(i)} aria-expanded={isOpen}
+              style={{ width: '100%', textAlign: 'left', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 8, padding: '10px 12px', minHeight: 44, border: 'none', background: 'none' }}>
+              <span aria-hidden="true" style={{ fontSize: 10, color: muted, transform: isOpen ? 'rotate(90deg)' : 'none', transition: 'transform var(--dur-fast) var(--ease-in-out)' }}>▶</span>
+              <span style={{ ...mono, fontSize: 11, fontWeight: 700, color: ink }}>{minToLabel(cl.window[0])}–{minToLabel(cl.window[1])}</span>
+              <span style={{ ...mono, fontSize: 10, color: muted }}>{cl.sets.length} sets</span>
+              <span style={{ marginLeft: 'auto' }}><PersonDots people={cl.shared} size={6} /></span>
+            </button>
+            {isOpen && (
+              <div style={{ padding: '4px 12px 12px', borderTop: `1px solid ${rule}33` }}>
+                <ClusterGantt cl={cl} picks={picks} />
+              </div>
+            )}
           </div>
         );
       })}
