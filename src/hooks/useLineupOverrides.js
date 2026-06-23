@@ -1,9 +1,9 @@
 import { useState, useEffect, useCallback } from 'react';
 
 // Live set-time overrides from /api/lineup, layered onto the bundled lineup at
-// runtime (see applyOverrides in lineup/time.js). Read-only on the client: the
-// crew publishes corrections out-of-band (a single guarded POST), and every
-// phone picks them up here on mount + when the tab regains focus.
+// runtime (see applyOverrides in lineup/time.js). Reads poll on mount + focus;
+// the crew can also publish corrections in-app via publish() (a single guarded
+// POST), and every phone picks them up on its next poll.
 //
 // OFFLINE-SAFE: we cache the last good overrides in localStorage and start from
 // it, so a cold open with no signal still shows the most recent known times. If
@@ -38,6 +38,29 @@ export function useLineupOverrides() {
     }
   }, []);
 
+  // Publish the full merged override map to the crew. Optimistic: apply locally
+  // and cache it first so the editor (and every view) reflect the change at once
+  // and it survives a reload, then POST. Returns true on success, false if the
+  // server was unreachable — the optimistic local state stands either way and
+  // the next poll reconciles. Publishing is a deliberate online action, so we
+  // don't queue it offline; the caller just asks the user to retry.
+  const publish = useCallback(async (nextOverrides) => {
+    const value = nextOverrides && typeof nextOverrides === 'object' ? nextOverrides : {};
+    setOverrides(value);
+    try { localStorage.setItem(CACHE_KEY, JSON.stringify(value)); } catch {}
+    try {
+      const res = await fetch(API, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ confirm: 'PUBLISH', overrides: value }),
+      });
+      if (!res.ok) throw new Error('bad status');
+      return true;
+    } catch {
+      return false;
+    }
+  }, []);
+
   useEffect(() => {
     let id = null;
     const start = () => { if (id == null) id = setInterval(fetchOverrides, REVALIDATE_MS); };
@@ -59,5 +82,5 @@ export function useLineupOverrides() {
     };
   }, [fetchOverrides]);
 
-  return overrides;
+  return { overrides, publish };
 }
