@@ -216,8 +216,8 @@ export default function TimeView({
           const off = OFFICIAL.get(sel.id);
           const changed = off && !same(v, off);
           const stageColor = STAGES[sel.stage]?.color || tmrwGold;
-          const inp = { ...mono, fontSize: 18, color: ink, backgroundColor: tmrwBg, border: `1px solid ${rule}`, borderRadius: 10, padding: '10px 12px', minHeight: 48, colorScheme: 'dark', width: '100%', boxSizing: 'border-box', marginTop: 6 };
-          const lbl = { flex: 1, minWidth: 110, ...mono, fontSize: 10, color: muted, letterSpacing: '0.12em', textTransform: 'uppercase', display: 'block' };
+          const inp = { ...mono, fontSize: 18, color: ink, backgroundColor: tmrwBg, border: `1px solid ${rule}`, borderRadius: 10, padding: '10px 12px', minHeight: 48, colorScheme: 'dark', width: '100%', maxWidth: '100%', minWidth: 0, boxSizing: 'border-box', marginTop: 6, WebkitAppearance: 'none', appearance: 'none' };
+          const lbl = { flex: 1, minWidth: 0, ...mono, fontSize: 10, color: muted, letterSpacing: '0.12em', textTransform: 'uppercase', display: 'block' };
           return (
             <>
               <div onClick={() => setSelectedId(null)} aria-hidden="true" className="fx-fade"
