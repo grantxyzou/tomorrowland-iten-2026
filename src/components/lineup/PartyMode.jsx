@@ -1,7 +1,7 @@
 import { useState, useEffect, useMemo, useRef } from 'react';
 import { Moon, X, Headphones, Play, ArrowUp, DotsThree } from '@phosphor-icons/react';
 import { STAGES, PEOPLE } from '../../data/lineup.js';
-import { sans, mono, clashRed, clashFab, goldLit, PERSON_COLORS, DAYS } from './theme.js';
+import { sans, mono, clashRed, clashFab, goldLit, PERSON_COLORS, PERSON_INK, DAYS } from './theme.js';
 import { hasTime, timeLabel, sortKey, normSpan, fmtClock } from './time.js';
 
 // Apple-Calendar-style day grid for the rest of the plan ("Later"). Picked sets
@@ -284,7 +284,7 @@ export default function PartyMode({ sets, activePerson, setActivePerson, activeD
             const a = p === activePerson;
             return (
               <button key={p} role="tab" aria-selected={a} onClick={() => setActivePerson(p)}
-                style={{ flex: 1, minHeight: 54, borderRadius: 12, border: `1.5px solid ${a ? PERSON_COLORS[p] : line}`, backgroundColor: a ? PERSON_COLORS[p] : 'transparent', color: a ? '#1a1614' : dim, ...sans, fontSize: 15, fontWeight: 700, cursor: 'pointer' }}>
+                style={{ flex: 1, minHeight: 54, borderRadius: 12, border: `1.5px solid ${a ? PERSON_COLORS[p] : line}`, backgroundColor: a ? PERSON_COLORS[p] : 'transparent', color: a ? PERSON_INK[p] : dim, ...sans, fontSize: 15, fontWeight: 700, cursor: 'pointer' }}>
                 {p}
               </button>
             );

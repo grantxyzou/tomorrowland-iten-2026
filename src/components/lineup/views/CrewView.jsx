@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Lightning, Handshake, ChatCircleText, PaperPlaneTilt, X } from '@phosphor-icons/react';
 import { PEOPLE, STAGES } from '../../../data/lineup.js';
-import { mono, sans, ink, muted, rule, paper, chip, tmrwGold, tmrwBg, shRow, PERSON_COLORS } from '../theme.js';
+import { mono, sans, ink, muted, rule, paper, chip, tmrwGold, shRow, PERSON_COLORS, PERSON_INK } from '../theme.js';
 import { timeLabel } from '../time.js';
 import ConflictCombo from '../Overlaps.jsx';
 
@@ -79,7 +79,7 @@ function CrewStatusBoard({ crewStatus, activePerson, notify }) {
           placeholder={`Share where you are, ${activePerson}…`} aria-label="Your status"
           style={{ flex: 1, minWidth: 0, minHeight: 44, padding: '0 14px', borderRadius: 11, border: 'none', backgroundColor: chip, color: ink, ...sans, fontSize: 16 }} />
         <button type="submit" disabled={!text.trim()} aria-label="Share status"
-          style={{ flexShrink: 0, minHeight: 44, padding: '0 16px', borderRadius: 8, border: 'none', backgroundColor: text.trim() ? PERSON_COLORS[activePerson] : rule, color: tmrwBg, ...sans, fontSize: 14, fontWeight: 700, cursor: text.trim() ? 'pointer' : 'default', display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+          style={{ flexShrink: 0, minHeight: 44, padding: '0 16px', borderRadius: 8, border: 'none', backgroundColor: text.trim() ? PERSON_COLORS[activePerson] : rule, color: text.trim() ? PERSON_INK[activePerson] : muted, ...sans, fontSize: 14, fontWeight: 700, cursor: text.trim() ? 'pointer' : 'default', display: 'inline-flex', alignItems: 'center', gap: 6 }}>
           <PaperPlaneTilt size={15} weight="fill" /> Share
         </button>
       </form>
@@ -108,7 +108,7 @@ function CrewSection({ title, accent, items, emptyText, showWho }) {
                 </div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 4, flexShrink: 0 }}>
                   {(showWho ? pickers : []).map(p => (
-                    <span key={p} title={p} style={{ ...mono, fontSize: 9, fontWeight: 700, color: tmrwBg, backgroundColor: PERSON_COLORS[p], borderRadius: 3, padding: '2px 5px' }}>{p[0]}</span>
+                    <span key={p} title={p} style={{ ...mono, fontSize: 9, fontWeight: 700, color: PERSON_INK[p], backgroundColor: PERSON_COLORS[p], borderRadius: 3, padding: '2px 5px' }}>{p[0]}</span>
                   ))}
                   {!showWho && PEOPLE.map(p => (
                     <span key={p} title={p} style={{ width: 9, height: 9, borderRadius: '50%', backgroundColor: PERSON_COLORS[p], display: 'inline-block' }} />
@@ -134,8 +134,8 @@ export default function CrewView({ crew, totalPicks, clashes, clusters, picks, d
       <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
         {PEOPLE.map(person => (
           <div key={person} style={{ flex: 1, minWidth: 90, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, padding: '8px 12px', borderRadius: 8, backgroundColor: PERSON_COLORS[person] }}>
-            <span style={{ ...sans, fontSize: 12, fontWeight: 700, color: tmrwBg }}>{person}</span>
-            <span style={{ ...mono, fontSize: 14, fontWeight: 700, color: tmrwBg }}>{totalPicks[person]}</span>
+            <span style={{ ...sans, fontSize: 12, fontWeight: 700, color: PERSON_INK[person] }}>{person}</span>
+            <span style={{ ...mono, fontSize: 14, fontWeight: 700, color: PERSON_INK[person] }}>{totalPicks[person]}</span>
           </div>
         ))}
       </div>

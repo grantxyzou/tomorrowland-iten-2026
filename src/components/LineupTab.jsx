@@ -8,7 +8,7 @@ import { useCrewStatus } from '../hooks/useCrewStatus.js';
 import { TomorrowlandMark } from './BrandMarks.jsx';
 import {
   mono, sans, display, bar, chip, raised, ink, muted, tmrwGold, goldLit, live, clashRed,
-  PERSON_COLORS, DAYS, STAGE_ORDER, ME_KEY,
+  PERSON_COLORS, PERSON_INK, DAYS, STAGE_ORDER, ME_KEY,
 } from './lineup/theme.js';
 import { hasTime, sortKey, timesOverlap, stageOrder, conflictClusters, applyOverrides, minToLabel } from './lineup/time.js';
 import SpotifyExport from './lineup/SpotifyExport.jsx';
@@ -162,7 +162,7 @@ export default function LineupTab() {
 
   // Stable per-set prop factory so memoized ArtistRows don't re-render on every poll.
   const rowProps = useCallback((set) => ({
-    set, myColor,
+    set, myColor, myInk: PERSON_INK[activePerson],
     myPick: picks[set.id]?.[activePerson] || false,
     others: PEOPLE.filter(p => p !== activePerson && picks[set.id]?.[p]),
     isClash: clashSetIds.has(set.id),
@@ -307,7 +307,7 @@ export default function LineupTab() {
               return (
                 <button key={person} onClick={() => { setActivePerson(person); setSheet(null); }} aria-pressed={active}
                   style={{ display: 'flex', alignItems: 'center', gap: 12, minHeight: 56, padding: '0 14px', borderRadius: 14, border: 'none', cursor: 'pointer', textAlign: 'left', backgroundColor: active ? raised : chip, ...sans }}>
-                  <span aria-hidden="true" style={{ width: 30, height: 30, borderRadius: '50%', backgroundColor: c, color: '#0a0e22', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 800, fontSize: 14 }}>{person[0]}</span>
+                  <span aria-hidden="true" style={{ width: 30, height: 30, borderRadius: '50%', backgroundColor: c, color: PERSON_INK[person], display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 800, fontSize: 14 }}>{person[0]}</span>
                   <span style={{ flex: 1, fontSize: 17, fontWeight: 700, color: active ? c : ink }}>{person}</span>
                   {active && <Check size={18} weight="bold" color={c} />}
                 </button>
@@ -326,8 +326,8 @@ export default function LineupTab() {
                 <button key={day.id} onClick={() => { setActiveDay(day.id); setSheet(null); }} aria-pressed={active}
                   style={{ display: 'flex', alignItems: 'center', gap: 12, minHeight: 56, padding: '0 14px', borderRadius: 14, border: 'none', cursor: 'pointer', textAlign: 'left', backgroundColor: active ? raised : chip }}>
                   <span style={{ ...mono, fontSize: 10, fontWeight: 700, letterSpacing: '0.14em', color: muted, width: 44 }}>DAY {i + 1}</span>
-                  <span style={{ flex: 1, ...mono, fontSize: 17, fontWeight: 700, color: active ? goldLit : ink }}>{day.label}</span>
-                  {active && <Check size={18} weight="bold" color={tmrwGold} />}
+                  <span style={{ flex: 1, ...mono, fontSize: 17, fontWeight: 700, color: active ? myColor : ink }}>{day.label}</span>
+                  {active && <Check size={18} weight="bold" color={myColor} />}
                 </button>
               );
             })}
@@ -358,7 +358,7 @@ export default function LineupTab() {
               placeholder={`Share where you are, ${activePerson}…`} aria-label="Your status"
               style={{ flex: 1, minWidth: 0, minHeight: 48, padding: '0 14px', borderRadius: 12, border: 'none', backgroundColor: '#080c1e', color: ink, ...sans, fontSize: 16 }} />
             <button type="submit" disabled={!nudgeText.trim()} aria-label="Share status"
-              style={{ flexShrink: 0, minHeight: 48, padding: '0 16px', borderRadius: 12, border: 'none', backgroundColor: nudgeText.trim() ? myColor : chip, color: '#0a0e22', ...sans, fontSize: 14, fontWeight: 700, cursor: nudgeText.trim() ? 'pointer' : 'default', display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+              style={{ flexShrink: 0, minHeight: 48, padding: '0 16px', borderRadius: 12, border: 'none', backgroundColor: nudgeText.trim() ? myColor : chip, color: nudgeText.trim() ? PERSON_INK[activePerson] : muted, ...sans, fontSize: 14, fontWeight: 700, cursor: nudgeText.trim() ? 'pointer' : 'default', display: 'inline-flex', alignItems: 'center', gap: 6 }}>
               <PaperPlaneTilt size={15} weight="fill" /> Send
             </button>
           </form>

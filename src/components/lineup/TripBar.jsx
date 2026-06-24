@@ -1,20 +1,20 @@
 import { Moon, Lightning, Sparkle, CaretDown } from '@phosphor-icons/react';
-import { bar, paper, ink, muted, tmrwGold, goldLit, inkOnGold, glowGold, mono, sans, PERSON_COLORS, DAYS, VIEWS } from './theme.js';
-
-// Dark ink that clears AA on each crew member's bright avatar hue.
-const AVATAR_INK = { Grant: '#1a1505', Desmond: '#11131c', Lawrence: '#06210a' };
+import { bar, paper, ink, muted, mono, sans, PERSON_COLORS, PERSON_INK, DAYS, VIEWS } from './theme.js';
 
 // The Trip Bar — persistent bottom control bar (Trip Bar spec). Person · Day ·
-// View live in the thumb zone and never move; only the content above swaps. A
-// morphing floating action button sits just above the bar, bound to the view.
+// View live in the thumb zone and never move; only the content above swaps. The
+// active person's colour drives every accent here; a morphing floating action
+// button sits just above the bar, bound to the view.
 export default function TripBar({
   activePerson, activeDay, view, setView, party, crewCount, clashCount, nextClashLabel,
   onPerson, onDay, onParty, onResolve, onNudge,
 }) {
   const myColor = PERSON_COLORS[activePerson];
+  const onAccent = PERSON_INK[activePerson]; // legible ink on the person's fill
   const dayLabel = DAYS.find(d => d.id === activeDay)?.label || '';
 
-  // Floating action — bound to the active view; only one ever shows.
+  // Floating action — bound to the active view; only one ever shows. The clash
+  // FAB is a status colour (red); the nudge FAB takes the person accent.
   let fab = null;
   if ((view === 'stage' || view === 'time') && clashCount > 0) {
     fab = {
@@ -25,8 +25,8 @@ export default function TripBar({
     };
   } else if (view === 'crew') {
     fab = {
-      label: 'nudge squad', icon: <Sparkle size={15} weight="fill" />, bg: tmrwGold, fg: inkOnGold,
-      glow: '0 10px 24px rgba(233,185,73,0.35)', onClick: onNudge, aria: 'Nudge the squad',
+      label: 'nudge squad', icon: <Sparkle size={15} weight="fill" />, bg: myColor, fg: onAccent,
+      glow: `0 10px 24px ${myColor}59`, onClick: onNudge, aria: 'Nudge the squad',
     };
   }
 
@@ -55,16 +55,16 @@ export default function TripBar({
           {/* Row 1 — Person · Day · Party */}
           <div style={{ display: 'flex', alignItems: 'center', gap: 9 }}>
             <button onClick={onPerson} aria-haspopup="dialog" aria-label={`Whose plan: ${activePerson}. Tap to switch.`} style={chipStyle}>
-              <span aria-hidden="true" style={{ width: 22, height: 22, borderRadius: '50%', backgroundColor: myColor, color: AVATAR_INK[activePerson] || '#0a0e22', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 800, fontSize: 12 }}>{activePerson[0]}</span>
+              <span aria-hidden="true" style={{ width: 22, height: 22, borderRadius: '50%', backgroundColor: myColor, color: onAccent, display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 800, fontSize: 12 }}>{activePerson[0]}</span>
               <span style={{ maxWidth: 120, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{activePerson}</span>
               <CaretDown size={13} weight="bold" color={muted} />
             </button>
             <button onClick={onDay} aria-haspopup="dialog" aria-label={`Day: ${dayLabel}. Tap to switch.`} style={{ ...chipStyle, ...mono, fontSize: 13 }}>
-              <span style={{ color: goldLit, fontWeight: 700 }}>{dayLabel}</span>
+              <span style={{ color: myColor, fontWeight: 700 }}>{dayLabel}</span>
               <CaretDown size={13} weight="bold" color={muted} />
             </button>
             <button onClick={onParty} aria-pressed={party} aria-label="Enter party mode"
-              style={{ marginLeft: 'auto', flexShrink: 0, width: 44, height: 44, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', border: party ? 'none' : '1px solid #243056', cursor: 'pointer', backgroundColor: party ? tmrwGold : paper, color: party ? inkOnGold : tmrwGold, boxShadow: party ? glowGold : 'none' }}>
+              style={{ marginLeft: 'auto', flexShrink: 0, width: 44, height: 44, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', border: party ? 'none' : '1px solid #243056', cursor: 'pointer', backgroundColor: party ? myColor : paper, color: party ? onAccent : myColor, boxShadow: party ? `0 0 0 4px ${myColor}40` : 'none' }}>
               <Moon size={18} weight="fill" />
             </button>
           </div>
@@ -76,7 +76,7 @@ export default function TripBar({
               const label = v.label + (v.id === 'crew' && crewCount > 0 ? ` · ${crewCount}` : '');
               return (
                 <button key={v.id} role="tab" aria-selected={active} onClick={() => setView(v.id)}
-                  style={{ flex: 1, minHeight: 44, borderRadius: 11, border: 'none', cursor: 'pointer', backgroundColor: active ? tmrwGold : 'transparent', color: active ? inkOnGold : muted, ...sans, fontSize: 14, fontWeight: active ? 700 : 600, transition: 'background-color var(--dur-base) var(--ease-out), color var(--dur-base) var(--ease-out)' }}>
+                  style={{ flex: 1, minHeight: 44, borderRadius: 11, border: 'none', cursor: 'pointer', backgroundColor: active ? myColor : 'transparent', color: active ? onAccent : muted, ...sans, fontSize: 14, fontWeight: active ? 700 : 600, transition: 'background-color var(--dur-base) var(--ease-out), color var(--dur-base) var(--ease-out)' }}>
                   {label}
                 </button>
               );

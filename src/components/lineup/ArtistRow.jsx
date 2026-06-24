@@ -5,7 +5,7 @@ import { mono, tmrwGold, raised, hiTop, faint, bodyMuted, ink, muted, rule, clas
 import { timeLabel } from './time.js';
 
 // ── Shared artist row ────────────────────────────────────────
-function ArtistRow({ set, myColor, myPick, others, isClash, showStage, onToggle }) {
+function ArtistRow({ set, myColor, myInk, myPick, others, isClash, showStage, onToggle }) {
   const stageColor = STAGES[set.stage]?.color || tmrwGold;
   const deleted = set.status === 'deleted';
 
@@ -63,7 +63,7 @@ function ArtistRow({ set, myColor, myPick, others, isClash, showStage, onToggle 
           backgroundColor: myPick ? myColor : 'transparent',
         }}>
           {myPick && (
-            <svg width="11" height="11" viewBox="0 0 10 10"><polyline points="1.5,5 4,7.5 8.5,2.5" fill="none" stroke={checkInk} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" /></svg>
+            <svg width="11" height="11" viewBox="0 0 10 10"><polyline points="1.5,5 4,7.5 8.5,2.5" fill="none" stroke={myInk || checkInk} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" /></svg>
           )}
         </span>
       </div>

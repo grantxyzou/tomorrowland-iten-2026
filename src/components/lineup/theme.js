@@ -66,11 +66,18 @@ export const rSheet  = 22;
 export const rPill   = 30;
 export const rDevice = 46;
 
-// Crew — avatar hue carried everywhere.
+// Crew — avatar hue carried everywhere; drives the active UI accent.
 export const PERSON_COLORS = {
   Grant:   '#e9b949',  // gold
   Desmond: '#8fb6ff',  // blue
-  Lawrence:'#7bd06a',  // green
+  Lawrence:'#e23b3b',  // red
+};
+// Ink/icon colour that sits ON each person's fill — dark on the light gold/blue
+// hues, light on Lawrence's deeper red (so filled chips/badges stay legible).
+export const PERSON_INK = {
+  Grant:   '#1a1505',
+  Desmond: '#11131c',
+  Lawrence:'#fff5f4',
 };
 
 // Spotify accents: bright brand green for the decorative dot, a darkened
