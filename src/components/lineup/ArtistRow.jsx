@@ -1,7 +1,7 @@
 import { memo } from 'react';
 import { Lightning } from '@phosphor-icons/react';
 import { STAGES } from '../../data/lineup.js';
-import { mono, tmrwGold, tmrwBg, bodyMuted, ink, muted, rule, clashRed, checkInk, PERSON_COLORS } from './theme.js';
+import { mono, tmrwGold, raised, hiTop, faint, bodyMuted, ink, muted, rule, clashRed, checkInk, PERSON_COLORS } from './theme.js';
 import { timeLabel } from './time.js';
 
 // ── Shared artist row ────────────────────────────────────────
@@ -32,13 +32,13 @@ function ArtistRow({ set, myColor, myPick, others, isClash, showStage, onToggle 
         width: '100%', textAlign: 'left', cursor: 'pointer', minHeight: 44,
         display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10,
         padding: '10px 16px', border: 'none', borderTop: `1px solid ${rule}55`,
-        backgroundColor: myPick ? tmrwBg : 'transparent',
-        boxShadow: myPick ? `inset 3px 0 12px -6px ${myColor}99` : 'none',
+        backgroundColor: myPick ? raised : 'transparent',
+        boxShadow: myPick ? `inset 3px 0 12px -6px ${myColor}99, ${hiTop}` : 'none',
         transition: 'background-color var(--dur-press) var(--ease-out)',
       }}>
       <div style={{ minWidth: 0 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 7, flexWrap: 'wrap' }}>
-          <span style={{ fontSize: 15, fontWeight: 600, color: myPick ? myColor : ink, letterSpacing: '-0.01em', transition: 'color var(--dur-base) var(--ease-out)' }}>
+          <span style={{ fontSize: 19, fontWeight: 600, color: myPick ? myColor : ink, letterSpacing: '-0.01em', transition: 'color var(--dur-base) var(--ease-out)' }}>
             {set.name}
           </span>
         </div>
@@ -59,7 +59,7 @@ function ArtistRow({ set, myColor, myPick, others, isClash, showStage, onToggle 
         ))}
         <span style={{
           width: 22, height: 22, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', marginLeft: 2,
-          border: myPick ? 'none' : `1.5px solid ${rule}`,
+          border: myPick ? 'none' : `1.5px solid ${faint}`,
           backgroundColor: myPick ? myColor : 'transparent',
         }}>
           {myPick && (

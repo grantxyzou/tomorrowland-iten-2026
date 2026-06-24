@@ -1,7 +1,7 @@
 import { useState, useEffect, useMemo, useRef } from 'react';
 import { Moon, X, Headphones, Play, ArrowUp, DotsThree } from '@phosphor-icons/react';
 import { STAGES, PEOPLE } from '../../data/lineup.js';
-import { sans, mono, clashRed, PERSON_COLORS, DAYS } from './theme.js';
+import { sans, mono, clashRed, clashFab, goldLit, PERSON_COLORS, DAYS } from './theme.js';
 import { hasTime, timeLabel, sortKey, normSpan, fmtClock } from './time.js';
 
 // Apple-Calendar-style day grid for the rest of the plan ("Later"). Picked sets
@@ -134,7 +134,7 @@ function LaterTimeline({ sets: later, onRemove, surf, line, txt, dim, gold }) {
           <div role="region" aria-label="Remove set from plan" className="fx-fade"
             style={{
               position: 'fixed', left: 0, right: 0, bottom: 0, zIndex: 60,
-              backgroundColor: surf, borderTop: `3px solid ${clashRed}`,
+              backgroundColor: surf, borderTop: `3px solid ${clashFab}`,
               borderTopLeftRadius: 18, borderTopRightRadius: 18,
               boxShadow: '0 -10px 40px rgba(6,9,24,0.6)',
               padding: '16px max(16px, env(safe-area-inset-right)) calc(16px + env(safe-area-inset-bottom)) max(16px, env(safe-area-inset-left))',
@@ -150,7 +150,7 @@ function LaterTimeline({ sets: later, onRemove, surf, line, txt, dim, gold }) {
               </div>
               <div style={{ display: 'flex', gap: 10, marginTop: 16 }}>
                 <button onClick={() => { onRemove(selected); setSelectedId(null); }}
-                  style={{ flex: 2, minHeight: 52, borderRadius: 12, border: 'none', backgroundColor: clashRed, color: '#1a0c0c', ...sans, fontSize: 16, fontWeight: 700, cursor: 'pointer', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 7 }}>
+                  style={{ flex: 2, minHeight: 52, borderRadius: 12, border: 'none', backgroundColor: clashFab, color: '#1a0c0c', ...sans, fontSize: 16, fontWeight: 700, cursor: 'pointer', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 7 }}>
                   <X size={17} weight="bold" /> Remove from plan
                 </button>
                 <button onClick={() => setSelectedId(null)}
@@ -198,8 +198,10 @@ export default function PartyMode({ sets, activePerson, setActivePerson, activeD
   }, [onExit]);
 
   // Cage night — cool deep navy + molten gold (matches the Lineup theme).
-  const bg = '#0a0f24', surf = '#141d3e', line = '#2a386b';
-  const txt = '#ffffff', gold = '#ecc766', dim = '#9aa6c8';
+  // Direction D — midnight, borderless. Surfaces separate by value; `line` is a
+  // whisper-faint hairline only.
+  const bg = '#0a0e22', surf = '#10162e', line = '#1c2342';
+  const txt = '#eef1fb', gold = '#e9b949', dim = '#9aa3c4';
 
   const dayHasTimes = useMemo(() => sets.some(s => s.day === activeDay && hasTime(s)), [activeDay]);
   const plan = useMemo(() => {
@@ -264,7 +266,7 @@ export default function PartyMode({ sets, activePerson, setActivePerson, activeD
           </div>
           {/* Live clock */}
           <div style={{ textAlign: 'center' }}>
-            <div role="status" aria-label={`Current time, ${fmtClock(now)}`} style={{ ...mono, fontSize: 'clamp(44px, 15vw, 72px)', fontWeight: 700, color: gold, lineHeight: 1, letterSpacing: '0.02em' }}>
+            <div role="status" aria-label={`Current time, ${fmtClock(now)}`} style={{ ...mono, fontSize: 'clamp(44px, 15vw, 72px)', fontWeight: 700, color: goldLit, lineHeight: 1, letterSpacing: '0.02em' }}>
               {fmtClock(now)}
             </div>
             <div style={{ ...mono, fontSize: 12, letterSpacing: '0.2em', textTransform: 'uppercase', color: dim, marginTop: 6 }}>

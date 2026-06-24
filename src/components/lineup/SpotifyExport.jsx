@@ -1,6 +1,6 @@
 import { useState, useMemo } from 'react';
 import { SpotifyLogo, Check } from '@phosphor-icons/react';
-import { mono, sans, ink, muted, rule, paper, tmrwBg, spotifyDot, spotifyInk } from './theme.js';
+import { mono, sans, ink, muted, rule, paper, tmrwBg, shRow, spotifyDot, spotifyInk } from './theme.js';
 
 // ── Spotify prompt ───────────────────────────────────────────
 // Builds a STATIC text prompt (no AI, no API) from a person's picks. The user
@@ -66,7 +66,7 @@ export default function SpotifyExport({ person, mySets, onCopied }) {
   if (!count) return null; // nothing playable (e.g. only TBA slots picked)
 
   return (
-    <section style={{ marginTop: 28, border: `1px solid ${rule}`, borderRadius: 10, padding: 14, backgroundColor: paper }}>
+    <section style={{ marginTop: 28, borderRadius: 13, padding: 14, backgroundColor: paper, boxShadow: shRow }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
         <SpotifyLogo aria-hidden="true" size={16} weight="fill" color={spotifyDot} />
         <span style={{ ...mono, fontSize: 10, color: muted, letterSpacing: '0.16em', textTransform: 'uppercase' }}>Spotify playlist</span>

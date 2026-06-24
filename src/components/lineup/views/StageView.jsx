@@ -1,6 +1,6 @@
 import { MagnifyingGlass, X, CaretRight } from '@phosphor-icons/react';
 import { STAGES } from '../../../data/lineup.js';
-import { mono, sans, display, ink, muted, rule, paper, tmrwBg, tmrwGold, STAGE_ORDER } from '../theme.js';
+import { mono, sans, display, ink, muted, rule, paper, chip, tmrwGold, shRow, STAGE_ORDER } from '../theme.js';
 import ArtistRow from '../ArtistRow.jsx';
 import { StageSpotify } from '../SpotifyExport.jsx';
 
@@ -34,7 +34,7 @@ export default function StageView({
           <input autoFocus value={search} onChange={e => setSearch(e.target.value)} placeholder="Search artists…"
             type="search" inputMode="search" aria-label="Search artists"
             onKeyDown={e => { if (e.key === 'Escape') { setSearch(''); setSearchOpen(false); } }}
-            style={{ width: '100%', boxSizing: 'border-box', padding: '10px 46px 10px 32px', minHeight: 44, borderRadius: 8, border: `1px solid ${rule}`, backgroundColor: tmrwBg, color: ink, fontSize: 16, ...sans }} />
+            style={{ width: '100%', boxSizing: 'border-box', padding: '10px 46px 10px 32px', minHeight: 44, borderRadius: 11, border: 'none', backgroundColor: chip, color: ink, fontSize: 16, ...sans }} />
           <button onClick={() => { setSearch(''); setSearchOpen(false); }} aria-label="Close search"
             style={{ position: 'absolute', right: 2, top: '50%', transform: 'translateY(-50%)', border: 'none', background: 'none', color: muted, cursor: 'pointer', width: 44, height: 44, display: 'flex', alignItems: 'center', justifyContent: 'center' }}><X size={16} weight="bold" /></button>
         </div>
@@ -54,12 +54,12 @@ export default function StageView({
             const picked = pickedSets.length;
             const liveCount = stageSets.filter(s => s.status !== 'deleted').length;
             return (
-              <section key={stage} className="fx-enter" style={{ animationDelay: `${Math.min(idx, 8) * 40}ms`, borderRadius: 10, border: `1px solid ${rule}`, overflow: 'hidden', backgroundColor: paper }}>
+              <section key={stage} className="fx-enter" style={{ animationDelay: `${Math.min(idx, 8) * 40}ms`, borderRadius: 13, overflow: 'hidden', backgroundColor: paper, boxShadow: shRow }}>
                 <button onClick={() => !forceOpen && toggleStage(stage)} aria-expanded={open}
                   aria-label={`${stage}, ${liveCount} artists${picked > 0 ? `, ${picked} of your picks` : ''}`}
                   style={{ width: '100%', textAlign: 'left', cursor: forceOpen ? 'default' : 'pointer', display: 'flex', alignItems: 'center', gap: 10, padding: '12px 16px', minHeight: 44, border: 'none', background: 'none' }}>
                   <span aria-hidden="true" style={{ width: 10, height: 10, borderRadius: '50%', backgroundColor: color, boxShadow: `0 0 8px ${color}`, flexShrink: 0 }} />
-                  <span aria-hidden="true" style={{ ...display, fontSize: 16, fontWeight: 700, color: ink, letterSpacing: '0.01em', flex: 1 }}>{stage}</span>
+                  <span aria-hidden="true" style={{ ...display, fontSize: 23, fontWeight: 700, color: ink, letterSpacing: '0.01em', flex: 1 }}>{stage}</span>
                   {picked > 0 && (
                     <span aria-hidden="true" style={{ ...mono, fontSize: 10, fontWeight: 700, color: tmrwBg, backgroundColor: myColor, borderRadius: 999, padding: '2px 8px' }}>Selected ({picked})</span>
                   )}

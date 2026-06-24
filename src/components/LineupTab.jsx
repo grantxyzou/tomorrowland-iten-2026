@@ -7,8 +7,8 @@ import { useLineupOverrides } from '../hooks/useLineupOverrides.js';
 import { useCrewStatus } from '../hooks/useCrewStatus.js';
 import { TomorrowlandMark } from './BrandMarks.jsx';
 import {
-  mono, sans, display, tmrwBg, ink, muted, rule, clashRed,
-  PERSON_COLORS, FRAME, DAYS, VIEWS, STAGE_ORDER, ME_KEY,
+  mono, sans, display, tmrwBg, canvas, bar, chip, paper, ink, muted, rule, clashRed, tmrwGold, goldLit, live,
+  shPanel, hiTop, rPanel, PERSON_COLORS, DAYS, VIEWS, STAGE_ORDER, ME_KEY,
 } from './lineup/theme.js';
 import { hasTime, sortKey, timesOverlap, stageOrder, conflictClusters, applyOverrides } from './lineup/time.js';
 import SpotifyExport from './lineup/SpotifyExport.jsx';
@@ -213,14 +213,15 @@ export default function LineupTab() {
 
   return (
     <div style={{ ...sans }}>
-      {/* Molten-gold liquid frame around the whole Lineup (Cage edition) */}
-      <div style={{ borderRadius: 16, padding: 2, background: FRAME[activePerson] || FRAME.Grant, boxShadow: `0 0 0 1px ${myColor}40, 0 8px 40px rgba(6,9,24,0.6)` }}>
-      <div style={{ borderRadius: 14, background: 'linear-gradient(180deg, #141d3e 0%, #0f1636 100%)', padding: '18px 14px', boxShadow: `inset 0 0 24px rgba(8,12,32,0.6), inset 0 1px 0 ${myColor}26` }}>
+      {/* Borderless midnight panel — depth from surface value + soft elevation,
+          no frame/stroke (Direction D). */}
+      <div style={{ borderRadius: rPanel, padding: 0, background: canvas, boxShadow: shPanel }}>
+      <div style={{ borderRadius: rPanel, background: 'transparent', padding: '18px 14px', boxShadow: hiTop }}>
       {/* Consciencia — the Cage poster's painterly night sky in a band: deep
           indigo depth with soft nebula light → a molten-gold horizon glow. */}
       <div className="fx-enter" style={{
-        position: 'relative', height: 124, marginBottom: 16, borderRadius: 12, overflow: 'hidden',
-        background: 'linear-gradient(180deg, #0c1226 0%, #16204a 50%, #20183a 100%)',
+        position: 'relative', height: 124, marginBottom: 16, borderRadius: 16, overflow: 'hidden',
+        background: 'linear-gradient(180deg, #070b1c 0%, #0c1228 55%, #10162e 100%)',
       }}>
         {/* painterly indigo/violet nebula — soft blurred light */}
         <div aria-hidden="true" style={{ position: 'absolute', top: 6,  left: '8%',  width: 150, height: 38, borderRadius: '50%', background: 'radial-gradient(closest-side, rgba(120,150,230,0.5), rgba(120,150,230,0))', filter: 'blur(12px)' }} />
@@ -230,8 +231,8 @@ export default function LineupTab() {
         {/* legibility halo behind the wordmark */}
         <div aria-hidden="true" style={{ position: 'absolute', inset: 0, background: 'radial-gradient(ellipse 58% 54% at 50% 45%, rgba(6,9,24,0.45), rgba(6,9,24,0) 72%)' }} />
         <div style={{ position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', textAlign: 'center' }}>
-          <TomorrowlandMark color="#f0d27a" style={{ width: 30, height: 30, marginBottom: 6, filter: 'drop-shadow(0 1px 6px rgba(6,9,24,0.8))' }} />
-          <h2 style={{ ...display, fontSize: 31, fontWeight: 700, letterSpacing: '0.03em', lineHeight: 1, color: '#f7e6b0', textShadow: '0 1px 12px rgba(6,9,24,0.85)', fontVariationSettings: '"SOFT" 30, "opsz" 144', margin: 0 }}>Consciencia</h2>
+          <TomorrowlandMark color={goldLit} style={{ width: 30, height: 30, marginBottom: 6, filter: 'drop-shadow(0 1px 6px rgba(6,9,24,0.8))' }} />
+          <h2 style={{ ...display, fontSize: 'clamp(34px, 11vw, 42px)', fontWeight: 700, letterSpacing: '0.01em', lineHeight: 1, color: goldLit, textShadow: '0 1px 12px rgba(6,9,24,0.85)', fontVariationSettings: '"SOFT" 30, "opsz" 144', margin: 0, whiteSpace: 'nowrap' }}>Consciencia</h2>
           <div style={{ ...mono, fontSize: 10, fontWeight: 700, letterSpacing: '0.3em', color: 'rgba(242,236,220,0.92)', marginTop: 7, textShadow: '0 1px 6px rgba(6,9,24,0.7)' }}>TOMORROWLAND · BELGIUM 2026</div>
         </div>
       </div>
@@ -277,7 +278,7 @@ export default function LineupTab() {
         <div style={{ position: 'relative', flex: 1, minWidth: 0 }}>
           <button ref={whoBtnRef} onClick={() => setWhoOpen(o => !o)} aria-expanded={whoOpen} aria-haspopup="listbox"
             aria-label={`I'm ${activePerson}. Tap to change who's using this device.`}
-            style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, minHeight: 48, padding: '10px 14px', borderRadius: 8, border: `1px solid ${rule}`, backgroundColor: tmrwBg, color: myColor, ...sans, fontSize: 14, fontWeight: 700, cursor: 'pointer' }}>
+            style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, minHeight: 48, padding: '10px 14px', borderRadius: 11, border: 'none', backgroundColor: chip, color: myColor, ...sans, fontSize: 14, fontWeight: 700, cursor: 'pointer' }}>
             <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8, minWidth: 0 }}>
               <span aria-hidden="true" style={{ width: 10, height: 10, borderRadius: '50%', backgroundColor: myColor, flexShrink: 0 }} />
               <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{activePerson}</span>
@@ -286,7 +287,7 @@ export default function LineupTab() {
           </button>
 
           {whoPresent && (
-            <div ref={whoMenuRef} role="listbox" aria-label="Switch person" data-open={whoOpen} className="fx-pop" style={{ position: 'absolute', top: 'calc(100% + 6px)', left: 0, right: 0, zIndex: 30, border: `1px solid ${rule}`, borderRadius: 8, overflow: 'hidden', backgroundColor: tmrwBg, boxShadow: '0 8px 24px rgba(0,0,0,0.5)' }}>
+            <div ref={whoMenuRef} role="listbox" aria-label="Switch person" data-open={whoOpen} className="fx-pop" style={{ position: 'absolute', top: 'calc(100% + 6px)', left: 0, right: 0, zIndex: 30, borderRadius: 11, overflow: 'hidden', backgroundColor: paper, boxShadow: shPanel }}>
               {PEOPLE.map((person, i) => {
                 const active = activePerson === person;
                 const ink2 = PERSON_COLORS[person];
@@ -313,7 +314,7 @@ export default function LineupTab() {
         </div>
 
         <button ref={partyBtnRef} onClick={() => setParty(true)} aria-label="Enter party mode"
-          style={{ flexShrink: 0, minHeight: 48, padding: '0 16px', borderRadius: 8, border: `1px solid ${tmrwBg}`, backgroundColor: tmrwBg, color: myColor, ...mono, fontSize: 11, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: 6, whiteSpace: 'nowrap', transition: 'color var(--dur-base) var(--ease-out)' }}>
+          style={{ flexShrink: 0, minHeight: 48, padding: '0 16px', borderRadius: 11, border: 'none', backgroundColor: chip, color: myColor, ...mono, fontSize: 11, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: 6, whiteSpace: 'nowrap', transition: 'color var(--dur-base) var(--ease-out)' }}>
           <Moon aria-hidden="true" size={14} weight="fill" /> Party mode
         </button>
       </div>
@@ -327,7 +328,7 @@ export default function LineupTab() {
           // the live/offline connection state.
           const queued = pendingCount > 0;
           const offline = !online || status === 'error';
-          const color = queued ? '#e8c25e' : offline ? clashRed : status === 'ready' ? '#5cb85c' : muted;
+          const color = queued ? tmrwGold : offline ? clashRed : status === 'ready' ? live : muted;
           const label = queued ? (syncing ? 'Syncing…' : `${pendingCount} to sync`)
             : offline ? 'Offline' : status === 'ready' ? 'Live' : 'Syncing';
           const aria = queued ? `${pendingCount} change${pendingCount === 1 ? '' : 's'} waiting to sync — they'll send when you're back online`
@@ -407,7 +408,7 @@ export default function LineupTab() {
           enter and back down on exit (same direction) via .fx-toast. */}
       {toastPresent && shownToast && (
         <div role="status" aria-live="assertive" aria-atomic="true" data-open={!!toast} className="fx-toast"
-          style={{ position: 'fixed', left: 'max(16px, env(safe-area-inset-left))', right: 'max(16px, env(safe-area-inset-right))', bottom: 'calc(16px + env(safe-area-inset-bottom))', maxWidth: 648, margin: '0 auto', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, padding: '12px 16px', borderRadius: 10, backgroundColor: '#0c1126', color: '#f2ecdc', zIndex: 60, boxShadow: '0 6px 20px rgba(0,0,0,0.5)' }}>
+          style={{ position: 'fixed', left: 'max(16px, env(safe-area-inset-left))', right: 'max(16px, env(safe-area-inset-right))', bottom: 'calc(16px + env(safe-area-inset-bottom))', maxWidth: 648, margin: '0 auto', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, padding: '12px 16px', borderRadius: 13, backgroundColor: bar, color: ink, zIndex: 60, boxShadow: '0 6px 20px rgba(0,0,0,0.5)' }}>
           <span style={{ ...sans, fontSize: 13 }}>{shownToast.msg}</span>
           {shownToast.action && (
             <button onClick={() => { shownToast.action.run(); setToast(null); }}
