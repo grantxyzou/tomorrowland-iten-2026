@@ -12,7 +12,7 @@
  *
  * Bump VERSION to invalidate all caches on a future change.
  */
-const VERSION = 'v2';
+const VERSION = 'v3';
 const SHELL  = `tml-shell-${VERSION}`;   // app shell + same-origin assets
 const API    = `tml-api-${VERSION}`;     // last-known /api/* (picks, lineup, status)
 const FONTS  = `tml-fonts-${VERSION}`;   // Google Fonts
@@ -68,7 +68,15 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  // Shared picks — network-first so it's fresh, cached as an offline fallback.
+  // Auth + live location must never be cached: a stale auth response or an old
+  // GPS pin served offline would be wrong (and a privacy leak). Go to network
+  // only; if it fails, the app's own logic handles it.
+  if (url.origin === self.location.origin &&
+      (url.pathname === '/api/auth' || url.pathname === '/api/status')) {
+    return; // let the browser do a normal (uncached) network fetch
+  }
+
+  // Other shared data (picks, lineup) — network-first, cached as offline fallback.
   if (url.origin === self.location.origin && url.pathname.startsWith('/api/')) {
     event.respondWith(networkFirst(request, API));
     return;

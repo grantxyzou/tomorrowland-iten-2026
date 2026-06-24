@@ -16,6 +16,7 @@
 // difference). Location sharing is strictly opt-in, client-side.
 
 import { Redis } from '@upstash/redis';
+import { requireSession } from './_auth.js';
 
 const PEOPLE = ['Grant', 'Desmond', 'Lawrence'];
 const HASH_KEY = 'crew_status';
@@ -65,6 +66,12 @@ function toLocations(flat) {
 
 export default async function handler(req, res) {
   try {
+    // Auth gate: reads (incl. live GPS) and writes all need a valid session.
+    // The acting person comes from the verified session, never the body.
+    const session = requireSession(req, res);
+    if (!session) return;
+    const me = session.person;
+
     if (req.method === 'GET') {
       const [flat, locFlat] = await Promise.all([
         redis.hgetall(HASH_KEY),
@@ -77,40 +84,38 @@ export default async function handler(req, res) {
     if (req.method === 'POST') {
       const body = typeof req.body === 'string' ? JSON.parse(req.body || '{}') : (req.body || {});
 
-      // Clear one person's status (e.g. "I'm back, ignore me").
+      // All writes act on the signed-in person (`me`), never body.person.
+
+      // Clear my status (e.g. "I'm back, ignore me").
       if (body.action === 'clear') {
-        if (!PEOPLE.includes(body.person)) return res.status(400).json({ error: 'invalid person' });
-        await redis.hdel(HASH_KEY, body.person);
+        await redis.hdel(HASH_KEY, me);
         return res.status(200).json({ ok: true });
       }
 
-      // Drop one person's location pin (sharing turned off).
+      // Drop my location pin (sharing turned off).
       if (body.action === 'unshare-loc') {
-        if (!PEOPLE.includes(body.person)) return res.status(400).json({ error: 'invalid person' });
-        await redis.hdel(LOC_KEY, body.person);
+        await redis.hdel(LOC_KEY, me);
         return res.status(200).json({ ok: true });
       }
 
-      // Publish one person's opt-in GPS pin. Validate the coordinates hard.
+      // Publish my opt-in GPS pin. Validate the coordinates hard.
       if (body.action === 'location') {
-        if (!PEOPLE.includes(body.person)) return res.status(400).json({ error: 'invalid person' });
         const lat = Number(body.lat), lng = Number(body.lng);
         if (!Number.isFinite(lat) || !Number.isFinite(lng) || Math.abs(lat) > 90 || Math.abs(lng) > 180) {
           return res.status(400).json({ error: 'invalid coordinates' });
         }
         const acc = Number.isFinite(Number(body.acc)) ? Math.round(Number(body.acc)) : null;
         const value = JSON.stringify({ lat, lng, acc, ts: Date.now() });
-        await redis.hset(LOC_KEY, { [body.person]: value });
+        await redis.hset(LOC_KEY, { [me]: value });
         await redis.expire(LOC_KEY, TTL_SEC);
         return res.status(200).json({ ok: true });
       }
 
-      // Set one person's status. Validate against the crew + cap the length.
-      if (!PEOPLE.includes(body.person)) return res.status(400).json({ error: 'invalid person' });
+      // Set my status. Cap the length.
       const text = String(body.text ?? '').replace(/\s+/g, ' ').trim().slice(0, MAX_LEN);
       if (!text) return res.status(400).json({ error: 'empty status' });
       const value = JSON.stringify({ text, ts: Date.now() });
-      await redis.hset(HASH_KEY, { [body.person]: value });
+      await redis.hset(HASH_KEY, { [me]: value });
       await redis.expire(HASH_KEY, TTL_SEC);   // refresh the fade window on each post
       return res.status(200).json({ ok: true });
     }

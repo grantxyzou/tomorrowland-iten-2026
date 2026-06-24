@@ -144,7 +144,7 @@ export default function TripBar({
 
           {/* Row 1 — Person · Day · Party */}
           <div style={{ display: 'flex', alignItems: 'center', gap: 9 }}>
-            <button onClick={onPerson} aria-haspopup="dialog" aria-label={`Whose plan: ${activePerson}. Tap to switch.`} style={chipStyle}>
+            <button onClick={onPerson} aria-haspopup="dialog" aria-label={`Signed in as ${activePerson}. Tap for account.`} style={chipStyle}>
               <span aria-hidden="true" style={{ width: 22, height: 22, borderRadius: '50%', backgroundColor: myColor, color: onAccent, display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 800, fontSize: 12 }}>{activePerson[0]}</span>
               <span style={{ maxWidth: 120, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{activePerson}</span>
               <CaretDown size={13} weight="bold" color={muted} />

@@ -1,7 +1,7 @@
 import { useState, useEffect, useMemo, useRef } from 'react';
 import { Moon, X, Headphones, Play, ArrowUp, DotsThree } from '@phosphor-icons/react';
-import { STAGES, PEOPLE } from '../../data/lineup.js';
-import { sans, mono, clashRed, clashFab, goldLit, PERSON_COLORS, PERSON_INK, DAYS } from './theme.js';
+import { STAGES } from '../../data/lineup.js';
+import { sans, mono, clashRed, clashFab, goldLit, DAYS } from './theme.js';
 import { hasTime, timeLabel, sortKey, normSpan, fmtClock } from './time.js';
 
 // Apple-Calendar-style day grid for the rest of the plan ("Later"). Picked sets
@@ -170,7 +170,7 @@ function LaterTimeline({ sets: later, onRemove, surf, line, txt, dim, gold }) {
 // Full-screen, high-contrast, large-type "where do I go next" view for use at
 // the festival at night. Dormant set times mean it shows the ordered plan;
 // once real times drop, NOW / NEXT light up against the live clock.
-export default function PartyMode({ sets, activePerson, setActivePerson, activeDay, setActiveDay, picks, togglePick, onExit }) {
+export default function PartyMode({ sets, activePerson, activeDay, setActiveDay, picks, togglePick, onExit }) {
   // The clock only shows HH:MM, so tick once per minute (aligned to the
   // boundary) instead of every second — far less re-rendering / battery use.
   const [now, setNow] = useState(() => new Date());
@@ -278,19 +278,8 @@ export default function PartyMode({ sets, activePerson, setActivePerson, activeD
 
       {/* Scrolling body */}
       <div style={{ maxWidth: 520, margin: '0 auto' }}>
-        {/* Person + day switchers — big, thumb-friendly */}
-        <div role="tablist" aria-label="Who" style={{ display: 'flex', gap: 8 }}>
-          {PEOPLE.map(p => {
-            const a = p === activePerson;
-            return (
-              <button key={p} role="tab" aria-selected={a} onClick={() => setActivePerson(p)}
-                style={{ flex: 1, minHeight: 54, borderRadius: 12, border: `1.5px solid ${a ? PERSON_COLORS[p] : line}`, backgroundColor: a ? PERSON_COLORS[p] : 'transparent', color: a ? PERSON_INK[p] : dim, ...sans, fontSize: 15, fontWeight: 700, cursor: 'pointer' }}>
-                {p}
-              </button>
-            );
-          })}
-        </div>
-        <div role="tablist" aria-label="Day" style={{ display: 'flex', gap: 8, marginTop: 10, marginBottom: 22 }}>
+        {/* Day switcher — big, thumb-friendly. (Identity is fixed to you.) */}
+        <div role="tablist" aria-label="Day" style={{ display: 'flex', gap: 8, marginBottom: 22 }}>
           {DAYS.map((d, i) => {
             const a = d.id === activeDay;
             return (

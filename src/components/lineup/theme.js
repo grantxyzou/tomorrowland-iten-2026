@@ -98,4 +98,3 @@ export const VIEWS = [
 ];
 
 export const STAGE_ORDER = Object.keys(STAGES);
-export const ME_KEY = 'tml2026_me'; // remembers which person this device is

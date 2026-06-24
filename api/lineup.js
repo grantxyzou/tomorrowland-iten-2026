@@ -14,6 +14,7 @@
 // simpler than per-field hash ops.
 
 import { Redis } from '@upstash/redis';
+import { requireSession } from './_auth.js';
 
 const KEY = 'lineup_overrides';
 const HHMM = /^([01]\d|2[0-3]):[0-5]\d$/;          // 24h "HH:MM"
@@ -48,6 +49,10 @@ function sanitize(overrides) {
 
 export default async function handler(req, res) {
   try {
+    // Auth gate: reading and publishing overrides both need a valid session.
+    const session = requireSession(req, res);
+    if (!session) return;
+
     if (req.method === 'GET') {
       const raw = await redis.get(KEY);
       const data = raw
