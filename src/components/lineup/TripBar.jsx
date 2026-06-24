@@ -1,29 +1,31 @@
 import { useState, useEffect, useRef } from 'react';
-import { Moon, Lightning, Sparkle, CaretDown } from '@phosphor-icons/react';
-import { bar, paper, ink, muted, mono, sans, PERSON_COLORS, PERSON_INK, DAYS, VIEWS } from './theme.js';
+import { Moon, Lightning, Sparkle, CaretDown, Plus, X, MusicNotes, NavigationArrow } from '@phosphor-icons/react';
+import { bar, paper, chip, well, ink, muted, mono, sans, clashFab, spotifyDot, PERSON_COLORS, PERSON_INK, DAYS, VIEWS, shRow, shBar, rSeg, rTrack, rSheet, rPill, rBadge } from './theme.js';
 
 const FAB_SIDE_KEY = 'tml2026_fab_side';
 const HOLD_MS = 450; // press-and-hold on the FAB to flip it to the other corner
 
 // The Trip Bar — persistent bottom control bar (Trip Bar spec). Person · Day ·
 // View live in the thumb zone and never move; only the content above swaps. The
-// active person's colour drives every accent here. The morphing floating action
-// button is docked to a bottom corner (press-and-hold to flip sides) and slides
-// out of the way while you scroll down.
+// active person's colour drives every accent here. The corner-docked FAB
+// (press-and-hold to flip sides) now fans OUT into a speed-dial — Nudge ·
+// Spotify · Where's everyone, plus Overlaps when there are clashes — and slides
+// out of the way while you scroll down. Party keeps its own button on the bar.
 export default function TripBar({
-  activePerson, activeDay, view, setView, party, crewCount, clashCount, nextClashLabel,
-  onPerson, onDay, onParty, onResolve, onNudge,
+  activePerson, activeDay, view, setView, party, crewCount, clashCount,
+  onPerson, onDay, onParty, onResolve, onNudge, onSpotify, onWhere,
 }) {
   const myColor = PERSON_COLORS[activePerson];
   const onAccent = PERSON_INK[activePerson]; // legible ink on the person's fill
   const dayLabel = DAYS.find(d => d.id === activeDay)?.label || '';
 
-  // Which bottom corner the FAB docks to (remembered), and whether it's hidden
-  // because the user is scrolling down through content.
+  // Which bottom corner the FAB docks to (remembered), whether it's hidden
+  // because the user is scrolling down, and whether the fan-out is open.
   const [side, setSide] = useState(() => {
     try { return localStorage.getItem(FAB_SIDE_KEY) === 'left' ? 'left' : 'right'; } catch { return 'right'; }
   });
   const [hidden, setHidden] = useState(false);
+  const [menuOpen, setMenuOpen] = useState(false);
   const hold = useRef({ timer: null, flipped: false });
 
   // Auto-hide the FAB on scroll-down, reveal on scroll-up (and near the top).
@@ -44,13 +46,24 @@ export default function TripBar({
     return () => window.removeEventListener('scroll', onScroll);
   }, []);
 
+  // A hidden FAB shouldn't keep a fan open behind the scenes.
+  useEffect(() => { if (hidden) setMenuOpen(false); }, [hidden]);
+
+  // Escape closes the fan-out.
+  useEffect(() => {
+    if (!menuOpen) return;
+    const onKey = (e) => { if (e.key === 'Escape') setMenuOpen(false); };
+    document.addEventListener('keydown', onKey);
+    return () => document.removeEventListener('keydown', onKey);
+  }, [menuOpen]);
+
   const flipSide = () => setSide(s => {
     const next = s === 'right' ? 'left' : 'right';
     try { localStorage.setItem(FAB_SIDE_KEY, next); } catch {}
     return next;
   });
-  // Press-and-hold flips the corner; a plain tap fires the action.
-  const fabDown = (e) => {
+  // Press-and-hold flips the corner; a plain tap toggles the fan-out.
+  const fabDown = () => {
     hold.current.flipped = false;
     hold.current.timer = setTimeout(() => {
       hold.current.flipped = true;
@@ -60,51 +73,73 @@ export default function TripBar({
   };
   const fabUp = () => { clearTimeout(hold.current.timer); };
 
-  // Floating action — bound to the active view; only one ever shows. The clash
-  // FAB is a status colour (red); the nudge FAB takes the person accent.
-  let fab = null;
-  if ((view === 'stage' || view === 'time') && clashCount > 0) {
-    fab = {
-      label: view === 'stage' ? `${clashCount} clash${clashCount === 1 ? '' : 'es'} · resolve` : `next clash · ${nextClashLabel}`,
-      icon: <Lightning size={15} weight="fill" />, bg: '#e8554e', fg: '#fff',
-      glow: '0 10px 24px rgba(232,85,78,0.40)', onClick: onResolve,
-      aria: view === 'stage' ? `${clashCount} overlaps — resolve` : `Next overlap at ${nextClashLabel} — resolve`,
-    };
-  } else if (view === 'crew') {
-    fab = {
-      label: 'nudge squad', icon: <Sparkle size={15} weight="fill" />, bg: myColor, fg: onAccent,
-      glow: `0 10px 24px ${myColor}59`, onClick: onNudge, aria: 'Nudge the squad',
-    };
-  }
+  // Fan-out actions — always available (Nudge / Spotify / Where), with Overlaps
+  // surfacing only when there are clashes to resolve. Each runs then closes.
+  const run = (fn) => () => { setMenuOpen(false); fn?.(); };
+  const actions = [
+    clashCount > 0 && {
+      key: 'overlaps', label: `${clashCount} overlap${clashCount === 1 ? '' : 's'}`,
+      icon: <Lightning size={17} weight="fill" />, accent: clashFab, fg: '#fff', onClick: run(onResolve),
+    },
+    { key: 'where', label: 'Where’s everyone', icon: <NavigationArrow size={17} weight="fill" />, accent: myColor, fg: onAccent, onClick: run(onWhere) },
+    { key: 'spotify', label: 'Spotify playlist', icon: <MusicNotes size={17} weight="fill" />, accent: spotifyDot, fg: '#06210f', onClick: run(onSpotify) },
+    { key: 'nudge', label: 'Nudge squad', icon: <Sparkle size={17} weight="fill" />, accent: myColor, fg: onAccent, onClick: run(onNudge) },
+  ].filter(Boolean);
 
   const chipStyle = {
     display: 'inline-flex', alignItems: 'center', gap: 8, minHeight: 44, padding: '0 13px',
-    borderRadius: 30, backgroundColor: paper, border: '1px solid #243056', color: ink,
+    borderRadius: rPill, backgroundColor: paper, border: '1px solid #243056', color: ink,
     ...sans, fontSize: 14, fontWeight: 700, cursor: 'pointer',
   };
 
   return (
     <div style={{ position: 'fixed', left: 0, right: 0, bottom: 0, zIndex: 50, pointerEvents: 'none' }}>
-      {/* Floating action — docked to a bottom corner, auto-hides on scroll-down */}
-      {fab && (
-        <div style={{
-          maxWidth: 680, margin: '0 auto', padding: '0 16px 12px', display: 'flex',
-          justifyContent: side === 'left' ? 'flex-start' : 'flex-end',
-          transform: hidden ? 'translateY(180%)' : 'none', opacity: hidden ? 0 : 1,
-          transition: 'transform var(--dur-base) var(--ease-out), opacity var(--dur-base) var(--ease-out)',
-        }}>
-          <button
-            onClick={() => { if (hold.current.flipped) { hold.current.flipped = false; return; } fab.onClick(); }}
-            onPointerDown={fabDown} onPointerUp={fabUp} onPointerLeave={fabUp} onPointerCancel={fabUp}
-            aria-label={fab.aria} title="Press and hold to move to the other corner"
-            style={{ pointerEvents: hidden ? 'none' : 'auto', touchAction: 'none', display: 'inline-flex', alignItems: 'center', gap: 8, minHeight: 44, padding: '0 18px', borderRadius: 22, border: 'none', backgroundColor: fab.bg, color: fab.fg, ...sans, fontSize: 13, fontWeight: 700, cursor: 'pointer', boxShadow: fab.glow }}>
-            {fab.icon} {fab.label}
-          </button>
-        </div>
+      {/* Tap-catcher — closes the fan on an outside tap (sits below the sheets) */}
+      {menuOpen && (
+        <div onClick={() => setMenuOpen(false)} aria-hidden="true"
+          style={{ position: 'fixed', inset: 0, pointerEvents: 'auto', backgroundColor: 'rgba(4,7,18,0.35)' }} />
       )}
 
+      {/* Floating action — docked to a bottom corner, auto-hides on scroll-down */}
+      <div style={{
+        position: 'relative', maxWidth: 680, margin: '0 auto', padding: '0 16px 12px', display: 'flex',
+        flexDirection: 'column', alignItems: side === 'left' ? 'flex-start' : 'flex-end', gap: 10,
+        transform: hidden ? 'translateY(180%)' : 'none', opacity: hidden ? 0 : 1,
+        transition: 'transform var(--dur-base) var(--ease-out), opacity var(--dur-base) var(--ease-out)',
+      }}>
+        {/* Fan-out items */}
+        {menuOpen && (
+          <div role="group" aria-label="Quick actions"
+            style={{ display: 'flex', flexDirection: 'column', alignItems: side === 'left' ? 'flex-start' : 'flex-end', gap: 10 }}>
+            {actions.map((a, i) => (
+              <button key={a.key} onClick={a.onClick} className="fx-enter"
+                style={{ animationDelay: `${i * 35}ms`, pointerEvents: 'auto', display: 'inline-flex', alignItems: 'center', flexDirection: side === 'left' ? 'row' : 'row-reverse', gap: 10, minHeight: 44, padding: side === 'left' ? '0 16px 0 6px' : '0 6px 0 16px', borderRadius: rSheet, border: 'none', backgroundColor: chip, color: ink, ...sans, fontSize: 14, fontWeight: 700, cursor: 'pointer', boxShadow: shRow }}>
+                <span aria-hidden="true" style={{ width: 32, height: 32, borderRadius: '50%', flexShrink: 0, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', backgroundColor: a.accent, color: a.fg }}>{a.icon}</span>
+                {a.label}
+              </button>
+            ))}
+          </div>
+        )}
+
+        {/* Main FAB — tap fans out, press-and-hold flips corner */}
+        <button
+          onClick={() => { if (hold.current.flipped) { hold.current.flipped = false; return; } setMenuOpen(o => !o); }}
+          onPointerDown={fabDown} onPointerUp={fabUp} onPointerLeave={fabUp} onPointerCancel={fabUp}
+          aria-haspopup="true" aria-expanded={menuOpen} aria-label={menuOpen ? 'Close actions' : 'Open actions'}
+          title="Press and hold to move to the other corner"
+          style={{ position: 'relative', pointerEvents: hidden ? 'none' : 'auto', touchAction: 'none', width: 56, height: 56, borderRadius: '50%', border: 'none', backgroundColor: myColor, color: onAccent, cursor: 'pointer', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', boxShadow: `0 10px 24px ${myColor}59` }}>
+          <span style={{ display: 'inline-flex', transform: menuOpen ? 'rotate(135deg)' : 'none', transition: 'transform var(--dur-base) var(--ease-out)' }}>
+            {menuOpen ? <X size={22} weight="bold" /> : <Plus size={24} weight="bold" />}
+          </span>
+          {/* Overlaps badge — surfaces clashes even while collapsed */}
+          {!menuOpen && clashCount > 0 && (
+            <span aria-hidden="true" style={{ position: 'absolute', top: -2, right: -2, minWidth: 20, height: 20, padding: '0 5px', borderRadius: rBadge, backgroundColor: clashFab, color: '#fff', ...mono, fontSize: 11, fontWeight: 700, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', boxShadow: `0 0 0 2px ${bar}` }}>{clashCount}</span>
+          )}
+        </button>
+      </div>
+
       {/* The bar */}
-      <div style={{ pointerEvents: 'auto', backgroundColor: bar, borderTop: '1px solid #20284a', borderTopLeftRadius: 30, borderTopRightRadius: 30, boxShadow: '0 -12px 30px rgba(0,0,0,0.45)', paddingBottom: 'env(safe-area-inset-bottom)' }}>
+      <div style={{ pointerEvents: 'auto', backgroundColor: bar, borderTop: '1px solid #20284a', borderTopLeftRadius: rPill, borderTopRightRadius: rPill, boxShadow: shBar, paddingBottom: 'env(safe-area-inset-bottom)' }}>
         <div style={{ maxWidth: 680, margin: '0 auto', padding: '12px 16px 14px', display: 'flex', flexDirection: 'column', gap: 10 }}>
 
           {/* Row 1 — Person · Day · Party */}
@@ -125,13 +160,13 @@ export default function TripBar({
           </div>
 
           {/* Row 2 — View switch (one active) */}
-          <div role="tablist" aria-label="View" style={{ display: 'flex', gap: 6, padding: 5, borderRadius: 16, backgroundColor: '#080c1e' }}>
+          <div role="tablist" aria-label="View" style={{ display: 'flex', gap: 6, padding: 5, borderRadius: rTrack, backgroundColor: well }}>
             {VIEWS.map(v => {
               const active = view === v.id;
               const label = v.label + (v.id === 'crew' && crewCount > 0 ? ` · ${crewCount}` : '');
               return (
                 <button key={v.id} role="tab" aria-selected={active} onClick={() => setView(v.id)}
-                  style={{ flex: 1, minHeight: 44, borderRadius: 11, border: 'none', cursor: 'pointer', backgroundColor: active ? myColor : 'transparent', color: active ? onAccent : muted, ...sans, fontSize: 14, fontWeight: active ? 700 : 600, transition: 'background-color var(--dur-base) var(--ease-out), color var(--dur-base) var(--ease-out)' }}>
+                  style={{ flex: 1, minHeight: 44, borderRadius: rSeg, border: 'none', cursor: 'pointer', backgroundColor: active ? myColor : 'transparent', color: active ? onAccent : muted, ...sans, fontSize: 14, fontWeight: active ? 700 : 600, transition: 'background-color var(--dur-base) var(--ease-out), color var(--dur-base) var(--ease-out)' }}>
                   {label}
                 </button>
               );
