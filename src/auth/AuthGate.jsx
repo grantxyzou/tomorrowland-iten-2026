@@ -208,7 +208,7 @@ function SignIn() {
           <div className={introOver ? undefined : 'tlsi-ticket'} style={ticket}>
             <div style={goldHairline} />
 
-            <div style={{ padding: '34px 34px 30px' }}>
+            <div style={{ padding: '34px 34px 30px', textAlign: 'left' }}>
               <div style={{ marginBottom: 26 }}>
                 <div className="tlsi-flicker" style={kicker}>THE BUDHOLE EXCLUSIVE APP</div>
                 <div style={titleWrap}>
@@ -246,8 +246,8 @@ function SignIn() {
                 />
               </div>
 
-              {busy && <div style={{ ...sans, fontSize: 13, color: muted, marginTop: 14, textAlign: 'center' }}>Signing in…</div>}
-              {error && <div role="alert" style={{ ...sans, fontSize: 13, color: clashRed, marginTop: 14, textAlign: 'center' }}>{error}</div>}
+              {busy && <div style={{ ...sans, fontSize: 13, color: muted, marginTop: 14 }}>Signing in…</div>}
+              {error && <div role="alert" style={{ ...sans, fontSize: 13, color: clashRed, marginTop: 14 }}>{error}</div>}
             </div>
 
             {/* perforation */}
