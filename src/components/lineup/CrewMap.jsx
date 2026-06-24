@@ -68,6 +68,7 @@ function Minimap({ me, targets, heading, selected, onSelect }) {
         const isSel = selKey(t) === selKey(selected);
         return (
           <g key={selKey(t)} onClick={() => onSelect(isSel ? null : t)} style={{ cursor: 'pointer' }}>
+            <title>{`${t.id} · ${fmtDistance(t.dist)}`}</title>
             {isSel && <circle cx={x} cy={y} r="13" fill="none" stroke={t.color} strokeWidth="1.5" opacity="0.8" />}
             {t.kind === 'stage' ? (
               <rect x={x - 5.5} y={y - 5.5} width="11" height="11" rx="2" fill={t.color} transform={`rotate(45 ${x} ${y})`} />
@@ -76,6 +77,10 @@ function Minimap({ me, targets, heading, selected, onSelect }) {
                 <circle cx={x} cy={y} r="8" fill={t.color} />
                 <text x={x} y={y + 3} textAnchor="middle" fill={t.ink} style={{ ...sans }} fontSize="9" fontWeight="800">{t.label}</text>
               </>
+            )}
+            {/* name the selected stage on the map (people already show an initial) */}
+            {isSel && t.kind === 'stage' && (
+              <text x={x} y={y + 19} textAnchor="middle" fill={caption} style={{ ...mono }} fontSize="8" fontWeight="700">{t.id}</text>
             )}
           </g>
         );
@@ -158,7 +163,7 @@ export default function CrewMap({
         </div>
         <button onClick={sharing ? onDisable : onEnable} disabled={!supported}
           aria-pressed={sharing} aria-label={sharing ? 'Stop sharing my location' : 'Share my location'}
-          style={{ flexShrink: 0, minHeight: 40, padding: '0 16px', borderRadius: rPill, border: 'none', cursor: supported ? 'pointer' : 'default',
+          style={{ flexShrink: 0, minHeight: 44, padding: '0 16px', borderRadius: rPill, border: 'none', cursor: supported ? 'pointer' : 'default',
             backgroundColor: sharing ? raised : PERSON_COLORS[me], color: sharing ? muted : PERSON_INK[me], ...sans, fontSize: 13, fontWeight: 700 }}>
           {sharing ? 'Stop' : 'Share'}
         </button>
@@ -200,16 +205,18 @@ export default function CrewMap({
               {peopleRels.map(({ person, dist, bearing, ts, acc }, i) => {
                 const isSel = selected?.kind === 'person' && selected.id === person;
                 return (
-                  <div key={person} onClick={() => setSelected(isSel ? null : { kind: 'person', id: person })}
-                    style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '11px 14px', cursor: 'pointer', backgroundColor: isSel ? raised : 'transparent', borderTop: i === 0 ? 'none' : `1px solid ${rule}55` }}>
+                  <button key={person} type="button" aria-pressed={isSel}
+                    onClick={() => setSelected(isSel ? null : { kind: 'person', id: person })}
+                    aria-label={`${person}, ${fmtDistance(dist)} ${dirText(bearing)}`}
+                    style={{ width: '100%', textAlign: 'left', font: 'inherit', display: 'flex', alignItems: 'center', gap: 10, padding: '11px 14px', cursor: 'pointer', border: 'none', backgroundColor: isSel ? raised : 'transparent', borderTop: i === 0 ? 'none' : `1px solid ${rule}55` }}>
                     <span aria-hidden="true" style={{ width: 26, height: 26, borderRadius: '50%', backgroundColor: PERSON_COLORS[person], color: PERSON_INK[person], display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 800, fontSize: 12, flexShrink: 0 }}>{person[0]}</span>
-                    <div style={{ flex: 1, minWidth: 0 }}>
-                      <div style={{ ...sans, fontSize: 15, fontWeight: 700, color: ink }}>{person} · {fmtDistance(dist)} {dirText(bearing)}</div>
-                      <div style={{ ...mono, fontSize: 10, color: muted, marginTop: 2 }}>
+                    <span style={{ flex: 1, minWidth: 0 }}>
+                      <span style={{ display: 'block', ...sans, fontSize: 15, fontWeight: 700, color: ink }}>{person} · {fmtDistance(dist)} {dirText(bearing)}</span>
+                      <span style={{ display: 'block', ...mono, fontSize: 10, color: muted, marginTop: 2 }}>
                         {ago(ts)}{acc ? ` · ±${acc} m` : ''}{statuses[person]?.text ? ` · ${statuses[person].text}` : ''}
-                      </div>
-                    </div>
-                  </div>
+                      </span>
+                    </span>
+                  </button>
                 );
               })}
             </section>
@@ -226,7 +233,7 @@ export default function CrewMap({
                 <span style={{ ...mono, fontSize: 10, color: muted, letterSpacing: '0.18em', textTransform: 'uppercase' }}>Stages · approx.</span>
                 {stageRels.length > shownStages.length || showAllStages ? (
                   <button onClick={() => setShowAllStages(v => !v)}
-                    style={{ border: 'none', background: 'none', color: PERSON_COLORS[me], ...mono, fontSize: 10, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', cursor: 'pointer', minHeight: 32, padding: '0 2px' }}>
+                    style={{ border: 'none', background: 'none', color: PERSON_COLORS[me], ...mono, fontSize: 10, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', cursor: 'pointer', minHeight: 44, padding: '0 4px' }}>
                     {showAllStages ? 'Show fewer' : 'Show all'}
                   </button>
                 ) : null}
@@ -236,14 +243,16 @@ export default function CrewMap({
                   const isSel = selected?.kind === 'stage' && selected.id === name;
                   const color = STAGES[name]?.color || tmrwGold;
                   return (
-                    <div key={name} onClick={() => setSelected(isSel ? null : { kind: 'stage', id: name })}
-                      style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 14px', cursor: 'pointer', backgroundColor: isSel ? raised : 'transparent', borderTop: i === 0 ? 'none' : `1px solid ${rule}55` }}>
+                    <button key={name} type="button" aria-pressed={isSel}
+                      onClick={() => setSelected(isSel ? null : { kind: 'stage', id: name })}
+                      aria-label={`${name}${name === nextStage ? ', your next stage' : ''}, ${fmtDistance(dist)} ${dirText(bearing)}`}
+                      style={{ width: '100%', textAlign: 'left', font: 'inherit', display: 'flex', alignItems: 'center', gap: 10, padding: '12px 14px', cursor: 'pointer', border: 'none', backgroundColor: isSel ? raised : 'transparent', borderTop: i === 0 ? 'none' : `1px solid ${rule}55` }}>
                       <span aria-hidden="true" style={{ width: 11, height: 11, borderRadius: 2, transform: 'rotate(45deg)', backgroundColor: color, flexShrink: 0 }} />
                       <span style={{ flex: 1, minWidth: 0, ...sans, fontSize: 14, fontWeight: 600, color: ink, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                         {name}{name === nextStage ? ' · next' : ''}
                       </span>
                       <span style={{ ...mono, fontSize: 11, color: muted, flexShrink: 0 }}>{fmtDistance(dist)} {dirText(bearing)}</span>
-                    </div>
+                    </button>
                   );
                 })}
               </section>
