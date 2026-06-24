@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
+import { apiFetch } from '../lib/api.js';
 
 // Live set-time overrides from /api/lineup, layered onto the bundled lineup at
 // runtime (see applyOverrides in lineup/time.js). Reads poll on mount + focus;
@@ -27,7 +28,7 @@ export function useLineupOverrides() {
 
   const fetchOverrides = useCallback(async () => {
     try {
-      const res = await fetch(API, { cache: 'no-store' });
+      const res = await apiFetch(API, { cache: 'no-store' });
       if (!res.ok) throw new Error('bad status');
       const { overrides: next } = await res.json();
       const value = next && typeof next === 'object' ? next : {};
@@ -49,7 +50,7 @@ export function useLineupOverrides() {
     setOverrides(value);
     try { localStorage.setItem(CACHE_KEY, JSON.stringify(value)); } catch {}
     try {
-      const res = await fetch(API, {
+      const res = await apiFetch(API, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ confirm: 'PUBLISH', overrides: value }),

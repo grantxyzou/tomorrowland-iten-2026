@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { useOnline } from './useOnline.js';
 import { useLivePoll } from './useLivePoll.js';
+import { apiFetch } from '../lib/api.js';
 
 // Shared picks synced via /api/picks (Upstash Redis), polled in near-real-time.
 //
@@ -103,7 +104,7 @@ export function usePicks() {
       for (const [field, desired] of [...outboxRef.current.entries()]) {
         const [setId, person] = splitField(field);
         try {
-          const res = await fetch(API, {
+          const res = await apiFetch(API, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ setId, person, picked: desired }),
@@ -125,7 +126,7 @@ export function usePicks() {
 
   const fetchPicks = useCallback(async () => {
     try {
-      const res = await fetch(API, { cache: 'no-store' });
+      const res = await apiFetch(API, { cache: 'no-store' });
       if (!res.ok) throw new Error('bad status');
       const { picks: server } = await res.json();
       const merged = applyPending(server, outboxRef.current);

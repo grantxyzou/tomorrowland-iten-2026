@@ -1,5 +1,6 @@
 import { useState, useRef, useCallback } from 'react';
 import { useLivePoll } from './useLivePoll.js';
+import { apiFetch } from '../lib/api.js';
 
 // Crew status board, synced via /api/status (Upstash Redis), polled in
 // near-real-time. Shapes: statuses { [person]: { text, ts } } and the opt-in
@@ -87,7 +88,7 @@ export function useCrewStatus() {
           ? { action: 'clear', person }
           : { person, text: pending.text };
         try {
-          const res = await fetch(API, {
+          const res = await apiFetch(API, {
             method: 'POST', headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(body),
           });
@@ -103,7 +104,7 @@ export function useCrewStatus() {
           ? { action: 'unshare-loc', person }
           : { action: 'location', person, lat: pending.lat, lng: pending.lng, acc: pending.acc };
         try {
-          const res = await fetch(API, {
+          const res = await apiFetch(API, {
             method: 'POST', headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(body),
           });
@@ -121,7 +122,7 @@ export function useCrewStatus() {
 
   const fetchStatuses = useCallback(async () => {
     try {
-      const res = await fetch(API, { cache: 'no-store' });
+      const res = await apiFetch(API, { cache: 'no-store' });
       if (!res.ok) throw new Error('bad status');
       const { statuses: srvStatus, locations: srvLoc } = await res.json();
       const mergedStatus = applyPending(srvStatus || {}, outboxRef.current);

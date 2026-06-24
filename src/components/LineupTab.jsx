@@ -1,6 +1,7 @@
 import { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import { Check, MusicNotes, X, PaperPlaneTilt } from '@phosphor-icons/react';
 import { usePresence } from '../hooks/usePresence.js';
+import { useAuth } from '../auth/AuthContext.jsx';
 import { sets, PEOPLE, LINEUP_STATUS } from '../data/lineup.js';
 import { usePicks } from '../hooks/usePicks.js';
 import { useLineupOverrides } from '../hooks/useLineupOverrides.js';
@@ -10,7 +11,7 @@ import { useHeading } from '../hooks/useHeading.js';
 import { TomorrowlandMark } from './BrandMarks.jsx';
 import {
   mono, sans, display, bar, chip, raised, ink, muted, tmrwGold, goldLit, live, clashRed, spotifyDot,
-  PERSON_COLORS, PERSON_INK, DAYS, STAGE_ORDER, ME_KEY,
+  PERSON_COLORS, PERSON_INK, DAYS, STAGE_ORDER,
 } from './lineup/theme.js';
 import { hasTime, sortKey, timesOverlap, stageOrder, conflictClusters, applyOverrides } from './lineup/time.js';
 import SpotifyExport from './lineup/SpotifyExport.jsx';
@@ -25,10 +26,8 @@ import CrewView, { PRESETS } from './lineup/views/CrewView.jsx';
 
 export default function LineupTab() {
   const [activeDay, setActiveDay]       = useState('fri');
-  const [activePerson, setActivePerson] = useState(() => {
-    try { const me = localStorage.getItem(ME_KEY); return PEOPLE.includes(me) ? me : 'Grant'; }
-    catch { return 'Grant'; }
-  });
+  // Identity comes from the signed-in session — you are always yourself.
+  const { person: activePerson, email: myEmail, logout } = useAuth();
   const [view, setView]                 = useState('stage');
   const [search, setSearch]             = useState('');
   const [openStages, setOpenStages]     = useState(() => new Set());
@@ -88,9 +87,6 @@ export default function LineupTab() {
 
   // Presence for the search reveal so it animates in AND out.
   const searchPresent = usePresence(searchOpen, 200);
-
-  // Remember which person this device is, so you don't re-pick each visit.
-  useEffect(() => { try { localStorage.setItem(ME_KEY, activePerson); } catch {} }, [activePerson]);
 
   const q = search.trim().toLowerCase();
   const myColor = PERSON_COLORS[activePerson];
@@ -201,7 +197,7 @@ export default function LineupTab() {
   if (party) return (
     <PartyMode
       sets={effectiveSets}
-      activePerson={activePerson} setActivePerson={setActivePerson}
+      activePerson={activePerson}
       activeDay={activeDay} setActiveDay={setActiveDay}
       picks={picks} togglePick={togglePick} onExit={exitParty}
     />
@@ -316,20 +312,19 @@ export default function LineupTab() {
 
       {/* ── Trip Bar sheets ── */}
       {sheet === 'person' && (
-        <BottomSheet title="Whose plan?" accent={myColor} onClose={() => setSheet(null)}>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-            {PEOPLE.map(person => {
-              const active = person === activePerson;
-              const c = PERSON_COLORS[person];
-              return (
-                <button key={person} onClick={() => { setActivePerson(person); setSheet(null); }} aria-pressed={active}
-                  style={{ display: 'flex', alignItems: 'center', gap: 12, minHeight: 56, padding: '0 14px', borderRadius: 14, border: 'none', cursor: 'pointer', textAlign: 'left', backgroundColor: active ? raised : chip, ...sans }}>
-                  <span aria-hidden="true" style={{ width: 30, height: 30, borderRadius: '50%', backgroundColor: c, color: PERSON_INK[person], display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 800, fontSize: 14 }}>{person[0]}</span>
-                  <span style={{ flex: 1, fontSize: 17, fontWeight: 700, color: active ? c : ink }}>{person}</span>
-                  {active && <Check size={18} weight="bold" color={c} />}
-                </button>
-              );
-            })}
+        <BottomSheet title="Your account" accent={myColor} onClose={() => setSheet(null)}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 12, minHeight: 56, padding: '0 14px', borderRadius: 14, backgroundColor: raised, ...sans }}>
+              <span aria-hidden="true" style={{ width: 36, height: 36, borderRadius: '50%', backgroundColor: myColor, color: PERSON_INK[activePerson], display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 800, fontSize: 16 }}>{activePerson[0]}</span>
+              <span style={{ flex: 1, minWidth: 0 }}>
+                <span style={{ display: 'block', fontSize: 17, fontWeight: 700, color: myColor }}>{activePerson}</span>
+                {myEmail && <span style={{ display: 'block', fontSize: 12, color: muted, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{myEmail}</span>}
+              </span>
+            </div>
+            <button onClick={() => { setSheet(null); logout(); }}
+              style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, minHeight: 52, padding: '0 14px', borderRadius: 14, border: 'none', cursor: 'pointer', backgroundColor: chip, color: ink, ...sans, fontSize: 15, fontWeight: 700 }}>
+              <X size={18} weight="bold" /> Sign out
+            </button>
           </div>
         </BottomSheet>
       )}

@@ -6,8 +6,8 @@
 // Each toggle is one atomic HSET/HDEL, so concurrent edits never clobber.
 
 import { Redis } from '@upstash/redis';
+import { requireSession } from './_auth.js';
 
-const PEOPLE = ['Grant', 'Desmond', 'Lawrence'];
 const HASH_KEY = 'picks';
 const SEP = '|';
 
@@ -32,6 +32,11 @@ function toPicks(flat) {
 
 export default async function handler(req, res) {
   try {
+    // Auth gate: every read and write needs a valid session. The acting person
+    // is taken from the verified session below, never from the request body.
+    const session = requireSession(req, res);
+    if (!session) return;
+
     if (req.method === 'GET') {
       const flat = await redis.hgetall(HASH_KEY);
       res.setHeader('Cache-Control', 'no-store');
@@ -53,27 +58,23 @@ export default async function handler(req, res) {
       }
 
       // Clear all of ONE person's picks (used by the per-person reset).
-      // Only touches that person's fields — never the rest of the crew's.
+      // Only touches the SIGNED-IN person's fields — never the rest of the crew's.
       // Stashes a 24h backup first so any clear is recoverable server-side.
       if (body.action === 'clearMine') {
-        if (!PEOPLE.includes(body.person)) {
-          return res.status(400).json({ error: 'invalid person' });
-        }
+        const person = session.person;
         const flat = (await redis.hgetall(HASH_KEY)) || {};
-        const fields = Object.keys(flat).filter(f => f.endsWith(`${SEP}${body.person}`));
+        const fields = Object.keys(flat).filter(f => f.endsWith(`${SEP}${person}`));
         if (fields.length) {
-          await redis.set(`picks_trash:${body.person}`, JSON.stringify(fields), { ex: 86400 });
+          await redis.set(`picks_trash:${person}`, JSON.stringify(fields), { ex: 86400 });
           await redis.hdel(HASH_KEY, ...fields);
         }
         return res.status(200).json({ ok: true, cleared: fields.length });
       }
 
-      // Restore the last clear for one person (server-side undo / safety net).
+      // Restore the last clear for the signed-in person (server-side undo).
       if (body.action === 'restoreTrash') {
-        if (!PEOPLE.includes(body.person)) {
-          return res.status(400).json({ error: 'invalid person' });
-        }
-        const raw = await redis.get(`picks_trash:${body.person}`);
+        const person = session.person;
+        const raw = await redis.get(`picks_trash:${person}`);
         const fields = Array.isArray(raw) ? raw : (raw ? JSON.parse(raw) : []);
         if (fields.length) {
           const obj = {};
@@ -83,13 +84,12 @@ export default async function handler(req, res) {
         return res.status(200).json({ ok: true, restored: fields.length });
       }
 
-      // Toggle one (set, person) flag.
-      const { setId, person, picked } = body;
+      // Toggle one (set, person) flag. The person is the signed-in user — a
+      // forged body.person can't toggle someone else's pick.
+      const { setId, picked } = body;
+      const person = session.person;
       if (typeof setId !== 'string' || !setId || setId.includes(SEP)) {
         return res.status(400).json({ error: 'invalid setId' });
-      }
-      if (!PEOPLE.includes(person)) {
-        return res.status(400).json({ error: 'invalid person' });
       }
       const field = `${setId}${SEP}${person}`;
       if (picked) {
