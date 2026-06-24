@@ -49,13 +49,11 @@ function loadGsi() {
 // them all in one place.
 const ANIM_CSS = `
 @keyframes tlsi-rise { from { opacity:0; transform:translateY(26px); } to { opacity:1; transform:none; } }
-@keyframes tlsi-pulse { 0%,100% { transform:scale(1); opacity:.9; } 50% { transform:scale(1.35); opacity:.4; } }
 @keyframes tlsi-flicker { 0%,100%{opacity:1;} 92%{opacity:1;} 94%{opacity:.55;} 96%{opacity:1;} }
 .tlsi-rise { animation: tlsi-rise .7s cubic-bezier(.2,.7,.2,1) both; }
 .tlsi-flicker { animation: tlsi-flicker 4s infinite; }
-.tlsi-dot { animation: tlsi-pulse 2.4s infinite; }
 @media (prefers-reduced-motion: reduce) {
-  .tlsi-rise, .tlsi-flicker, .tlsi-dot { animation: none !important; }
+  .tlsi-rise, .tlsi-flicker { animation: none !important; }
 }`;
 function injectAnim() {
   if (typeof document === 'undefined') return;
@@ -83,7 +81,6 @@ const NAMES = [
   { t: 'ARCANDO',          top: '70%', left: '40%', size: 24, color: '#141c39' },
 ];
 
-const DOTS = ['#e9b949', '#34d3a6', '#e0639b', '#7da2e8'];
 
 function SignIn() {
   const { completeLogin } = useAuth();
@@ -168,6 +165,7 @@ function SignIn() {
       {/* top spotlight glow */}
       <div style={spotlight} aria-hidden="true" />
 
+      <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', width: '100%' }}>
       {/* ticket */}
       <div className="tlsi-rise" style={ticketWrap}>
         <div style={ticket}>
@@ -176,24 +174,11 @@ function SignIn() {
           <div style={{ padding: '34px 34px 30px' }}>
             {/* header */}
             <div style={{ marginBottom: 26 }}>
-              <div className="tlsi-flicker" style={kicker}>★ THE BUDHOLE · ACCESS PASS ★</div>
+              <div className="tlsi-flicker" style={kicker}>THE BUDHOLE EXCLUSIVE APP</div>
               <div style={titleWrap}>
                 <span style={wordmark}>Tomorrowland</span><br />
                 <span style={{ ...display, color: tmrwGold }}>Consciencia</span>
               </div>
-            </div>
-
-            {/* status dots */}
-            <div style={{ display: 'flex', gap: 9, alignItems: 'center', marginBottom: 26 }}>
-              {DOTS.map((c, i) => (
-                <span
-                  key={c}
-                  className="tlsi-dot"
-                  style={{ width: 11, height: 11, borderRadius: '50%', background: c, animationDelay: `${i * 0.4}s` }}
-                />
-              ))}
-              <span style={{ flex: 1, height: 1, background: '#243056', margin: '0 6px' }} />
-              <span style={{ ...mono, fontSize: 10, color: '#6f7aa6' }}>5 STAGES</span>
             </div>
 
             {/* tagline */}
@@ -246,6 +231,7 @@ function SignIn() {
           </div>
         </div>
       </div>
+      </div>{/* /centering wrapper */}
 
       <div style={copyright}>© 2026 MOTIONCRAFT STUDIO · ALL RIGHTS RESERVED</div>
     </div>
@@ -270,7 +256,7 @@ export default function AuthGate({ children }) {
 
 const shell = {
   minHeight: '100dvh', display: 'flex', flexDirection: 'column',
-  alignItems: 'center', justifyContent: 'center', padding: '40px 20px',
+  alignItems: 'center', justifyContent: 'flex-start', padding: '40px 20px',
   background: PAGE_BG, color: '#eef1fb', textAlign: 'center',
   position: 'relative', overflow: 'hidden',
 };
@@ -309,8 +295,8 @@ const wordmark = { ...sans, fontWeight: 600, letterSpacing: '0.01em', textTransf
 const goldBtn = {
   position: 'absolute', inset: 0, width: '100%',
   display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 13,
-  borderRadius: 14, border: 'none', background: '#f3e6c4', color: '#1a1405',
-  ...sans, fontWeight: 800, fontSize: 16, pointerEvents: 'none',
+  borderRadius: 14, border: '1px solid #dadce0', background: '#ffffff', color: '#3c4043',
+  ...sans, fontWeight: 600, fontSize: 16, pointerEvents: 'none',
 };
 
 const gIcon = {
@@ -325,4 +311,4 @@ const notch = {
 
 const stub = { display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px 34px', background: '#0d1226' };
 
-const copyright = { position: 'relative', ...mono, fontSize: 10, color: '#4a5689', marginTop: 26, letterSpacing: '0.14em' };
+const copyright = { position: 'relative', ...mono, fontSize: 10, color: '#4a5689', marginTop: 'auto', paddingTop: 20, paddingBottom: 20, letterSpacing: '0.14em' };
