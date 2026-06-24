@@ -1,27 +1,24 @@
 import { useEffect, useRef, useState } from 'react';
 import { useAuth } from './AuthContext.jsx';
-import {
-  tmrwGold, goldLit, muted, clashRed, sans, display, mono,
-} from '../components/lineup/theme.js';
+import { tmrwGold, muted, clashRed, sans, display, mono } from '../components/lineup/theme.js';
 
 // Gates the whole app behind Google sign-in. While the session bootstraps we
-// show a splash; signed in → render the app; otherwise → the "Access Pass"
-// ticket sign-in screen.
+// show a splash; signed in → render the app; otherwise → the cinematic sign-in
+// screen (scrolling-name intro → black "Access Pass" ticket).
 //
 // The Google Identity Services button hands us a short-lived Google ID token
 // (`credential`). We POST it once to /api/auth, which verifies it, checks the
-// 3-email allowlist, and sets our own session cookie. From then on the cookie
-// carries identity.
+// 3-email allowlist, and sets our own session cookie.
 //
-// GIS only renders Google's own button (theme/size/shape/text/width), so it
-// can't BE the gold ticket button. We use the invisible-overlay technique: the
-// gold button is purely visual (pointer-events:none) and the real GIS button is
-// rendered transparently on top of it, sized to cover it — so a tap on the gold
-// button lands on Google's button and fires the same callback. No backend change.
+// GIS only renders Google's own button, so it can't BE the styled ticket button.
+// We use the invisible-overlay technique: the visual button is inert
+// (pointer-events:none) and the real GIS button is rendered transparently on top
+// of it, sized to cover it — so a tap lands on Google's button. No backend change.
 
 const GSI_SRC = 'https://accounts.google.com/gsi/client';
 const CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID;
 const PAGE_BG = '#070a1a';
+const INTRO_MS = 5200; // names scroll + fade + ticket rise (4s delay + 1s) then settle
 
 // Load the GIS script once, even under StrictMode's double-mount.
 let gsiPromise = null;
@@ -44,16 +41,20 @@ function loadGsi() {
   return gsiPromise;
 }
 
-// Keyframes can't live in inline style objects — inject them once. Animations
-// are applied via classes so a prefers-reduced-motion media query can disable
-// them all in one place.
+// Keyframes can't live in inline style objects — inject them once. The reduced-
+// motion block disables every animation (incl. the scrolling names) at once.
 const ANIM_CSS = `
-@keyframes tlsi-rise { from { opacity:0; transform:translateY(26px); } to { opacity:1; transform:none; } }
-@keyframes tlsi-flicker { 0%,100%{opacity:1;} 92%{opacity:1;} 94%{opacity:.55;} 96%{opacity:1;} }
-.tlsi-rise { animation: tlsi-rise .7s cubic-bezier(.2,.7,.2,1) both; }
+@keyframes tlsi-scrollL { from { transform:translateX(0); } to { transform:translateX(-50%); } }
+@keyframes tlsi-scrollR { from { transform:translateX(-50%); } to { transform:translateX(0); } }
+@keyframes tlsi-introIn { from { opacity:0; } to { opacity:1; } }
+@keyframes tlsi-introOut { from { opacity:1; } to { opacity:0; } }
+@keyframes tlsi-ticketRise { from { opacity:0; transform:translateY(30px); } to { opacity:1; transform:none; } }
+@keyframes tlsi-flicker { 0%,100%{opacity:1;} 92%{opacity:1;} 94%{opacity:.5;} 96%{opacity:1;} }
 .tlsi-flicker { animation: tlsi-flicker 4s infinite; }
+.tlsi-introlayer { animation: tlsi-introIn .8s ease forwards, tlsi-introOut 1.5s 2.5s ease forwards; }
+.tlsi-ticket { animation: tlsi-ticketRise 1s 4s cubic-bezier(.2,.7,.2,1) both; }
 @media (prefers-reduced-motion: reduce) {
-  .tlsi-rise, .tlsi-flicker { animation: none !important; }
+  .tlsi-flicker, .tlsi-introlayer, .tlsi-ticket, .tlsi-track { animation: none !important; }
 }`;
 function injectAnim() {
   if (typeof document === 'undefined') return;
@@ -64,23 +65,53 @@ function injectAnim() {
   document.head.appendChild(el);
 }
 
-// Faint lineup name-wall behind the ticket (top/left or top/right anchored).
-const NAMES = [
-  { t: 'ARMIN VAN BUUREN', top: '5%',  left: '3%',  size: 46, color: '#1a2347', ls: '-.02em' },
-  { t: 'JOHN SUMMIT',      top: '11%', right: '4%', size: 38, color: '#202a52' },
-  { t: 'COSMIC GATE',      top: '20%', left: '8%',  size: 30, color: '#172143' },
-  { t: 'KASKADE',          top: '26%', right: '6%', size: 52, color: '#1c2750' },
-  { t: 'VINI VICI',        top: '38%', left: '2%',  size: 34, color: '#161f3e' },
-  { t: 'GARETH EMERY',     top: '46%', right: '3%', size: 40, color: '#1b2550' },
-  { t: 'BEN NICKY',        top: '58%', left: '6%',  size: 30, color: '#161f3e' },
-  { t: 'DARREN STYLES',    top: '64%', right: '7%', size: 46, color: '#1d2853' },
-  { t: 'GABRY PONTE',      top: '74%', left: '4%',  size: 36, color: '#192243' },
-  { t: 'MATHAME',          top: '82%', right: '5%', size: 30, color: '#161f3e' },
-  { t: 'W&W',              top: '90%', left: '10%', size: 42, color: '#1a2347' },
-  { t: 'CASSIAN',          top: '33%', left: '38%', size: 24, color: '#141c39' },
-  { t: 'ARCANDO',          top: '70%', left: '40%', size: 24, color: '#141c39' },
+function prefersReduced() {
+  return typeof window !== 'undefined' && window.matchMedia
+    && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+}
+
+// Scrolling lineup name-wall. Each row repeats its names twice so a -50% shift
+// loops seamlessly. `bright` toggles the louder palette used during the intro.
+const NAME_ROWS = [
+  { names: ['ARMIN VAN BUUREN', 'JOHN SUMMIT', 'KASKADE'],            size: 56, color: '#1a2347', bright: '#1e2a54', dir: 'L' },
+  { names: ['GARETH EMERY', 'DARREN STYLES', 'W&W', 'BEN NICKY'],     size: 44, color: '#202a52', bright: '#232f63', dir: 'R' },
+  { names: ['COSMIC GATE', 'VINI VICI', 'MATHAME', 'CASSIAN'],        size: 52, color: '#1c2749', bright: '#1a2449', dir: 'L' },
+  { names: ['GABRY PONTE', 'ARCANDO', 'ARMIN VAN BUUREN'],            size: 48, color: '#1f2a58', bright: '#202b5a', dir: 'R' },
 ];
 
+function NameRow({ row, bright }) {
+  const seq = [...row.names, ...row.names];
+  return (
+    <div style={{ overflow: 'hidden', whiteSpace: 'nowrap' }}>
+      <div
+        className="tlsi-track"
+        style={{
+          display: 'inline-flex', gap: 80,
+          animation: `tlsi-scroll${row.dir} 28s linear infinite`,
+        }}
+      >
+        {seq.map((n, i) => (
+          <span
+            key={i}
+            style={{
+              ...sans, fontWeight: 700, fontSize: row.size,
+              textTransform: 'uppercase', letterSpacing: '-.02em',
+              color: bright ? row.bright : row.color,
+            }}
+          >{n}</span>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function NameField({ bright }) {
+  return (
+    <div style={nameField} aria-hidden="true">
+      {NAME_ROWS.map((row, i) => <NameRow key={i} row={row} bright={bright} />)}
+    </div>
+  );
+}
 
 function SignIn() {
   const { completeLogin } = useAuth();
@@ -89,10 +120,18 @@ function SignIn() {
   const [error, setError] = useState(null);
   const [busy, setBusy] = useState(false);
   const [btnWidth, setBtnWidth] = useState(360);
+  const [introOver, setIntroOver] = useState(() => prefersReduced());
 
-  // Track the auth area's width so the transparent GIS button spans the gold one.
+  // Run the intro once, then settle. Skip button / unmount clear the timer.
   useEffect(() => {
     injectAnim();
+    if (introOver) return;
+    const id = setTimeout(() => setIntroOver(true), INTRO_MS);
+    return () => clearTimeout(id);
+  }, [introOver]);
+
+  // Track the auth area's width so the transparent GIS button spans the visual one.
+  useEffect(() => {
     const node = authRef.current;
     if (!node || typeof ResizeObserver === 'undefined') return;
     const ro = new ResizeObserver(() => {
@@ -140,7 +179,7 @@ function SignIn() {
         btnRef.current.innerHTML = '';
         window.google.accounts.id.renderButton(btnRef.current, {
           theme: 'filled_black', size: 'large', shape: 'pill',
-          text: 'continue_with', width: btnWidth,
+          text: 'signin_with', width: btnWidth,
         });
       }
     }).catch(() => { if (!cancelled) setError('Could not load Google sign-in.'); });
@@ -150,88 +189,81 @@ function SignIn() {
 
   return (
     <div style={shell}>
-      {/* background: faint lineup name-wall, masked toward the centre */}
-      <div style={nameWall} aria-hidden="true">
-        {NAMES.map((n) => (
-          <div
-            key={n.t}
-            style={{
-              position: 'absolute', top: n.top, left: n.left, right: n.right,
-              fontSize: n.size, color: n.color, letterSpacing: n.ls,
-            }}
-          >{n.t}</div>
-        ))}
-      </div>
-      {/* top spotlight glow */}
-      <div style={spotlight} aria-hidden="true" />
+      {/* persistent scrolling name-wall behind everything */}
+      <div style={persistentWall} aria-hidden="true"><NameField /></div>
 
-      <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', width: '100%' }}>
-      {/* ticket */}
-      <div className="tlsi-rise" style={ticketWrap}>
-        <div style={ticket}>
-          <div style={rainbow} />
+      {/* cinematic intro overlay */}
+      {!introOver && (
+        <div className="tlsi-introlayer" style={introLayer}>
+          <NameField bright />
+          <button type="button" onClick={() => setIntroOver(true)} style={skipBtn}>
+            <span style={{ ...mono, fontSize: 10, letterSpacing: '0.16em', color: '#4a5689' }}>SKIP INTRO →</span>
+          </button>
+        </div>
+      )}
 
-          <div style={{ padding: '34px 34px 30px' }}>
-            {/* header */}
-            <div style={{ marginBottom: 26 }}>
-              <div className="tlsi-flicker" style={kicker}>THE BUDHOLE EXCLUSIVE APP</div>
-              <div style={titleWrap}>
-                <span style={wordmark}>Tomorrowland</span><br />
-                <span style={{ ...display, color: tmrwGold }}>Consciencia</span>
+      {/* ticket screen */}
+      <div style={ticketScreen}>
+        <div style={ticketWrap}>
+          <div className={introOver ? undefined : 'tlsi-ticket'} style={ticket}>
+            <div style={goldHairline} />
+
+            <div style={{ padding: '34px 34px 30px' }}>
+              <div style={{ marginBottom: 26 }}>
+                <div className="tlsi-flicker" style={kicker}>THE BUDHOLE EXCLUSIVE APP</div>
+                <div style={titleWrap}>
+                  <span style={wordmark}>Tomorrowland</span><br />
+                  <span style={{ ...display, color: '#ccc' }}>Consciencia</span>
+                </div>
               </div>
-            </div>
 
-            {/* tagline */}
-            <div style={{ ...display, fontStyle: 'italic', fontWeight: 700, fontSize: 21, color: '#eef1fb', lineHeight: 1.25, marginBottom: 6 }}>
-              Let&rsquo;s Ducking Go.
-            </div>
-            <div style={{ ...mono, fontSize: 11, color: '#8a93b8', marginBottom: 28 }}>
-              Forget about Monday to Friday, &rsquo;cause we&rsquo;ve been working like a slave.
-            </div>
+              <div style={{ ...display, fontStyle: 'italic', fontWeight: 700, fontSize: 21, color: '#ffffff', lineHeight: 1.25, marginBottom: 6 }}>
+                Let&rsquo;s Ducking Go.
+              </div>
+              <div style={{ ...mono, fontSize: 11, color: '#666', marginBottom: 28 }}>
+                Forget about Monday to Friday, &rsquo;cause we&rsquo;ve been working like a slave.
+              </div>
 
-            {/* auth: visual gold button + transparent GIS overlay */}
-            <div ref={authRef} style={{ position: 'relative', width: '100%', height: 58 }}>
-              <button type="button" style={goldBtn} tabIndex={-1} aria-hidden="true">
-                <span style={gIcon}>
-                  <svg viewBox="0 0 48 48" width="16" height="16" aria-hidden="true">
-                    <path fill="#4285F4" d="M45.12 24.5c0-1.56-.14-3.06-.4-4.5H24v8.51h11.84c-.51 2.75-2.06 5.08-4.39 6.64v5.52h7.11c4.16-3.83 6.56-9.47 6.56-16.17z" />
-                    <path fill="#34A853" d="M24 46c5.94 0 10.92-1.97 14.56-5.33l-7.11-5.52c-1.97 1.32-4.49 2.1-7.45 2.1-5.73 0-10.58-3.87-12.31-9.07H4.34v5.7C7.96 41.07 15.4 46 24 46z" />
-                    <path fill="#FBBC05" d="M11.69 28.18C11.25 26.86 11 25.45 11 24s.25-2.86.69-4.18v-5.7H4.34A21.99 21.99 0 0 0 2 24c0 3.55.85 6.91 2.34 9.88l7.35-5.7z" />
-                    <path fill="#EA4335" d="M24 10.75c3.23 0 6.13 1.11 8.41 3.29l6.31-6.31C34.91 4.18 29.93 2 24 2 15.4 2 7.96 6.93 4.34 14.12l7.35 5.7c1.73-5.2 6.58-9.07 12.31-9.07z" />
+              {/* auth: visual Google button + transparent GIS overlay */}
+              <div ref={authRef} style={{ position: 'relative', width: '100%', height: 52 }}>
+                <button type="button" style={authBtn} tabIndex={-1} aria-hidden="true">
+                  <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true">
+                    <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" />
+                    <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" />
+                    <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l3.66-2.84z" />
+                    <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" />
                   </svg>
-                </span>
-                Continue with Google
-              </button>
-              {/* the real (transparent) Google button, stretched to cover the gold one */}
-              <div
-                ref={btnRef}
-                style={{
-                  position: 'absolute', inset: 0, zIndex: 2,
-                  display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  opacity: 0, transform: 'scaleY(1.35)',
-                  pointerEvents: busy ? 'none' : 'auto',
-                }}
-              />
+                  Sign in with Google
+                </button>
+                <div
+                  ref={btnRef}
+                  style={{
+                    position: 'absolute', inset: 0, zIndex: 2,
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    opacity: 0, transform: 'scaleY(1.35)',
+                    pointerEvents: busy ? 'none' : 'auto',
+                  }}
+                />
+              </div>
+
+              {busy && <div style={{ ...sans, fontSize: 13, color: muted, marginTop: 14, textAlign: 'center' }}>Signing in…</div>}
+              {error && <div role="alert" style={{ ...sans, fontSize: 13, color: clashRed, marginTop: 14, textAlign: 'center' }}>{error}</div>}
             </div>
 
-            {busy && <div style={{ ...sans, fontSize: 13, color: muted, marginTop: 14, textAlign: 'center' }}>Signing in…</div>}
-            {error && <div role="alert" style={{ ...sans, fontSize: 13, color: clashRed, marginTop: 14, textAlign: 'center' }}>{error}</div>}
-          </div>
+            {/* perforation */}
+            <div style={{ position: 'relative', height: 0, borderTop: '1px dashed #2a2a2a' }} />
+            <div style={{ ...notch, left: -14 }} />
+            <div style={{ ...notch, right: -14 }} />
 
-          {/* perforation */}
-          <div style={{ position: 'relative', height: 0, borderTop: '2px dashed #2b3563' }} />
-          <div style={{ ...notch, left: -14 }} />
-          <div style={{ ...notch, right: -14 }} />
-
-          {/* stub */}
-          <div style={stub}>
-            <div style={{ ...mono, fontSize: 11, color: '#8a93b8', letterSpacing: '0.06em' }}>
-              Created with <span style={{ color: '#e0639b' }}>♥</span> for my favourite people
+            {/* stub */}
+            <div style={stub}>
+              <div style={{ ...mono, fontSize: 11, color: '#333', letterSpacing: '0.06em' }}>
+                Created with <span style={{ color: '#444' }}>♥</span> for my favourite people
+              </div>
             </div>
           </div>
         </div>
       </div>
-      </div>{/* /centering wrapper */}
 
       <div style={copyright}>© 2026 MOTIONCRAFT STUDIO · ALL RIGHTS RESERVED</div>
     </div>
@@ -240,7 +272,7 @@ function SignIn() {
 
 function Splash() {
   return (
-    <div style={{ ...shell, justifyContent: 'center' }}>
+    <div style={{ ...shell, alignItems: 'center', justifyContent: 'center' }}>
       <div style={{ ...display, fontSize: 24, color: tmrwGold, opacity: 0.9 }}>Tomorrowland 2026</div>
       <div style={{ ...sans, fontSize: 13, color: muted, marginTop: 10 }}>Loading…</div>
     </div>
@@ -256,59 +288,66 @@ export default function AuthGate({ children }) {
 
 const shell = {
   minHeight: '100dvh', display: 'flex', flexDirection: 'column',
-  alignItems: 'center', justifyContent: 'flex-start', padding: '40px 20px',
   background: PAGE_BG, color: '#eef1fb', textAlign: 'center',
   position: 'relative', overflow: 'hidden',
 };
 
-const nameWall = {
-  position: 'absolute', inset: 0, pointerEvents: 'none', userSelect: 'none',
-  ...sans, fontWeight: 700, textTransform: 'uppercase', overflow: 'hidden',
-  WebkitMaskImage: 'radial-gradient(ellipse 75% 70% at 50% 46%, transparent 30%, #000 78%)',
-  maskImage: 'radial-gradient(ellipse 75% 70% at 50% 46%, transparent 30%, #000 78%)',
+const nameField = {
+  position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column',
+  justifyContent: 'center', gap: 24, overflow: 'hidden',
 };
 
-const spotlight = {
-  position: 'absolute', top: -260, left: '50%', transform: 'translateX(-50%)',
-  width: 680, height: 680, borderRadius: '50%', pointerEvents: 'none',
-  background: 'radial-gradient(circle, rgba(233,185,73,0.1) 0%, rgba(233,185,73,0) 66%)',
+const persistentWall = { position: 'fixed', inset: 0, zIndex: 0, pointerEvents: 'none' };
+
+const introLayer = {
+  position: 'fixed', inset: 0, zIndex: 20, background: PAGE_BG,
+  display: 'flex', alignItems: 'center', justifyContent: 'center',
+  overflow: 'hidden', pointerEvents: 'none',
 };
 
-const ticketWrap = { position: 'relative', width: '100%', maxWidth: 430 };
+const skipBtn = {
+  position: 'absolute', bottom: 32, right: 36, padding: 8,
+  background: 'none', border: 'none', cursor: 'pointer', pointerEvents: 'auto',
+};
+
+const ticketScreen = {
+  position: 'relative', zIndex: 1, minHeight: '100dvh',
+  display: 'flex', flexDirection: 'column', alignItems: 'center',
+  justifyContent: 'center', padding: '40px 20px',
+};
+
+const ticketWrap = { position: 'relative', width: '100%', maxWidth: 430, display: 'flex', flexDirection: 'column', alignItems: 'center' };
 
 const ticket = {
-  position: 'relative',
-  background: 'linear-gradient(165deg,#141b39 0%,#10162e 60%)',
-  borderRadius: 22,
-  boxShadow: '0 30px 80px -20px rgba(0,0,0,.85), 0 0 0 1px rgba(233,185,73,.06)',
+  position: 'relative', width: '100%', background: '#080808', borderRadius: 22,
+  boxShadow: '0 40px 100px -20px rgba(0,0,0,.98), 0 0 0 1px rgba(255,255,255,.08)',
   overflow: 'hidden',
 };
 
-const rainbow = { height: 6, background: 'linear-gradient(90deg,#c9a227,#f0d98a,#e9b949,#e0639b,#34d3a6,#7da2e8)' };
+const goldHairline = { height: 1, background: 'linear-gradient(90deg,transparent,rgba(233,185,73,.35),rgba(233,185,73,.6),rgba(233,185,73,.35),transparent)' };
 
-const kicker = { ...mono, fontSize: 10, letterSpacing: '0.2em', color: tmrwGold, marginBottom: 10 };
+const kicker = { ...mono, fontSize: 10, letterSpacing: '0.26em', color: 'rgba(233,185,73,.55)', marginBottom: 10 };
 
-const titleWrap = { ...display, fontWeight: 900, fontSize: 38, lineHeight: 0.95, color: goldLit, letterSpacing: '-0.01em' };
+const titleWrap = { ...display, fontWeight: 700, fontSize: 38, lineHeight: 0.95, color: '#ffffff', letterSpacing: '-0.01em' };
 
 const wordmark = { ...sans, fontWeight: 600, letterSpacing: '0.01em', textTransform: 'uppercase' };
 
-const goldBtn = {
+const authBtn = {
   position: 'absolute', inset: 0, width: '100%',
-  display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 13,
-  borderRadius: 14, border: '1px solid #dadce0', background: '#ffffff', color: '#3c4043',
-  ...sans, fontWeight: 600, fontSize: 16, pointerEvents: 'none',
-};
-
-const gIcon = {
-  display: 'inline-flex', width: 24, height: 24, background: '#fff',
-  borderRadius: '50%', alignItems: 'center', justifyContent: 'center',
+  display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 12,
+  borderRadius: 30, border: '1px solid #3c3c3c', background: '#202124', color: '#fff',
+  ...sans, fontWeight: 500, fontSize: 15, letterSpacing: '0.25px', pointerEvents: 'none',
 };
 
 const notch = {
   position: 'absolute', bottom: 64, width: 28, height: 28, borderRadius: '50%',
-  background: PAGE_BG, border: '1px solid #2b3563',
+  background: '#0a0a0a', border: '1px solid #1f1f1f',
 };
 
-const stub = { display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px 34px', background: '#0d1226' };
+const stub = { display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px 34px', background: '#0a0a0a' };
 
-const copyright = { position: 'relative', ...mono, fontSize: 10, color: '#4a5689', marginTop: 'auto', paddingTop: 20, paddingBottom: 20, letterSpacing: '0.14em' };
+const copyright = {
+  position: 'fixed', bottom: 22, left: 0, width: '100%', textAlign: 'center',
+  zIndex: 5, pointerEvents: 'none',
+  ...mono, fontSize: 10, color: '#4a5689', letterSpacing: '0.14em',
+};
