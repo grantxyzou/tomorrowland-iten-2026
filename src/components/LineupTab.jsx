@@ -6,6 +6,7 @@ import { usePicks } from '../hooks/usePicks.js';
 import { useLineupOverrides } from '../hooks/useLineupOverrides.js';
 import { useCrewStatus } from '../hooks/useCrewStatus.js';
 import { useGeoShare } from '../hooks/useGeoShare.js';
+import { useHeading } from '../hooks/useHeading.js';
 import { TomorrowlandMark } from './BrandMarks.jsx';
 import {
   mono, sans, display, bar, chip, raised, ink, muted, tmrwGold, goldLit, live, clashRed, spotifyDot,
@@ -57,6 +58,10 @@ export default function LineupTab() {
     me: activePerson, active: sheet === 'where',
     setLocation: crewStatus.setLocation, clearLocation: crewStatus.clearLocation,
   });
+  // Device compass heading — rotates the "Where's everyone" minimap heading-up.
+  const heading = useHeading({ active: sheet === 'where' });
+  // Enabling the map asks for location AND the compass in one gesture.
+  const enableWhere = useCallback(() => { geo.enable(); heading.request(); }, [geo, heading]);
   // Unified bottom-screen toast. { msg, action?: { label, run }, duration }
   const [toast, setToast] = useState(null);
   const notify = useCallback((msg, opts) => setToast({ msg, duration: 2500, ...opts }), []);
@@ -392,8 +397,10 @@ export default function LineupTab() {
           <div style={{ maxHeight: '68vh', overflowY: 'auto', WebkitOverflowScrolling: 'touch' }}>
             <CrewMap
               me={activePerson} locations={crewStatus.locations} statuses={crewStatus.statuses}
-              sharing={geo.sharing} onEnable={geo.enable} onDisable={geo.disable}
+              sharing={geo.sharing} onEnable={enableWhere} onDisable={geo.disable}
               myFix={geo.myFix} error={geo.error} supported={geo.supported}
+              heading={heading.heading} compassPermission={heading.permission}
+              headingSupported={heading.supported} nextStage={timeline[0]?.stage || null}
             />
           </div>
         </BottomSheet>

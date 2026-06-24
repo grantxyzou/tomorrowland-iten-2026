@@ -60,6 +60,32 @@ export const STAGES = {
   'House of Fortune by JBL':{ color: '#c6cce0' },
 };
 
+// Festival centre — De Schorre park, Boom (approximate).
+export const VENUE = { lat: 51.0889, lng: 4.3625, label: 'De Schorre · Boom' };
+
+// APPROXIMATE stage positions for the "Where's everyone" compass minimap — laid
+// out around VENUE in a plausible spread. These are estimates of real fixed
+// stages, NOT survey points: good for "which way / roughly how far," not precise
+// navigation. Kept separate from STAGES (whose { color } shape other modules
+// depend on); keys match STAGES exactly. A stage absent here is simply skipped.
+export const STAGE_COORDS = {
+  'Mainstage':              { lat: 51.0858, lng: 4.3631 },
+  'Freedom by Bud':         { lat: 51.0901, lng: 4.3585 },
+  'The Rose Garden':        { lat: 51.0875, lng: 4.3668 },
+  'Elixir':                 { lat: 51.0908, lng: 4.3648 },
+  'Cage':                   { lat: 51.0896, lng: 4.3592 },
+  'The Rave Cave':          { lat: 51.0869, lng: 4.3601 },
+  'Planaxis':               { lat: 51.0912, lng: 4.3617 },
+  'Melodia by Corona':      { lat: 51.0882, lng: 4.3672 },
+  'Celestia by KuCoin':     { lat: 51.0918, lng: 4.3596 },
+  'Atmosphere':             { lat: 51.0864, lng: 4.3658 },
+  'Core':                   { lat: 51.0903, lng: 4.3669 },
+  'Crystal Garden':         { lat: 51.0871, lng: 4.3589 },
+  'The Great Library':      { lat: 51.0894, lng: 4.3653 },
+  'Moose Bar':              { lat: 51.0886, lng: 4.3608 },
+  'House of Fortune by JBL':{ lat: 51.0879, lng: 4.3644 },
+};
+
 // ── Lineup by day → stage → artists (with official set times) ─
 export const LINEUP = {
   fri: {

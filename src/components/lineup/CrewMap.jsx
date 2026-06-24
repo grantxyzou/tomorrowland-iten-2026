@@ -1,10 +1,11 @@
-import { NavigationArrow, MapPin, Warning } from '@phosphor-icons/react';
-import { PEOPLE } from '../../data/lineup.js';
+import { useState } from 'react';
+import { MapPin, Warning, Compass } from '@phosphor-icons/react';
+import { PEOPLE, STAGES, STAGE_COORDS } from '../../data/lineup.js';
 import {
-  mono, sans, ink, muted, caption, faint, paper, chip, raised, rule, clashRed,
+  mono, sans, ink, muted, caption, faint, paper, chip, raised, rule, clashRed, tmrwGold,
   PERSON_COLORS, PERSON_INK, rRow, rPill,
 } from './theme.js';
-import { haversineMeters, bearingDeg, compass8, fmtDistance } from './geo.js';
+import { haversineMeters, bearingDeg, compass8, fmtDistance, relativeAngle, relLabel } from './geo.js';
 
 // Compact relative time for a fix/status timestamp ("just now" / "4m" / "2h").
 function ago(ts) {
@@ -16,65 +17,119 @@ function ago(ts) {
   return `${Math.round(m / 60)}h ago`;
 }
 
-// A tiny polar "radar": rings = distance bands, angle = compass bearing, you at
-// the centre. Distances are log-scaled so a nearby friend and a far one both
-// land on the dial. Pure static SVG — no tiles, no redraw loop, battery-cheap.
-function Radar({ me, rels }) {
-  const S = 240, c = S / 2, maxR = 104;
-  const maxDist = Math.max(1000, ...rels.map(r => r.dist));
+const selKey = (t) => t && `${t.kind}:${t.id}`;
+
+// A game-style minimap: you at the centre, everyone + nearby stages plotted by
+// real direction and (log-scaled) distance. When a compass heading is live the
+// map is HEADING-UP — "up" is the way you're facing and blips rotate as you turn;
+// otherwise it falls back to north-up with an N marker. Tapping a blip locks a
+// pointer beam onto it. Pure static SVG — no tiles, no redraw loop.
+function Minimap({ me, targets, heading, selected, onSelect }) {
+  const S = 260, c = S / 2, maxR = 112;
+  const headingUp = heading != null;
+  const maxDist = Math.max(250, ...targets.map(t => t.dist));
   const scale = (d) => (Math.log10(d + 1) / Math.log10(maxDist + 1)) * maxR;
-  const ringDists = [maxDist / 8, maxDist / 2, maxDist];
+  const ringDists = [maxDist / 6, maxDist / 2, maxDist];
+  // On-screen angle (deg, 0 = up): heading-up rotates by your facing.
+  const screenAngle = (bearing) => headingUp ? relativeAngle(bearing, heading) : (bearing % 360);
+  const xy = (bearing, r) => {
+    const t = (screenAngle(bearing) * Math.PI) / 180;
+    return [c + r * Math.sin(t), c - r * Math.cos(t)];
+  };
+  const sel = targets.find(t => selKey(t) === selKey(selected));
+
   return (
-    <svg viewBox={`0 0 ${S} ${S}`} width="100%" style={{ maxWidth: 280, display: 'block', margin: '4px auto 14px' }} role="img" aria-label="Relative positions of the crew">
+    <svg viewBox={`0 0 ${S} ${S}`} width="100%" style={{ maxWidth: 300, display: 'block', margin: '2px auto 12px', touchAction: 'manipulation' }}
+      role="img" aria-label="Minimap of the crew and nearby stages">
+      {/* distance rings + labels */}
       {ringDists.map((d, i) => (
         <g key={i}>
           <circle cx={c} cy={c} r={scale(d)} fill="none" stroke={rule} strokeWidth="1" />
           <text x={c + 3} y={c - scale(d) + 11} fill={caption} style={{ ...mono }} fontSize="8">{fmtDistance(d)}</text>
         </g>
       ))}
-      {/* North marker */}
-      <text x={c} y="12" fill={faint} textAnchor="middle" style={{ ...mono }} fontSize="9" fontWeight="700">N</text>
-      {/* crosshair */}
       <line x1={c} y1={c - maxR} x2={c} y2={c + maxR} stroke={rule} strokeWidth="0.5" />
       <line x1={c - maxR} y1={c} x2={c + maxR} y2={c} stroke={rule} strokeWidth="0.5" />
-      {/* others */}
-      {rels.map(({ person, dist, bearing }) => {
-        const r = scale(dist);
-        const t = (bearing * Math.PI) / 180;
-        const x = c + r * Math.sin(t), y = c - r * Math.cos(t);
+
+      {/* top indicator — your facing (heading-up) or North (fallback) */}
+      {headingUp
+        ? <polygon points={`${c},2 ${c - 6},14 ${c + 6},14`} fill={PERSON_COLORS[me]} />
+        : <text x={c} y="13" fill={faint} textAnchor="middle" style={{ ...mono }} fontSize="10" fontWeight="700">N</text>}
+
+      {/* locked-on pointer beam to the selected target */}
+      {sel && (() => {
+        const [bx, by] = xy(sel.bearing, maxR - 6);
+        return <line x1={c} y1={c} x2={bx} y2={by} stroke={sel.color} strokeWidth="2.5" strokeLinecap="round" opacity="0.9" />;
+      })()}
+
+      {/* targets — stages as diamonds, people as discs */}
+      {targets.map((t) => {
+        const [x, y] = xy(t.bearing, scale(t.dist));
+        const isSel = selKey(t) === selKey(selected);
         return (
-          <g key={person}>
-            <circle cx={x} cy={y} r="7" fill={PERSON_COLORS[person]} />
-            <text x={x} y={y + 3} textAnchor="middle" fill={PERSON_INK[person]} style={{ ...sans }} fontSize="8" fontWeight="800">{person[0]}</text>
+          <g key={selKey(t)} onClick={() => onSelect(isSel ? null : t)} style={{ cursor: 'pointer' }}>
+            {isSel && <circle cx={x} cy={y} r="13" fill="none" stroke={t.color} strokeWidth="1.5" opacity="0.8" />}
+            {t.kind === 'stage' ? (
+              <rect x={x - 5.5} y={y - 5.5} width="11" height="11" rx="2" fill={t.color} transform={`rotate(45 ${x} ${y})`} />
+            ) : (
+              <>
+                <circle cx={x} cy={y} r="8" fill={t.color} />
+                <text x={x} y={y + 3} textAnchor="middle" fill={t.ink} style={{ ...sans }} fontSize="9" fontWeight="800">{t.label}</text>
+              </>
+            )}
           </g>
         );
       })}
+
       {/* you */}
-      <circle cx={c} cy={c} r="8" fill={PERSON_COLORS[me]} stroke={paper} strokeWidth="2" />
-      <text x={c} y={c + 3} textAnchor="middle" fill={PERSON_INK[me]} style={{ ...sans }} fontSize="8" fontWeight="800">{me[0]}</text>
+      <circle cx={c} cy={c} r="8.5" fill={PERSON_COLORS[me]} stroke={paper} strokeWidth="2" />
+      <text x={c} y={c + 3} textAnchor="middle" fill={PERSON_INK[me]} style={{ ...sans }} fontSize="9" fontWeight="800">{me[0]}</text>
     </svg>
   );
 }
 
-// "Where's everyone" — opt-in GPS relative radar. Shows each crew member as a
-// distance + compass bearing from you, plus their latest status. Degrades to a
-// status-only board when you (or they) aren't sharing, and works offline off the
-// last cached fixes. No basemap, no map tiles.
-export default function CrewMap({ me, locations, statuses, sharing, onEnable, onDisable, myFix, error, supported }) {
+// "Where's everyone" — opt-in GPS minimap/compass. Plots crew + nearby stages by
+// direction and distance from you; heading-up & tap-to-point when the device
+// compass is available, north-up otherwise. Degrades to a status-only board when
+// you (or they) aren't sharing, and works offline off the last cached fixes.
+export default function CrewMap({
+  me, locations, statuses, sharing, onEnable, onDisable, myFix, error, supported,
+  heading, compassPermission, headingSupported, nextStage,
+}) {
+  const [selected, setSelected] = useState(null);
+  const [showAllStages, setShowAllStages] = useState(false);
   const mine = myFix || locations[me] || null;
 
-  // Everyone else who has a live pin, ranked nearest-first when I have a fix.
+  // Crew with a live pin, ranked nearest-first when I have a fix.
   const others = PEOPLE.filter(p => p !== me);
   const located = others.filter(p => locations[p]);
-  const rels = mine
+  const peopleRels = mine
     ? located.map(p => ({
-        person: p,
-        dist: haversineMeters(mine, locations[p]),
-        bearing: bearingDeg(mine, locations[p]),
+        person: p, dist: haversineMeters(mine, locations[p]), bearing: bearingDeg(mine, locations[p]),
         ts: locations[p].ts, acc: locations[p].acc,
       })).sort((a, b) => a.dist - b.dist)
     : [];
   const notSharing = others.filter(p => !locations[p]);
+
+  // Stages by distance from me. Smart subset: nearest 4 + my next set's stage.
+  const stageRels = mine
+    ? Object.keys(STAGE_COORDS).map(name => ({
+        name, dist: haversineMeters(mine, STAGE_COORDS[name]), bearing: bearingDeg(mine, STAGE_COORDS[name]),
+      })).sort((a, b) => a.dist - b.dist)
+    : [];
+  const subsetNames = new Set([...stageRels.slice(0, 4).map(s => s.name), ...(nextStage ? [nextStage] : [])]);
+  const shownStages = showAllStages ? stageRels : stageRels.filter(s => subsetNames.has(s.name));
+
+  // Unified target list for the minimap.
+  const targets = [
+    ...peopleRels.map(r => ({ kind: 'person', id: r.person, label: r.person[0], color: PERSON_COLORS[r.person], ink: PERSON_INK[r.person], dist: r.dist, bearing: r.bearing })),
+    ...shownStages.map(s => ({ kind: 'stage', id: s.name, label: s.name, color: STAGES[s.name]?.color || tmrwGold, dist: s.dist, bearing: s.bearing })),
+  ];
+  const sel = targets.find(t => selKey(t) === selKey(selected));
+  const headingUp = heading != null;
+  // Direction phrasing for the readout: relative ("ahead-left") when heading-up,
+  // else absolute compass ("NE").
+  const dirText = (bearing) => headingUp ? relLabel(relativeAngle(bearing, heading)) : compass8(bearing);
 
   const errText = {
     denied: 'Location permission denied. Enable it for this site in your browser settings.',
@@ -83,9 +138,16 @@ export default function CrewMap({ me, locations, statuses, sharing, onEnable, on
     unsupported: "This device or browser doesn't support location.",
   }[error];
 
+  // Note when a heading-up compass isn't available even though we have a fix.
+  const compassNote = mine && !headingUp && (
+    !headingSupported ? 'Compass not supported — showing north-up.'
+    : compassPermission === 'denied' ? 'Compass blocked — showing north-up.'
+    : null
+  );
+
   return (
     <div>
-      {/* Share toggle — opt-in, off by default */}
+      {/* Share toggle — opt-in, off by default. Enabling also asks for the compass. */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '12px 14px', borderRadius: rRow, backgroundColor: chip, marginBottom: 12 }}>
         <MapPin size={18} weight="fill" color={sharing ? PERSON_COLORS[me] : muted} style={{ flexShrink: 0 }} />
         <div style={{ flex: 1, minWidth: 0 }}>
@@ -109,36 +171,88 @@ export default function CrewMap({ me, locations, statuses, sharing, onEnable, on
         </div>
       )}
 
-      {/* Radar — only meaningful once I have my own fix and someone else is on */}
-      {mine && rels.length > 0 && <Radar me={me} rels={rels} />}
-
-      {/* Distances from you */}
       {mine ? (
-        rels.length > 0 ? (
-          <section style={{ borderRadius: rRow, overflow: 'hidden', backgroundColor: paper, marginBottom: notSharing.length ? 12 : 0 }}>
-            {rels.map(({ person, dist, bearing, ts, acc }, i) => (
-              <div key={person} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '11px 14px', borderTop: i === 0 ? 'none' : `1px solid ${rule}55` }}>
-                <span aria-hidden="true" style={{ width: 26, height: 26, borderRadius: '50%', backgroundColor: PERSON_COLORS[person], color: PERSON_INK[person], display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 800, fontSize: 12, flexShrink: 0 }}>{person[0]}</span>
-                <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ ...sans, fontSize: 15, fontWeight: 700, color: ink }}>
-                    {person} · {fmtDistance(dist)} {compass8(bearing)}
-                  </div>
-                  <div style={{ ...mono, fontSize: 10, color: muted, marginTop: 2 }}>
-                    {ago(ts)}{acc ? ` · ±${acc} m` : ''}{statuses[person]?.text ? ` · ${statuses[person].text}` : ''}
-                  </div>
+        <>
+          <Minimap me={me} targets={targets} heading={heading} selected={selected} onSelect={setSelected} />
+
+          {/* Locked-on readout (or hint) */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 14px', borderRadius: rRow, backgroundColor: sel ? raised : paper, marginBottom: 12, minHeight: 44 }}>
+            <Compass size={18} weight="fill" color={sel ? sel.color : muted} style={{ flexShrink: 0 }} />
+            {sel ? (
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{ ...sans, fontSize: 15, fontWeight: 700, color: ink, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                  {sel.id} · {fmtDistance(sel.dist)} {dirText(sel.bearing)}
                 </div>
-                <NavigationArrow size={16} weight="fill" color={faint} style={{ flexShrink: 0, transform: `rotate(${bearing}deg)` }} />
+                <div style={{ ...mono, fontSize: 10, color: muted, marginTop: 2 }}>
+                  {sel.kind === 'stage' ? 'stage · approx.' : (statuses[sel.id]?.text || 'crew')}
+                </div>
               </div>
-            ))}
-          </section>
-        ) : (
-          <div style={{ ...mono, fontSize: 11, color: muted, padding: '12px 12px', borderRadius: rRow, backgroundColor: paper, marginBottom: notSharing.length ? 12 : 0 }}>
-            You’re sharing — nobody else has their location on yet.
+            ) : (
+              <span style={{ ...sans, fontSize: 13, color: muted, flex: 1 }}>
+                Tap a blip to lock the pointer on it.{compassNote ? ` ${compassNote}` : ''}
+              </span>
+            )}
           </div>
-        )
+
+          {/* People — distance + direction + status */}
+          {peopleRels.length > 0 ? (
+            <section style={{ borderRadius: rRow, overflow: 'hidden', backgroundColor: paper, marginBottom: 12 }}>
+              {peopleRels.map(({ person, dist, bearing, ts, acc }, i) => {
+                const isSel = selected?.kind === 'person' && selected.id === person;
+                return (
+                  <div key={person} onClick={() => setSelected(isSel ? null : { kind: 'person', id: person })}
+                    style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '11px 14px', cursor: 'pointer', backgroundColor: isSel ? raised : 'transparent', borderTop: i === 0 ? 'none' : `1px solid ${rule}55` }}>
+                    <span aria-hidden="true" style={{ width: 26, height: 26, borderRadius: '50%', backgroundColor: PERSON_COLORS[person], color: PERSON_INK[person], display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 800, fontSize: 12, flexShrink: 0 }}>{person[0]}</span>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ ...sans, fontSize: 15, fontWeight: 700, color: ink }}>{person} · {fmtDistance(dist)} {dirText(bearing)}</div>
+                      <div style={{ ...mono, fontSize: 10, color: muted, marginTop: 2 }}>
+                        {ago(ts)}{acc ? ` · ±${acc} m` : ''}{statuses[person]?.text ? ` · ${statuses[person].text}` : ''}
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+            </section>
+          ) : (
+            <div style={{ ...mono, fontSize: 11, color: muted, padding: '12px', borderRadius: rRow, backgroundColor: paper, marginBottom: 12 }}>
+              You’re sharing — nobody else has their location on yet.
+            </div>
+          )}
+
+          {/* Stages — nearest few + your next set's stage; tap to point */}
+          {shownStages.length > 0 && (
+            <div style={{ marginBottom: notSharing.length ? 12 : 0 }}>
+              <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', margin: '0 2px 8px' }}>
+                <span style={{ ...mono, fontSize: 10, color: muted, letterSpacing: '0.18em', textTransform: 'uppercase' }}>Stages · approx.</span>
+                {stageRels.length > shownStages.length || showAllStages ? (
+                  <button onClick={() => setShowAllStages(v => !v)}
+                    style={{ border: 'none', background: 'none', color: PERSON_COLORS[me], ...mono, fontSize: 10, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', cursor: 'pointer', minHeight: 32, padding: '0 2px' }}>
+                    {showAllStages ? 'Show fewer' : 'Show all'}
+                  </button>
+                ) : null}
+              </div>
+              <section style={{ borderRadius: rRow, overflow: 'hidden', backgroundColor: paper }}>
+                {shownStages.map(({ name, dist, bearing }, i) => {
+                  const isSel = selected?.kind === 'stage' && selected.id === name;
+                  const color = STAGES[name]?.color || tmrwGold;
+                  return (
+                    <div key={name} onClick={() => setSelected(isSel ? null : { kind: 'stage', id: name })}
+                      style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 14px', cursor: 'pointer', backgroundColor: isSel ? raised : 'transparent', borderTop: i === 0 ? 'none' : `1px solid ${rule}55` }}>
+                      <span aria-hidden="true" style={{ width: 11, height: 11, borderRadius: 2, transform: 'rotate(45deg)', backgroundColor: color, flexShrink: 0 }} />
+                      <span style={{ flex: 1, minWidth: 0, ...sans, fontSize: 14, fontWeight: 600, color: ink, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                        {name}{name === nextStage ? ' · next' : ''}
+                      </span>
+                      <span style={{ ...mono, fontSize: 11, color: muted, flexShrink: 0 }}>{fmtDistance(dist)} {dirText(bearing)}</span>
+                    </div>
+                  );
+                })}
+              </section>
+            </div>
+          )}
+        </>
       ) : (
         <div style={{ ...sans, fontSize: 13, color: sharing ? muted : ink, padding: '14px 12px', borderRadius: rRow, backgroundColor: paper, marginBottom: notSharing.length ? 12 : 0, lineHeight: 1.4 }}>
-          {sharing ? 'Getting your location…' : 'Share your location to see how far everyone is and which way they are.'}
+          {sharing ? 'Getting your location…' : 'Share your location to see the compass — how far everyone (and each stage) is, and which way to go.'}
         </div>
       )}
 

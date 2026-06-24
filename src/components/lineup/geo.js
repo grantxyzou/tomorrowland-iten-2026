@@ -35,3 +35,16 @@ export function fmtDistance(m) {
   if (m < 1000) return `${Math.round(m / 5) * 5} m`;
   return `${(m / 1000).toFixed(m < 10000 ? 1 : 0)} km`;
 }
+
+// Where a target sits relative to the way you're facing: 0 = straight ahead,
+// 90 = to your right, 180 = behind. Used to rotate the heading-up minimap.
+export function relativeAngle(bearing, heading) {
+  return (((bearing - heading) % 360) + 360) % 360;
+}
+
+// Spoken 8-way direction for a relative angle ("ahead", "ahead-right", …) — the
+// readout + screen-reader label for a locked-on target.
+const REL = ['ahead', 'ahead-right', 'right', 'behind-right', 'behind', 'behind-left', 'left', 'ahead-left'];
+export function relLabel(rel) {
+  return REL[Math.round(((rel % 360) + 360) % 360 / 45) % 8];
+}
