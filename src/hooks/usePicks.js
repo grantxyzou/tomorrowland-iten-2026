@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { useOnline } from './useOnline.js';
+import { useLivePoll } from './useLivePoll.js';
 
 // Shared picks synced via /api/picks (Upstash Redis), polled in near-real-time.
 //
@@ -20,6 +21,7 @@ const API = '/api/picks';
 const CACHE_KEY = 'tml2026_picks_cache';
 const OUTBOX_KEY = 'tml2026_picks_outbox';
 const POLL_MS = 5000;
+const IDLE_POLL_MS = 30000;   // back off to this while the app is open but idle
 const SEP = '|';
 
 function readCache() {
@@ -165,29 +167,10 @@ export function usePicks() {
     enqueue(setIds.map(id => [fieldOf(id, person), true]));
   }, [enqueue]);
 
-  // Initial load + visibility-aware polling. The 5s poll pauses while the tab is
-  // hidden (saves battery + network on a phone in your pocket); on returning we
-  // refetch immediately and resume — so it still feels live.
-  useEffect(() => {
-    let id = null;
-    const start = () => { if (id == null) id = setInterval(fetchPicks, POLL_MS); };
-    const stop  = () => { if (id != null) { clearInterval(id); id = null; } };
-    const onVisible = () => {
-      if (document.visibilityState === 'visible') { fetchPicks(); start(); }
-      else stop();
-    };
-    fetchPicks();
-    if (document.visibilityState === 'visible') start();
-    document.addEventListener('visibilitychange', onVisible);
-    window.addEventListener('focus', fetchPicks);
-    window.addEventListener('online', flush);
-    return () => {
-      stop();
-      document.removeEventListener('visibilitychange', onVisible);
-      window.removeEventListener('focus', fetchPicks);
-      window.removeEventListener('online', flush);
-    };
-  }, [fetchPicks, flush]);
+  // Initial load + visibility-aware polling with idle back-off. Pauses while the
+  // tab is hidden; runs at POLL_MS while you interact and slows to IDLE_POLL_MS
+  // once the app is open but idle (saves the radio). `online` drains the outbox.
+  useLivePoll(fetchPicks, { baseMs: POLL_MS, idleMs: IDLE_POLL_MS }, flush);
 
   return { picks, status, togglePick, clearMine, restoreMine, online, syncing, pendingCount };
 }
