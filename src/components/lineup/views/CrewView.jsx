@@ -7,7 +7,7 @@ import ConflictCombo from '../Overlaps.jsx';
 
 // Quick-send pings — the common "where are you / what's happening" lines so a
 // status is one tap, no typing, on a phone in a crowd.
-const PRESETS = ['Heading to mainstage', 'Food / drink break', 'Where are you?', 'Meet at our spot'];
+export const PRESETS = ['Heading to mainstage', 'Food / drink break', 'Where are you?', 'Meet at our spot'];
 
 // Compact relative time for a status timestamp ("just now" / "4m" / "2h").
 function ago(ts) {

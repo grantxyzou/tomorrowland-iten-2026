@@ -1,0 +1,34 @@
+import { useEffect } from 'react';
+import { paper, muted, mono } from './theme.js';
+
+// Reusable bottom action sheet (Trip Bar spec): a scrim + a slide-up panel with
+// a 30px top radius. Escape or a scrim tap closes it. Sits above the Trip Bar.
+export default function BottomSheet({ title, accent, onClose, children }) {
+  useEffect(() => {
+    const onKey = (e) => { if (e.key === 'Escape') onClose(); };
+    document.addEventListener('keydown', onKey);
+    return () => document.removeEventListener('keydown', onKey);
+  }, [onClose]);
+
+  return (
+    <>
+      <div onClick={onClose} aria-hidden="true" className="fx-fade"
+        style={{ position: 'fixed', inset: 0, zIndex: 70, backgroundColor: 'rgba(4,7,18,0.6)' }} />
+      <div role="dialog" aria-modal="true" aria-label={title} className="fx-fade"
+        style={{
+          position: 'fixed', left: 0, right: 0, bottom: 0, zIndex: 71, backgroundColor: paper,
+          borderTopLeftRadius: 30, borderTopRightRadius: 30, boxShadow: '0 -12px 40px rgba(0,0,0,0.55)',
+          padding: '14px max(16px, env(safe-area-inset-right)) calc(18px + env(safe-area-inset-bottom)) max(16px, env(safe-area-inset-left))',
+        }}>
+        <div style={{ maxWidth: 520, margin: '0 auto' }}>
+          {/* grab handle */}
+          <div aria-hidden="true" style={{ width: 38, height: 4, borderRadius: 2, backgroundColor: '#243056', margin: '0 auto 14px' }} />
+          {title && (
+            <div style={{ ...mono, fontSize: 10, letterSpacing: '0.18em', textTransform: 'uppercase', color: accent || muted, marginBottom: 14 }}>{title}</div>
+          )}
+          {children}
+        </div>
+      </div>
+    </>
+  );
+}
