@@ -1,6 +1,6 @@
 import { MagnifyingGlass, X, CaretRight } from '@phosphor-icons/react';
 import { STAGES } from '../../../data/lineup.js';
-import { mono, sans, display, ink, muted, rule, paper, chip, tmrwGold, shRow, STAGE_ORDER } from '../theme.js';
+import { mono, sans, display, ink, muted, rule, paper, chip, tmrwBg, tmrwGold, shRow, STAGE_ORDER } from '../theme.js';
 import ArtistRow from '../ArtistRow.jsx';
 import { StageSpotify } from '../SpotifyExport.jsx';
 
