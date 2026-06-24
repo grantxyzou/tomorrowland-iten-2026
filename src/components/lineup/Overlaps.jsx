@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Lightning, CaretRight } from '@phosphor-icons/react';
 import { STAGES, PEOPLE } from '../../data/lineup.js';
-import { mono, sans, tmrwGold, tmrwBg, ink, muted, rule, clashRed, PERSON_COLORS } from './theme.js';
+import { mono, sans, tmrwGold, tmrwBg, ink, muted, rule, clashRed, clashWell, clashHeader, shRow, PERSON_COLORS } from './theme.js';
 import { normSpan, minToLabel } from './time.js';
 
 // ── Overlaps view ────────────────────────────────────────────
@@ -69,9 +69,9 @@ export default function ConflictCombo({ clusters, picks, me }) {
     return ns.length <= 2 ? ns.join(', ') : `${ns.slice(0, 2).join(', ')} +${ns.length - 2}`;
   };
   return (
-    <div style={{ border: `1px solid ${clashRed}55`, borderRadius: 10, overflow: 'hidden', backgroundColor: tmrwBg }}>
+    <div style={{ borderRadius: 13, overflow: 'hidden', backgroundColor: clashWell, boxShadow: shRow }}>
       {/* Header: how many to sort out + who's affected (you, ringed) */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap', padding: '10px 12px', backgroundColor: `${clashRed}14`, borderBottom: `1px solid ${rule}` }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap', padding: '10px 12px', backgroundColor: clashHeader }}>
         <span style={{ ...sans, fontSize: 13, fontWeight: 700, color: ink, display: 'inline-flex', alignItems: 'center', gap: 5 }}><Lightning size={14} weight="fill" color={clashRed} /> {clusters.length} to resolve</span>
         <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, flexWrap: 'wrap', marginLeft: 'auto' }}>
           {perPerson.map(({ p, n }) => {

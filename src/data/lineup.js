@@ -39,23 +39,25 @@ export const LINEUP_STATUS = 'official'; // 'placeholder' | 'official-partial' |
 
 export const PEOPLE = ['Grant', 'Desmond', 'Lawrence'];
 
-// Stages in poster order, each colour-matched to the official artwork.
+// Stage key hues — Direction D "midnight" register: brighter, cleaner dots on
+// the dark surfaces. The six headline stages use the token-spec values; the
+// rest are harmonised to the same brightness and kept visually distinct.
 export const STAGES = {
-  'Mainstage':              { color: '#d9a93e' },
-  'Freedom by Bud':         { color: '#3fae8f' },
-  'The Rose Garden':        { color: '#cf6699' },
-  'Elixir':                 { color: '#6fae52' },
-  'Cage':                   { color: '#d2933c' },
-  'The Rave Cave':          { color: '#8a6fbf' },
-  'Planaxis':               { color: '#3fa9a0' },
-  'Melodia by Corona':      { color: '#d05a52' },
-  'Celestia by KuCoin':     { color: '#5a86c4' },
-  'Atmosphere':             { color: '#7fae3f' },
-  'Core':                   { color: '#cf69a0' },
-  'Crystal Garden':         { color: '#7d8fcf' },
-  'The Great Library':      { color: '#c2a23f' },
-  'Moose Bar':              { color: '#5aae6a' },
-  'House of Fortune by JBL':{ color: '#c2c2cc' },
+  'Mainstage':              { color: '#e9b949' },
+  'Freedom by Bud':         { color: '#46d0b0' },
+  'The Rose Garden':        { color: '#e7669a' },
+  'Elixir':                 { color: '#7bd06a' },
+  'Cage':                   { color: '#caa6ff' },
+  'The Rave Cave':          { color: '#8fb6ff' },
+  'Planaxis':               { color: '#46c2b4' },
+  'Melodia by Corona':      { color: '#ef7a6f' },
+  'Celestia by KuCoin':     { color: '#6fa0ff' },
+  'Atmosphere':             { color: '#9bd06a' },
+  'Core':                   { color: '#e58ab0' },
+  'Crystal Garden':         { color: '#aab6ff' },
+  'The Great Library':      { color: '#d9c24a' },
+  'Moose Bar':              { color: '#6ec888' },
+  'House of Fortune by JBL':{ color: '#c6cce0' },
 };
 
 // ── Lineup by day → stage → artists (with official set times) ─

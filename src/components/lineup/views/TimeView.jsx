@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Headphones, Clock, PencilSimple, Check, X, CaretRight, ArrowCounterClockwise } from '@phosphor-icons/react';
-import { mono, sans, display, muted, rule, paper, ink, tmrwBg, tmrwGold, bodyMuted, STAGE_ORDER } from '../theme.js';
+import { mono, sans, display, muted, rule, paper, ink, tmrwBg, bar, tmrwGold, bodyMuted, shRow, PERSON_INK, STAGE_ORDER } from '../theme.js';
 import { STAGES, sets as BASELINE } from '../../../data/lineup.js';
 import { normSpan } from '../time.js';
 import ArtistRow from '../ArtistRow.jsx';
@@ -34,12 +34,18 @@ export default function TimeView({
   // never accidentally publish edits made while looking at a different day.
   useEffect(() => { setDraft({}); setSelectedId(null); }, [activeDay, editTimes]);
 
-  // Close the editor sheet on Escape.
+  // Close the editor sheet on Escape, and lock background scroll while it's open
+  // (the scrim blocks taps; this makes the background fully inert).
   useEffect(() => {
     if (!selectedId) return;
     const onKey = (e) => { if (e.key === 'Escape') setSelectedId(null); };
     document.addEventListener('keydown', onKey);
-    return () => document.removeEventListener('keydown', onKey);
+    const prevOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    return () => {
+      document.removeEventListener('keydown', onKey);
+      document.body.style.overflow = prevOverflow;
+    };
   }, [selectedId]);
 
   const setMap = useMemo(() => new Map(daySets.map(s => [s.id, s])), [daySets]);
@@ -166,12 +172,12 @@ export default function TimeView({
             const open = openStages.has(stage);
             const edited = stageSets.some(s => pendingIds.has(s.id));
             return (
-              <section key={stage} style={{ borderRadius: 10, border: `1px solid ${rule}`, overflow: 'hidden', backgroundColor: paper }}>
+              <section key={stage} style={{ borderRadius: 13, overflow: 'hidden', backgroundColor: paper, boxShadow: shRow }}>
                 <button onClick={() => toggleStage(stage)} aria-expanded={open}
                   aria-label={`${stage}, ${stageSets.length} sets${edited ? ', edited' : ''}`}
                   style={{ width: '100%', textAlign: 'left', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 10, padding: '12px 16px', minHeight: 44, border: 'none', background: 'none' }}>
                   <span aria-hidden="true" style={{ width: 10, height: 10, borderRadius: '50%', backgroundColor: color, boxShadow: `0 0 8px ${color}`, flexShrink: 0 }} />
-                  <span aria-hidden="true" style={{ ...display, fontSize: 16, fontWeight: 700, color: ink, letterSpacing: '0.01em', flex: 1 }}>{stage}</span>
+                  <span aria-hidden="true" style={{ ...display, fontSize: 23, fontWeight: 700, color: ink, letterSpacing: '0.01em', flex: 1 }}>{stage}</span>
                   {edited && <span aria-hidden="true" title="Edited" style={{ width: 8, height: 8, borderRadius: '50%', backgroundColor: myColor }} />}
                   <span aria-hidden="true" style={{ ...mono, fontSize: 11, color: muted }}>{stageSets.length}</span>
                   <CaretRight aria-hidden="true" size={14} weight="bold" color={muted} style={{ flexShrink: 0, transform: open ? 'rotate(90deg)' : 'none', transition: 'transform var(--dur-fast) var(--ease-in-out)' }} />
@@ -190,7 +196,7 @@ export default function TimeView({
 
         {/* Sticky publish bar — appears once there's something to publish. */}
         {pendingIds.size > 0 && (
-          <div style={{ position: 'sticky', bottom: 'calc(8px + env(safe-area-inset-bottom))', marginTop: 12, zIndex: 20, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, padding: '10px 12px', borderRadius: 10, border: `1px solid ${myColor}66`, backgroundColor: '#0c1126', boxShadow: '0 6px 20px rgba(0,0,0,0.5)' }}>
+          <div style={{ position: 'sticky', bottom: 'calc(8px + env(safe-area-inset-bottom))', marginTop: 12, zIndex: 20, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, padding: '10px 12px', borderRadius: 13, backgroundColor: bar, boxShadow: '0 -12px 30px rgba(0,0,0,0.45), 0 0 0 1px rgba(233,185,73,0.22)' }}>
             <span style={{ ...mono, fontSize: 11, color: bodyMuted }}>
               {pendingIds.size} change{pendingIds.size === 1 ? '' : 's'} ready
             </span>
@@ -200,7 +206,7 @@ export default function TimeView({
                 Cancel
               </button>
               <button type="button" onClick={doPublish} disabled={publishing}
-                style={{ minHeight: 40, padding: '0 14px', borderRadius: 8, border: 'none', backgroundColor: myColor, color: tmrwBg, ...mono, fontSize: 11, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', cursor: publishing ? 'default' : 'pointer', opacity: publishing ? 0.6 : 1, display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+                style={{ minHeight: 40, padding: '0 14px', borderRadius: 8, border: 'none', backgroundColor: myColor, color: PERSON_INK[activePerson], ...mono, fontSize: 11, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', cursor: publishing ? 'default' : 'pointer', opacity: publishing ? 0.6 : 1, display: 'inline-flex', alignItems: 'center', gap: 6 }}>
                 <Check size={14} weight="bold" /> {publishing ? 'Publishing…' : 'Publish to crew'}
               </button>
             </div>
@@ -245,7 +251,7 @@ export default function TimeView({
                       </button>
                     )}
                     <button type="button" onClick={() => setSelectedId(null)}
-                      style={{ flex: 1, minHeight: 48, borderRadius: 12, border: 'none', backgroundColor: myColor, color: tmrwBg, ...sans, fontSize: 16, fontWeight: 700, cursor: 'pointer' }}>
+                      style={{ flex: 1, minHeight: 48, borderRadius: 12, border: 'none', backgroundColor: myColor, color: PERSON_INK[activePerson], ...sans, fontSize: 16, fontWeight: 700, cursor: 'pointer' }}>
                       Done
                     </button>
                   </div>
@@ -279,7 +285,7 @@ export default function TimeView({
           <span>Set times not announced yet — showing alphabetically. This view becomes a chronological timeline (with overlap highlighting) once times drop.</span>
         </div>
       )}
-      <section style={{ borderRadius: 10, border: `1px solid ${rule}`, overflow: 'hidden', backgroundColor: paper }}>
+      <section style={{ borderRadius: 13, overflow: 'hidden', backgroundColor: paper, boxShadow: shRow }}>
         {timeline.map(set => <ArtistRow key={set.id} {...rowProps(set)} showStage={true} />)}
       </section>
     </div>
