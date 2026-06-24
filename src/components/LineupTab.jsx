@@ -5,16 +5,18 @@ import { sets, PEOPLE, LINEUP_STATUS } from '../data/lineup.js';
 import { usePicks } from '../hooks/usePicks.js';
 import { useLineupOverrides } from '../hooks/useLineupOverrides.js';
 import { useCrewStatus } from '../hooks/useCrewStatus.js';
+import { useGeoShare } from '../hooks/useGeoShare.js';
 import { TomorrowlandMark } from './BrandMarks.jsx';
 import {
-  mono, sans, display, bar, chip, raised, ink, muted, tmrwGold, goldLit, live, clashRed,
+  mono, sans, display, bar, chip, raised, ink, muted, tmrwGold, goldLit, live, clashRed, spotifyDot,
   PERSON_COLORS, PERSON_INK, DAYS, STAGE_ORDER, ME_KEY,
 } from './lineup/theme.js';
-import { hasTime, sortKey, timesOverlap, stageOrder, conflictClusters, applyOverrides, minToLabel } from './lineup/time.js';
+import { hasTime, sortKey, timesOverlap, stageOrder, conflictClusters, applyOverrides } from './lineup/time.js';
 import SpotifyExport from './lineup/SpotifyExport.jsx';
 import PartyMode from './lineup/PartyMode.jsx';
 import TripBar from './lineup/TripBar.jsx';
 import BottomSheet from './lineup/BottomSheet.jsx';
+import CrewMap from './lineup/CrewMap.jsx';
 import ConflictCombo from './lineup/Overlaps.jsx';
 import StageView from './lineup/views/StageView.jsx';
 import TimeView from './lineup/views/TimeView.jsx';
@@ -32,7 +34,8 @@ export default function LineupTab() {
   const [searchOpen, setSearchOpen]     = useState(false);
   const [party, setParty]               = useState(false);
   const exitParty = useCallback(() => setParty(false), []);
-  // Which Trip Bar sheet is open: null | 'person' | 'day' | 'overlaps' | 'nudge'.
+  // Which Trip Bar sheet is open:
+  // null | 'person' | 'day' | 'overlaps' | 'nudge' | 'spotify' | 'where'.
   const [sheet, setSheet] = useState(null);
   const [nudgeText, setNudgeText] = useState('');
   const [tipDismissed, setTipDismissed] = useState(() => {
@@ -48,6 +51,12 @@ export default function LineupTab() {
   const [editTimes, setEditTimes] = useState(false);
   // Lightweight crew status board (where are you / what are you doing).
   const crewStatus = useCrewStatus();
+  // Opt-in, battery-conscious GPS sharing — samples only while the map sheet is
+  // open. Drives the "Where's everyone" relative radar.
+  const geo = useGeoShare({
+    me: activePerson, active: sheet === 'where',
+    setLocation: crewStatus.setLocation, clearLocation: crewStatus.clearLocation,
+  });
   // Unified bottom-screen toast. { msg, action?: { label, run }, duration }
   const [toast, setToast] = useState(null);
   const notify = useCallback((msg, opts) => setToast({ msg, duration: 2500, ...opts }), []);
@@ -138,7 +147,6 @@ export default function LineupTab() {
   const clashSetIds = useMemo(() => new Set(clashes.flatMap(c => [c.a.id, c.b.id])), [clashes]);
   // Regroup pairwise clashes into time-window clusters for the Overlaps view.
   const clusters = useMemo(() => conflictClusters(clashes), [clashes]);
-  const nextClashLabel = clusters.length ? minToLabel(clusters[0].window[0]) : null;
 
   // Crew consensus for the active day.
   const crew = useMemo(() => {
@@ -159,6 +167,12 @@ export default function LineupTab() {
 
   // The active person's full selection across all three days — feeds Spotify.
   const mySets = useMemo(() => effectiveSets.filter(s => picks[s.id]?.[activePerson]), [picks, activePerson, effectiveSets]);
+  // Whether there's anything playable to export (excludes TBA / deleted) — so
+  // the Spotify sheet can show a friendly empty state instead of a blank panel.
+  const hasPlayablePicks = useMemo(
+    () => mySets.some(s => s.status !== 'deleted' && !/^to be announced$/i.test(s.name)),
+    [mySets]
+  );
 
   // Stable per-set prop factory so memoized ArtistRows don't re-render on every poll.
   const rowProps = useCallback((set) => ({
@@ -271,9 +285,6 @@ export default function LineupTab() {
           )}
         </div>
 
-        {/* Spotify — build a playlist prompt from this person's picks */}
-        <SpotifyExport person={activePerson} mySets={mySets} onCopied={notify} />
-
         {/* Reset — clears only the active person's picks; quiet line button */}
         <div style={{ marginTop: 28, textAlign: 'center' }}>
           <button onClick={() => {
@@ -292,9 +303,10 @@ export default function LineupTab() {
       {/* ── Trip Bar — persistent bottom controls + morphing FAB ── */}
       <TripBar
         activePerson={activePerson} activeDay={activeDay} view={view} setView={setView}
-        party={party} crewCount={crewCount} clashCount={clashes.length} nextClashLabel={nextClashLabel}
+        party={party} crewCount={crewCount} clashCount={clashes.length}
         onPerson={() => setSheet('person')} onDay={() => setSheet('day')} onParty={() => setParty(true)}
         onResolve={() => setSheet('overlaps')} onNudge={() => setSheet('nudge')}
+        onSpotify={() => setSheet('spotify')} onWhere={() => setSheet('where')}
       />
 
       {/* ── Trip Bar sheets ── */}
@@ -362,6 +374,28 @@ export default function LineupTab() {
               <PaperPlaneTilt size={15} weight="fill" /> Send
             </button>
           </form>
+        </BottomSheet>
+      )}
+
+      {sheet === 'spotify' && (
+        <BottomSheet title="Spotify playlist" accent={spotifyDot} onClose={() => setSheet(null)}>
+          {hasPlayablePicks
+            ? <SpotifyExport person={activePerson} mySets={mySets} onCopied={notify} />
+            : <div style={{ ...sans, fontSize: 13, color: muted, padding: '4px 2px 8px', lineHeight: 1.4 }}>
+                No picks to export yet — add some artists and they’ll turn into a playlist prompt here.
+              </div>}
+        </BottomSheet>
+      )}
+
+      {sheet === 'where' && (
+        <BottomSheet title="Where’s everyone" accent={myColor} onClose={() => setSheet(null)}>
+          <div style={{ maxHeight: '68vh', overflowY: 'auto', WebkitOverflowScrolling: 'touch' }}>
+            <CrewMap
+              me={activePerson} locations={crewStatus.locations} statuses={crewStatus.statuses}
+              sharing={geo.sharing} onEnable={geo.enable} onDisable={geo.disable}
+              myFix={geo.myFix} error={geo.error} supported={geo.supported}
+            />
+          </div>
         </BottomSheet>
       )}
 
