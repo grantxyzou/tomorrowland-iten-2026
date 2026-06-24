@@ -30,19 +30,20 @@ export default function App() {
   const accent   = '#a82a13';
   const cardBg   = '#f5efde';
 
-  // "Cage" deep-blue oil-painting background for the Lineup tab: layered radial
-  // brushstroke glows + edge vignette over a navy wash. (The Itinerary tab keeps
-  // the light desert theme.) The Lineup runs as a full dark theme.
+  // "Direction D — Midnight" background for the Lineup tab: cool nebula glows
+  // over a near-black midnight wash that bottoms at the canvas/well tone, so the
+  // (lighter) card surfaces read as raised. (The Itinerary tab keeps the light
+  // desert theme.) The Lineup runs as a full dark theme.
   const lineupAtmosphere =
-    'radial-gradient(120% 80% at 30% -10%, rgba(58,86,170,0.55), rgba(58,86,170,0) 55%),' +
-    'radial-gradient(90% 70% at 85% 35%, rgba(96,72,156,0.40), rgba(96,72,156,0) 60%),' +
-    'radial-gradient(100% 90% at 10% 90%, rgba(20,52,92,0.55), rgba(20,52,92,0) 60%),' +
-    'radial-gradient(140% 110% at 50% 40%, rgba(8,12,32,0) 45%, rgba(6,9,24,0.85) 100%),' +
-    'linear-gradient(178deg, #1b2856 0%, #131a3a 45%, #0e1430 100%)';
+    'radial-gradient(120% 80% at 30% -10%, rgba(46,64,132,0.34), rgba(46,64,132,0) 55%),' +
+    'radial-gradient(95% 75% at 85% 30%, rgba(78,58,128,0.24), rgba(78,58,128,0) 60%),' +
+    'radial-gradient(110% 95% at 12% 92%, rgba(20,40,84,0.34), rgba(20,40,84,0) 60%),' +
+    'radial-gradient(150% 120% at 50% 45%, rgba(8,12,32,0) 42%, rgba(4,6,16,0.92) 100%),' +
+    'linear-gradient(178deg, #0d1430 0%, #0a0e22 55%, #070b1c 100%)';
 
   // Dark-theme chrome only on the Lineup tab.
   const dark = activeTab === 'lineup';
-  const lineupAccent = '#e8c25e'; // gold active-tab indicator (rust fails on navy)
+  const lineupAccent = '#e9b949'; // gold active-tab indicator (Direction D spotlight)
   const activeIndex = TABS.findIndex(t => t.id === activeTab);
 
   return (
@@ -56,7 +57,7 @@ export default function App() {
           opacity swaps on tab change. Lets the whole surface dissolve
           between themes — a `background` transition can't tween gradients. */}
       <div aria-hidden="true" style={{ position: 'fixed', inset: 0, zIndex: -1, backgroundColor: paper, opacity: dark ? 0 : 1, transition: 'opacity var(--dur-theme) var(--ease-out)' }} />
-      <div aria-hidden="true" style={{ position: 'fixed', inset: 0, zIndex: -1, backgroundColor: '#0e1430', backgroundImage: lineupAtmosphere, opacity: dark ? 1 : 0, transition: 'opacity var(--dur-theme) var(--ease-out)' }} />
+      <div aria-hidden="true" style={{ position: 'fixed', inset: 0, zIndex: -1, backgroundColor: '#0a0e22', backgroundImage: lineupAtmosphere, opacity: dark ? 1 : 0, transition: 'opacity var(--dur-theme) var(--ease-out)' }} />
 
       {/* ── Top bar ─────────────────────────────────────────── */}
       <header style={{ backgroundColor: ink, color: paper, padding: '12px 16px', paddingTop: 'calc(12px + env(safe-area-inset-top))', position: 'sticky', top: 0, zIndex: 50 }}>
@@ -75,16 +76,16 @@ export default function App() {
       </header>
 
       {/* ── Last updated banner ─────────────────────────────── */}
-      <div style={{ backgroundColor: dark ? '#131a3a' : cardBg, borderBottom: `1px solid ${dark ? '#34406e' : rule}`, padding: '6px 16px', transition: 'background-color var(--dur-theme) var(--ease-out), border-color var(--dur-theme) var(--ease-out)' }}>
+      <div style={{ backgroundColor: dark ? '#0c1228' : cardBg, borderBottom: `1px solid ${dark ? '#1c2342' : rule}`, padding: '6px 16px', transition: 'background-color var(--dur-theme) var(--ease-out), border-color var(--dur-theme) var(--ease-out)' }}>
         <div style={{ maxWidth: 680, margin: '0 auto', display: 'flex', alignItems: 'center', gap: 8 }}>
-          <span style={{ ...mono, fontSize: 10, color: dark ? '#a9b2cf' : muted, letterSpacing: '0.12em', textTransform: 'uppercase', transition: 'color var(--dur-theme) var(--ease-out)' }}>
+          <span style={{ ...mono, fontSize: 10, color: dark ? '#9aa3c4' : muted, letterSpacing: '0.12em', textTransform: 'uppercase', transition: 'color var(--dur-theme) var(--ease-out)' }}>
             Updated {formatUpdated(LAST_UPDATED)}
           </span>
         </div>
       </div>
 
       {/* ── Tab bar ─────────────────────────────────────────── */}
-      <nav role="tablist" aria-label="Sections" style={{ backgroundColor: dark ? '#131a3a' : paper, borderBottom: `1px solid ${dark ? '#34406e' : rule}`, position: 'sticky', top: 53, zIndex: 40, transition: 'background-color var(--dur-theme) var(--ease-out), border-color var(--dur-theme) var(--ease-out)' }}>
+      <nav role="tablist" aria-label="Sections" style={{ backgroundColor: dark ? '#0c1228' : paper, borderBottom: `1px solid ${dark ? '#1c2342' : rule}`, position: 'sticky', top: 53, zIndex: 40, transition: 'background-color var(--dur-theme) var(--ease-out), border-color var(--dur-theme) var(--ease-out)' }}>
         <div style={{ position: 'relative', maxWidth: 680, margin: '0 auto', display: 'flex', overflowX: 'auto' }} className="no-scrollbar">
           {TABS.map(tab => {
             const active = activeTab === tab.id;
@@ -105,7 +106,7 @@ export default function App() {
                   fontWeight: active ? 700 : 500,
                   letterSpacing: '0.18em',
                   textTransform: 'uppercase',
-                  color: active ? (dark ? lineupAccent : accent) : (dark ? '#a9b2cf' : muted),
+                  color: active ? (dark ? lineupAccent : accent) : (dark ? '#9aa3c4' : muted),
                   background: 'none',
                   border: 'none',
                   cursor: 'pointer',

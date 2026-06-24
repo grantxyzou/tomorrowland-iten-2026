@@ -7,8 +7,8 @@ import { useLineupOverrides } from '../hooks/useLineupOverrides.js';
 import { useCrewStatus } from '../hooks/useCrewStatus.js';
 import { TomorrowlandMark } from './BrandMarks.jsx';
 import {
-  mono, sans, display, tmrwBg, canvas, bar, chip, paper, ink, muted, rule, clashRed, tmrwGold, goldLit, live,
-  shPanel, hiTop, rPanel, PERSON_COLORS, DAYS, VIEWS, STAGE_ORDER, ME_KEY,
+  mono, sans, display, tmrwBg, bar, chip, paper, ink, muted, rule, clashRed, tmrwGold, goldLit, live,
+  shPanel, PERSON_COLORS, DAYS, VIEWS, STAGE_ORDER, ME_KEY,
 } from './lineup/theme.js';
 import { hasTime, sortKey, timesOverlap, stageOrder, conflictClusters, applyOverrides } from './lineup/time.js';
 import SpotifyExport from './lineup/SpotifyExport.jsx';
@@ -213,10 +213,10 @@ export default function LineupTab() {
 
   return (
     <div style={{ ...sans }}>
-      {/* Borderless midnight panel — depth from surface value + soft elevation,
-          no frame/stroke (Direction D). */}
-      <div style={{ borderRadius: rPanel, padding: 0, background: canvas, boxShadow: shPanel }}>
-      <div style={{ borderRadius: rPanel, background: 'transparent', padding: '18px 14px', boxShadow: hiTop }}>
+      {/* Content sits directly on the App's midnight atmosphere — borderless,
+          no competing panel fill (Direction D). */}
+      <div>
+      <div style={{ padding: '14px 4px' }}>
       {/* Consciencia — the Cage poster's painterly night sky in a band: deep
           indigo depth with soft nebula light → a molten-gold horizon glow. */}
       <div className="fx-enter" style={{
