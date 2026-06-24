@@ -34,12 +34,18 @@ export default function TimeView({
   // never accidentally publish edits made while looking at a different day.
   useEffect(() => { setDraft({}); setSelectedId(null); }, [activeDay, editTimes]);
 
-  // Close the editor sheet on Escape.
+  // Close the editor sheet on Escape, and lock background scroll while it's open
+  // (the scrim blocks taps; this makes the background fully inert).
   useEffect(() => {
     if (!selectedId) return;
     const onKey = (e) => { if (e.key === 'Escape') setSelectedId(null); };
     document.addEventListener('keydown', onKey);
-    return () => document.removeEventListener('keydown', onKey);
+    const prevOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    return () => {
+      document.removeEventListener('keydown', onKey);
+      document.body.style.overflow = prevOverflow;
+    };
   }, [selectedId]);
 
   const setMap = useMemo(() => new Map(daySets.map(s => [s.id, s])), [daySets]);
