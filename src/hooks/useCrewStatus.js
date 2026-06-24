@@ -1,4 +1,5 @@
-import { useState, useEffect, useRef, useCallback } from 'react';
+import { useState, useRef, useCallback } from 'react';
+import { useLivePoll } from './useLivePoll.js';
 
 // Crew status board, synced via /api/status (Upstash Redis), polled in
 // near-real-time. Shapes: statuses { [person]: { text, ts } } and the opt-in
@@ -21,6 +22,7 @@ const OUTBOX_KEY = 'tml2026_status_outbox';
 const LOC_CACHE_KEY = 'tml2026_loc_cache';
 const LOC_OUTBOX_KEY = 'tml2026_loc_outbox';
 const POLL_MS = 5000;
+const IDLE_POLL_MS = 30000;   // back off to this while the app is open but idle
 const CLEAR = 'CLEAR';
 
 function readJSON(key, fallback) {
@@ -171,28 +173,9 @@ export function useCrewStatus() {
     flush();
   }, [applyLocal, persistLocOutbox, flush]);
 
-  // Visibility-aware polling — pauses while the tab is hidden, refetches on
-  // return. Same battery/network posture as usePicks.
-  useEffect(() => {
-    let id = null;
-    const start = () => { if (id == null) id = setInterval(fetchStatuses, POLL_MS); };
-    const stop  = () => { if (id != null) { clearInterval(id); id = null; } };
-    const onVisible = () => {
-      if (document.visibilityState === 'visible') { fetchStatuses(); start(); }
-      else stop();
-    };
-    fetchStatuses();
-    if (document.visibilityState === 'visible') start();
-    document.addEventListener('visibilitychange', onVisible);
-    window.addEventListener('focus', fetchStatuses);
-    window.addEventListener('online', flush);
-    return () => {
-      stop();
-      document.removeEventListener('visibilitychange', onVisible);
-      window.removeEventListener('focus', fetchStatuses);
-      window.removeEventListener('online', flush);
-    };
-  }, [fetchStatuses, flush]);
+  // Visibility-aware polling with idle back-off — pauses while hidden, full speed
+  // while you interact, slower while open-but-idle. Same posture as usePicks.
+  useLivePoll(fetchStatuses, { baseMs: POLL_MS, idleMs: IDLE_POLL_MS }, flush);
 
   return { statuses, locations, setStatus, clearStatus, setLocation, clearLocation, pendingCount };
 }
