@@ -2,7 +2,7 @@ import { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import { Check, MusicNotes, X, PaperPlaneTilt } from '@phosphor-icons/react';
 import { usePresence } from '../hooks/usePresence.js';
 import { useAuth } from '../auth/AuthContext.jsx';
-import { sets, PEOPLE, LINEUP_STATUS } from '../data/lineup.js';
+import { sets, LINEUP_STATUS } from '../data/lineup.js';
 import { usePicks } from '../hooks/usePicks.js';
 import { useLineupOverrides } from '../hooks/useLineupOverrides.js';
 import { useCrewStatus } from '../hooks/useCrewStatus.js';
@@ -11,7 +11,7 @@ import { useHeading } from '../hooks/useHeading.js';
 import { TomorrowlandMark } from './BrandMarks.jsx';
 import {
   mono, sans, display, bar, chip, raised, ink, muted, tmrwGold, goldLit, live, clashRed, spotifyDot,
-  PERSON_COLORS, PERSON_INK, DAYS, STAGE_ORDER,
+  DAYS, STAGE_ORDER,
 } from './lineup/theme.js';
 import { hasTime, sortKey, timesOverlap, stageOrder, conflictClusters, applyOverrides } from './lineup/time.js';
 import SpotifyExport from './lineup/SpotifyExport.jsx';
@@ -23,11 +23,14 @@ import ConflictCombo from './lineup/Overlaps.jsx';
 import StageView from './lineup/views/StageView.jsx';
 import TimeView from './lineup/views/TimeView.jsx';
 import CrewView, { PRESETS } from './lineup/views/CrewView.jsx';
+import { useGroup } from '../groups/GroupContext.jsx';
 
 export default function LineupTab() {
   const [activeDay, setActiveDay]       = useState('fri');
   // Identity comes from the signed-in session — you are always yourself.
   const { person: activePerson, email: myEmail, logout } = useAuth();
+  const { members, colorFor, inkFor } = useGroup();
+  const crewNames = useMemo(() => members.map(m => m.displayName), [members]);
   const [view, setView]                 = useState('stage');
   const [search, setSearch]             = useState('');
   const [openStages, setOpenStages]     = useState(() => new Set());
@@ -89,7 +92,7 @@ export default function LineupTab() {
   const searchPresent = usePresence(searchOpen, 200);
 
   const q = search.trim().toLowerCase();
-  const myColor = PERSON_COLORS[activePerson];
+  const myColor = colorFor(activePerson);
   const forceOpen = q.length > 0;
   const dayHasTimes = useMemo(() => effectiveSets.some(s => s.day === activeDay && hasTime(s)), [activeDay, effectiveSets]);
   const dayLabel = DAYS.find(d => d.id === activeDay)?.label || '';
@@ -107,7 +110,7 @@ export default function LineupTab() {
     effectiveSets.filter(s => s.day === activeDay && (!q || s.name.toLowerCase().includes(q))),
     [activeDay, q, effectiveSets]
   );
-  const groups = useMemo(() =>
+  const stageGroups = useMemo(() =>
     STAGE_ORDER
       .map(stage => ({ stage, sets: browseSets.filter(s => s.stage === stage).sort(stageOrder) }))
       .filter(g => g.sets.length > 0),
@@ -139,12 +142,12 @@ export default function LineupTab() {
       for (let j = i + 1; j < ds.length; j++) {
         const a = ds[i], b = ds[j];
         if (a.stage === b.stage || !timesOverlap(a, b)) continue;
-        const shared = PEOPLE.filter(p => picks[a.id]?.[p] && picks[b.id]?.[p]);
+        const shared = crewNames.filter(p => picks[a.id]?.[p] && picks[b.id]?.[p]);
         if (shared.length) out.push({ a, b, shared });
       }
     }
     return out;
-  }, [activeDay, picks, effectiveSets]);
+  }, [activeDay, picks, effectiveSets, crewNames]);
   const clashSetIds = useMemo(() => new Set(clashes.flatMap(c => [c.a.id, c.b.id])), [clashes]);
   // Regroup pairwise clashes into time-window clusters for the Overlaps view.
   const clusters = useMemo(() => conflictClusters(clashes), [clashes]);
@@ -154,16 +157,16 @@ export default function LineupTab() {
     const ds = effectiveSets.filter(s => s.day === activeDay);
     const all3 = [], two = [];
     for (const s of ds) {
-      const pickers = PEOPLE.filter(p => picks[s.id]?.[p]);
-      if (pickers.length === PEOPLE.length) all3.push({ set: s, pickers });
+      const pickers = crewNames.filter(p => picks[s.id]?.[p]);
+      if (pickers.length === crewNames.length && crewNames.length > 0) all3.push({ set: s, pickers });
       else if (pickers.length === 2) two.push({ set: s, pickers });
     }
     return { all3, two };
-  }, [activeDay, picks, effectiveSets]);
+  }, [activeDay, picks, effectiveSets, crewNames]);
 
   const totalPicks = useMemo(() =>
-    PEOPLE.reduce((acc, p) => { acc[p] = effectiveSets.filter(s => picks[s.id]?.[p]).length; return acc; }, {}),
-    [picks, effectiveSets]
+    crewNames.reduce((acc, p) => { acc[p] = effectiveSets.filter(s => picks[s.id]?.[p]).length; return acc; }, {}),
+    [picks, effectiveSets, crewNames]
   );
 
   // The active person's full selection across all three days — feeds Spotify.
@@ -177,12 +180,12 @@ export default function LineupTab() {
 
   // Stable per-set prop factory so memoized ArtistRows don't re-render on every poll.
   const rowProps = useCallback((set) => ({
-    set, myColor, myInk: PERSON_INK[activePerson],
+    set, myColor, myInk: inkFor(activePerson),
     myPick: picks[set.id]?.[activePerson] || false,
-    others: PEOPLE.filter(p => p !== activePerson && picks[set.id]?.[p]),
+    others: crewNames.filter(p => p !== activePerson && picks[set.id]?.[p]),
     isClash: clashSetIds.has(set.id),
     onToggle: () => togglePick(set.id, activePerson),
-  }), [picks, activePerson, myColor, clashSetIds, togglePick]);
+  }), [picks, activePerson, myColor, clashSetIds, togglePick, crewNames, inkFor]);
 
   const sendNudge = (msg) => {
     const clean = (msg ?? nudgeText).trim();
@@ -262,7 +265,7 @@ export default function LineupTab() {
         <div key={view} className="fx-enter">
           {view === 'stage' && (
             <StageView
-              groups={groups} browseLiveCount={browseLiveCount} dayCount={dayCount} forceOpen={forceOpen}
+              groups={stageGroups} browseLiveCount={browseLiveCount} dayCount={dayCount} forceOpen={forceOpen}
               search={search} setSearch={setSearch} searchOpen={searchOpen} setSearchOpen={setSearchOpen}
               searchPresent={searchPresent} openStages={openStages} setOpenStages={setOpenStages}
               toggleStage={toggleStage} myColor={myColor} picks={picks} activePerson={activePerson}
@@ -315,7 +318,7 @@ export default function LineupTab() {
         <BottomSheet title="Your account" accent={myColor} onClose={() => setSheet(null)}>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 12, minHeight: 56, padding: '0 14px', borderRadius: 14, backgroundColor: raised, ...sans }}>
-              <span aria-hidden="true" style={{ width: 36, height: 36, borderRadius: '50%', backgroundColor: myColor, color: PERSON_INK[activePerson], display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 800, fontSize: 16 }}>{activePerson[0]}</span>
+              <span aria-hidden="true" style={{ width: 36, height: 36, borderRadius: '50%', backgroundColor: myColor, color: inkFor(activePerson), display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 800, fontSize: 16 }}>{activePerson[0]}</span>
               <span style={{ flex: 1, minWidth: 0 }}>
                 <span style={{ display: 'block', fontSize: 17, fontWeight: 700, color: myColor }}>{activePerson}</span>
                 {myEmail && <span style={{ display: 'block', fontSize: 12, color: muted, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{myEmail}</span>}
@@ -370,7 +373,7 @@ export default function LineupTab() {
               placeholder={`Share where you are, ${activePerson}…`} aria-label="Your status"
               style={{ flex: 1, minWidth: 0, minHeight: 48, padding: '0 14px', borderRadius: 12, border: 'none', backgroundColor: '#080c1e', color: ink, ...sans, fontSize: 16 }} />
             <button type="submit" disabled={!nudgeText.trim()} aria-label="Share status"
-              style={{ flexShrink: 0, minHeight: 48, padding: '0 16px', borderRadius: 12, border: 'none', backgroundColor: nudgeText.trim() ? myColor : chip, color: nudgeText.trim() ? PERSON_INK[activePerson] : muted, ...sans, fontSize: 14, fontWeight: 700, cursor: nudgeText.trim() ? 'pointer' : 'default', display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+              style={{ flexShrink: 0, minHeight: 48, padding: '0 16px', borderRadius: 12, border: 'none', backgroundColor: nudgeText.trim() ? myColor : chip, color: nudgeText.trim() ? inkFor(activePerson) : muted, ...sans, fontSize: 14, fontWeight: 700, cursor: nudgeText.trim() ? 'pointer' : 'default', display: 'inline-flex', alignItems: 'center', gap: 6 }}>
               <PaperPlaneTilt size={15} weight="fill" /> Send
             </button>
           </form>

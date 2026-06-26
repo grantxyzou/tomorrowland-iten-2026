@@ -4,6 +4,7 @@ import { LAST_UPDATED } from './data/trip.js';
 import ItineraryTab from './components/ItineraryTab.jsx';
 import LineupTab from './components/LineupTab.jsx';
 import ErrorBoundary from './components/ErrorBoundary.jsx';
+import { useGroup } from './groups/GroupContext.jsx';
 
 const TABS = [
   { id: 'itinerary', label: 'Itinerary' },
@@ -20,8 +21,16 @@ function formatUpdated(iso) {
   });
 }
 
+const G0_ID = 'ldg';
+
 export default function App() {
   const [activeTab, setActiveTab] = useState('itinerary');
+  const { activeGroupId, groups } = useGroup();
+  const activeGroup = groups.find(g => g.id === activeGroupId);
+  // Only the original LDG crew gets the Itinerary tab (hardcoded trip data).
+  const visibleTabs = activeGroupId === G0_ID ? TABS : TABS.filter(t => t.id !== 'itinerary');
+  // If the active tab is no longer visible (e.g. group switched away from ldg), fall back to lineup.
+  const resolvedTab = visibleTabs.find(t => t.id === activeTab) ? activeTab : 'lineup';
 
   const paper    = '#ede7d8';
   const ink      = '#1a1614';
@@ -42,9 +51,9 @@ export default function App() {
     'linear-gradient(178deg, #0d1430 0%, #0a0e22 55%, #070b1c 100%)';
 
   // Dark-theme chrome only on the Lineup tab.
-  const dark = activeTab === 'lineup';
+  const dark = resolvedTab === 'lineup';
   const lineupAccent = '#e9b949'; // gold active-tab indicator (Direction D spotlight)
-  const activeIndex = TABS.findIndex(t => t.id === activeTab);
+  const activeIndex = visibleTabs.findIndex(t => t.id === resolvedTab);
 
   return (
     <div style={{ minHeight: '100dvh', color: ink, position: 'relative' }}>
@@ -67,7 +76,7 @@ export default function App() {
               Europe 2026
             </div>
             <div style={{ fontSize: 14, fontWeight: 600, letterSpacing: '-0.01em', marginTop: 2 }}>
-              Grant · Desmond · Lawrence
+              {activeGroup?.name || 'Tomorrowland 2026'}
             </div>
           </div>
           {/* Countdown to departure */}
@@ -87,8 +96,8 @@ export default function App() {
       {/* ── Tab bar ─────────────────────────────────────────── */}
       <nav role="tablist" aria-label="Sections" style={{ backgroundColor: dark ? '#0c1228' : paper, borderBottom: `1px solid ${dark ? '#1c2342' : rule}`, position: 'sticky', top: 53, zIndex: 40, transition: 'background-color var(--dur-theme) var(--ease-out), border-color var(--dur-theme) var(--ease-out)' }}>
         <div style={{ position: 'relative', maxWidth: 680, margin: '0 auto', display: 'flex', overflowX: 'auto' }} className="no-scrollbar">
-          {TABS.map(tab => {
-            const active = activeTab === tab.id;
+          {visibleTabs.map(tab => {
+            const active = resolvedTab === tab.id;
             return (
               <button
                 key={tab.id}
@@ -122,7 +131,7 @@ export default function App() {
               its colour (rust → gold) as the theme crossfades. */}
           <span aria-hidden="true" style={{
             position: 'absolute', bottom: 0, left: 0, height: 2, borderRadius: 2,
-            width: `${100 / TABS.length}%`, transform: `translateX(${activeIndex * 100}%)`,
+            width: `${100 / visibleTabs.length}%`, transform: `translateX(${activeIndex * 100}%)`,
             backgroundColor: dark ? lineupAccent : accent,
             transition: 'transform var(--dur-base) var(--ease-drawer), background-color var(--dur-theme) var(--ease-out)',
           }} />
@@ -133,14 +142,14 @@ export default function App() {
       <main
         id="tabpanel"
         role="tabpanel"
-        aria-labelledby={`tab-${activeTab}`}
+        aria-labelledby={`tab-${resolvedTab}`}
         style={{ maxWidth: 680, margin: '0 auto', padding: '24px max(16px, env(safe-area-inset-right)) calc(64px + env(safe-area-inset-bottom)) max(16px, env(safe-area-inset-left))' }}
       >
-        <div key={activeTab} className="fx-fade" style={{ opacity: 1 }}>
+        <div key={resolvedTab} className="fx-fade" style={{ opacity: 1 }}>
           {/* Keyed by tab so switching tabs resets a crashed boundary. */}
-          <ErrorBoundary key={activeTab}>
-            {activeTab === 'itinerary' && <ItineraryTab />}
-            {activeTab === 'lineup'    && <LineupTab    />}
+          <ErrorBoundary key={resolvedTab}>
+            {resolvedTab === 'itinerary' && <ItineraryTab />}
+            {resolvedTab === 'lineup'    && <LineupTab    />}
           </ErrorBoundary>
         </div>
       </main>

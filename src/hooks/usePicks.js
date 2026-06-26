@@ -2,8 +2,9 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import { useOnline } from './useOnline.js';
 import { useLivePoll } from './useLivePoll.js';
 import { apiFetch } from '../lib/api.js';
+import { useGroup } from '../groups/GroupContext.jsx';
 
-// Shared picks synced via /api/picks (Upstash Redis), polled in near-real-time.
+// Shared picks synced via /api/picks?g=<gid> (Upstash Redis), polled near-real-time.
 //
 // Shape: { [setId]: { [person]: true } } — same as the old localStorage model,
 // so the UI doesn't change. localStorage holds a *cache* for instant first
@@ -19,20 +20,21 @@ import { apiFetch } from '../lib/api.js';
 // last-write-wins per field, which is correct for a presence toggle.
 
 const API = '/api/picks';
-const CACHE_KEY = 'tml2026_picks_cache';
-const OUTBOX_KEY = 'tml2026_picks_outbox';
 const POLL_MS = 5000;
-const IDLE_POLL_MS = 30000;   // back off to this while the app is open but idle
+const IDLE_POLL_MS = 30000;
 const SEP = '|';
 
-function readCache() {
-  try { return JSON.parse(localStorage.getItem(CACHE_KEY) || '{}'); }
+const cacheKey  = (gid) => `tml2026_picks_cache_${gid}`;
+const outboxKey = (gid) => `tml2026_picks_outbox_${gid}`;
+
+function readCache(gid) {
+  try { return JSON.parse(localStorage.getItem(cacheKey(gid)) || '{}'); }
   catch { return {}; }
 }
 
-function readOutbox() {
+function readOutbox(gid) {
   try {
-    const arr = JSON.parse(localStorage.getItem(OUTBOX_KEY) || '[]');
+    const arr = JSON.parse(localStorage.getItem(outboxKey(gid)) || '[]');
     return new Map(Array.isArray(arr) ? arr : []);
   } catch { return new Map(); }
 }
@@ -60,23 +62,37 @@ function applyPending(server, outbox) {
 }
 
 export function usePicks() {
-  const [picks, setPicks]   = useState(readCache);
-  const [status, setStatus] = useState('loading'); // 'loading' | 'ready' | 'error'
-  const [pendingCount, setPendingCount] = useState(() => readOutbox().size);
+  const { activeGroupId } = useGroup();
+  const gid = activeGroupId || 'ldg';
+
+  const [picks, setPicks]   = useState(() => readCache(gid));
+  const [status, setStatus] = useState('loading');
+  const [pendingCount, setPendingCount] = useState(() => readOutbox(gid).size);
   const [syncing, setSyncing] = useState(false);
   const online = useOnline();
 
   const picksRef    = useRef(picks);
-  const outboxRef   = useRef(readOutbox());   // field -> desired boolean (queued)
+  const outboxRef   = useRef(readOutbox(gid));
   const flushingRef = useRef(false);
+  const prevGidRef  = useRef(gid);
+
   useEffect(() => { picksRef.current = picks; }, [picks]);
 
-  const persistOutbox = useCallback(() => {
-    try { localStorage.setItem(OUTBOX_KEY, JSON.stringify([...outboxRef.current])); } catch {}
+  // Re-initialise local state when the active group changes.
+  useEffect(() => {
+    if (prevGidRef.current === gid) return;
+    prevGidRef.current = gid;
+    outboxRef.current = readOutbox(gid);
+    setPicks(readCache(gid));
     setPendingCount(outboxRef.current.size);
-  }, []);
+    setStatus('loading');
+  }, [gid]);
 
-  // Apply a set of field->desired changes to local state, optimistically.
+  const persistOutbox = useCallback(() => {
+    try { localStorage.setItem(outboxKey(gid), JSON.stringify([...outboxRef.current])); } catch {}
+    setPendingCount(outboxRef.current.size);
+  }, [gid]);
+
   const applyLocal = useCallback((changes) => {
     setPicks(prev => {
       const copy = {};
@@ -93,9 +109,6 @@ export function usePicks() {
     });
   }, []);
 
-  // Drain the outbox. Stops on the first failure so we don't hammer a dead
-  // network with the whole queue — the next trigger (poll/online/focus) retries.
-  // A field is only cleared if it hasn't been re-toggled since we sent it.
   const flush = useCallback(async () => {
     if (flushingRef.current || outboxRef.current.size === 0) return;
     flushingRef.current = true;
@@ -104,7 +117,7 @@ export function usePicks() {
       for (const [field, desired] of [...outboxRef.current.entries()]) {
         const [setId, person] = splitField(field);
         try {
-          const res = await apiFetch(API, {
+          const res = await apiFetch(`${API}?g=${gid}`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ setId, person, picked: desired }),
@@ -115,32 +128,30 @@ export function usePicks() {
             persistOutbox();
           }
         } catch {
-          break; // leave this and the rest queued; retry later
+          break;
         }
       }
     } finally {
       flushingRef.current = false;
       setSyncing(false);
     }
-  }, [persistOutbox]);
+  }, [gid, persistOutbox]);
 
   const fetchPicks = useCallback(async () => {
     try {
-      const res = await apiFetch(API, { cache: 'no-store' });
+      const res = await apiFetch(`${API}?g=${gid}`, { cache: 'no-store' });
       if (!res.ok) throw new Error('bad status');
       const { picks: server } = await res.json();
       const merged = applyPending(server, outboxRef.current);
       setPicks(merged);
       setStatus('ready');
-      try { localStorage.setItem(CACHE_KEY, JSON.stringify(merged)); } catch {}
-      flush(); // back on the network — drain anything queued
+      try { localStorage.setItem(cacheKey(gid), JSON.stringify(merged)); } catch {}
+      flush();
     } catch {
-      // Keep showing whatever we have (cache / last good); retry next poll.
       setStatus(prev => (prev === 'ready' ? 'ready' : 'error'));
     }
-  }, [flush]);
+  }, [gid, flush]);
 
-  // Queue one or more field->desired changes: optimistic apply, persist, flush.
   const enqueue = useCallback((changes) => {
     for (const [field, desired] of changes) outboxRef.current.set(field, desired);
     applyLocal(changes);
@@ -154,7 +165,6 @@ export function usePicks() {
     enqueue([[field, next]]);
   }, [enqueue]);
 
-  // Clear ALL of one person's picks. Returns the setIds cleared (for undo).
   const clearMine = useCallback((person) => {
     const setIds = Object.keys(picksRef.current).filter(id => picksRef.current[id]?.[person]);
     if (!setIds.length) return [];
@@ -162,15 +172,11 @@ export function usePicks() {
     return setIds;
   }, [enqueue]);
 
-  // Undo a clear: re-add the person's flags on the given sets.
   const restoreMine = useCallback((person, setIds) => {
     if (!setIds?.length) return;
     enqueue(setIds.map(id => [fieldOf(id, person), true]));
   }, [enqueue]);
 
-  // Initial load + visibility-aware polling with idle back-off. Pauses while the
-  // tab is hidden; runs at POLL_MS while you interact and slows to IDLE_POLL_MS
-  // once the app is open but idle (saves the radio). `online` drains the outbox.
   useLivePoll(fetchPicks, { baseMs: POLL_MS, idleMs: IDLE_POLL_MS }, flush);
 
   return { picks, status, togglePick, clearMine, restoreMine, online, syncing, pendingCount };
