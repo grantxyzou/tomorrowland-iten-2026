@@ -26,6 +26,8 @@ npm-debug.log*
 .env.*.local
 .vercel
 .env*
+# ...but DO track the example (documentation only, no real secrets).
+!.env.example
 
 # Playwright MCP test artifacts
 .playwright-mcp/

@@ -121,6 +121,10 @@ function SignIn() {
   const [busy, setBusy] = useState(false);
   const [btnWidth, setBtnWidth] = useState(360);
   const [introOver, setIntroOver] = useState(() => prefersReduced());
+  // True only once GIS has actually rendered its (invisible) button. Until then
+  // the overlay stays click-through so taps reach the real /api/oauth link
+  // underneath — the fallback path for browsers where GIS never runs.
+  const [gisReady, setGisReady] = useState(false);
 
   // Run the intro once, then settle. Skip button / unmount clear the timer.
   useEffect(() => {
@@ -129,6 +133,19 @@ function SignIn() {
     const id = setTimeout(() => setIntroOver(true), INTRO_MS);
     return () => clearTimeout(id);
   }, [introOver]);
+
+  // Surface errors bounced back from the /api/oauth redirect flow, then strip
+  // the query param so a refresh doesn't re-show the message.
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const code = new URLSearchParams(window.location.search).get('auth_error');
+    if (!code) return;
+    setError(code === 'denied'
+      ? "This Google account isn't on the guest list."
+      : 'Sign-in failed. Please try again.');
+    const url = window.location.pathname + window.location.hash;
+    window.history.replaceState(null, '', url);
+  }, []);
 
   // Track the auth area's width so the transparent GIS button spans the visual one.
   useEffect(() => {
@@ -144,6 +161,7 @@ function SignIn() {
 
   useEffect(() => {
     let cancelled = false;
+    const timers = [];
 
     async function handleCredential(response) {
       setBusy(true); setError(null);
@@ -177,14 +195,21 @@ function SignIn() {
       });
       if (btnRef.current) {
         btnRef.current.innerHTML = '';
+        setGisReady(false);
         window.google.accounts.id.renderButton(btnRef.current, {
           theme: 'filled_black', size: 'large', shape: 'pill',
           text: 'signin_with', width: btnWidth,
         });
+        // GIS injects an <iframe> asynchronously. Only treat the overlay as live
+        // once it appears — otherwise leave taps falling through to the link.
+        const t = setTimeout(() => {
+          if (!cancelled && btnRef.current?.querySelector('iframe')) setGisReady(true);
+        }, 1500);
+        timers.push(t);
       }
     }).catch(() => { if (!cancelled) setError('Could not load Google sign-in.'); });
 
-    return () => { cancelled = true; };
+    return () => { cancelled = true; timers.forEach(clearTimeout); };
   }, [completeLogin, btnWidth]);
 
   return (
@@ -224,9 +249,12 @@ function SignIn() {
                 Forget about Monday to Friday, &rsquo;cause we&rsquo;ve been working like a slave.
               </div>
 
-              {/* auth: visual Google button + transparent GIS overlay */}
+              {/* auth: real /api/oauth link (works everywhere) + transparent GIS
+                  overlay on top for modern devices. The overlay only intercepts
+                  taps once GIS has actually rendered; otherwise taps fall through
+                  to the link, which is the fallback for old Android / no-GIS. */}
               <div ref={authRef} style={{ position: 'relative', width: '100%', height: 52 }}>
-                <button type="button" style={authBtn} tabIndex={-1} aria-hidden="true">
+                <a href="/api/oauth" style={authBtn}>
                   <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true">
                     <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" />
                     <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" />
@@ -234,14 +262,14 @@ function SignIn() {
                     <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" />
                   </svg>
                   Sign in with Google
-                </button>
+                </a>
                 <div
                   ref={btnRef}
                   style={{
                     position: 'absolute', inset: 0, zIndex: 2,
                     display: 'flex', alignItems: 'center', justifyContent: 'center',
                     opacity: 0, transform: 'scaleY(1.35)',
-                    pointerEvents: busy ? 'none' : 'auto',
+                    pointerEvents: gisReady && !busy ? 'auto' : 'none',
                   }}
                 />
               </div>
@@ -333,10 +361,11 @@ const titleWrap = { ...display, fontWeight: 700, fontSize: 38, lineHeight: 0.95,
 const wordmark = { ...sans, fontWeight: 600, letterSpacing: '0.01em', textTransform: 'uppercase' };
 
 const authBtn = {
-  position: 'absolute', inset: 0, width: '100%',
+  position: 'absolute', inset: 0, width: '100%', boxSizing: 'border-box',
   display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 12,
   borderRadius: 30, border: '1px solid #3c3c3c', background: '#202124', color: '#fff',
-  ...sans, fontWeight: 500, fontSize: 15, letterSpacing: '0.25px', pointerEvents: 'none',
+  ...sans, fontWeight: 500, fontSize: 15, letterSpacing: '0.25px',
+  textDecoration: 'none', cursor: 'pointer',
 };
 
 const notch = {
