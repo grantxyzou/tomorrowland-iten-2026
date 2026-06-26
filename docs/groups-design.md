@@ -144,6 +144,32 @@ be left in place (ignored) or deleted after verification.
 
 ---
 
+## Operating costs (dozens-of-users scale)
+Essentially free — a few dollars worst case for the whole festival. The only
+usage-driven cost is Upstash, and the **5s poll interval is the cost driver**,
+not the user or group count.
+
+| Item | At this scale | Cost |
+|---|---|---|
+| Vercel **Hobby** | hosting + `/api` functions + 100 GB bandwidth; ~110 KB gzipped bundle, SW-cached after first load | **$0** (non-commercial only — Pro $20/mo if ever monetized) |
+| Upstash **Redis** | see math below; picks/status are a few KB/group vs 256 MB free | **$0** in free tier → **~$1–10** total if exceeded |
+| Google **OAuth** | unlimited sign-ins, publishing the consent screen | **$0** |
+| Domain | optional nicer URL | ~**$12/yr** |
+| **Realistic total** | | **~$0–25/yr** |
+
+**Redis command math:** `useLivePoll` polls every 5s active / 30s idle and
+**stops when the tab is hidden**. A realistic active festival-day user ≈ **4–5K
+commands/day** (~30 min active + a couple hours idle-open, ~2 commands/poll across
+picks + status). 30 users ≈ **~150K commands on a peak day**, ~450K across 3 days;
+near-zero off-festival. Pay-as-you-go beyond free ≈ **$0.20 / 100K commands** →
+single-digit dollars worst case. Per-group namespacing **isolates** data but adds
+no commands (same users).
+
+**Cost levers, if ever needed:** bump the active interval 5s→10s (halves
+commands); long term, a polling→push/realtime rewrite only pays off past
+hundreds-to-thousands of concurrent users. Verify current Upstash/Vercel tier
+numbers before launch — thresholds drift, the methodology doesn't.
+
 ## 8. Suggested PR sequence
 1. **PR-1 — Backend isolation (no UI change):** group keys + `requireMembership`
    + `api/groups.js` + migration; hardcode g0 as the active group server-side so
