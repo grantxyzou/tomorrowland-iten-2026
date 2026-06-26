@@ -5,19 +5,27 @@ import { AuthProvider } from './auth/AuthContext.jsx'
 import AuthGate from './auth/AuthGate.jsx'
 import { GroupProvider } from './groups/GroupContext.jsx'
 import GroupGate from './components/GroupGate.jsx'
+import PrivacyPage from './pages/PrivacyPage.jsx'
 import './index.css'
+
+// Privacy page is public — no auth required. Short-circuit before the full tree.
+const isPrivacy = window.location.pathname === '/privacy';
 
 ReactDOM.createRoot(document.getElementById('root')).render(
   <React.StrictMode>
-    <AuthProvider>
-      <AuthGate>
-        <GroupProvider>
-          <GroupGate>
-            <App />
-          </GroupGate>
-        </GroupProvider>
-      </AuthGate>
-    </AuthProvider>
+    {isPrivacy ? (
+      <PrivacyPage />
+    ) : (
+      <AuthProvider>
+        <AuthGate>
+          <GroupProvider>
+            <GroupGate>
+              <App />
+            </GroupGate>
+          </GroupProvider>
+        </AuthGate>
+      </AuthProvider>
+    )}
   </React.StrictMode>,
 )
 

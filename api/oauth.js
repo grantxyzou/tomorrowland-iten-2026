@@ -17,7 +17,13 @@
 
 import crypto from 'crypto';
 import { OAuth2Client } from 'google-auth-library';
-import { personForEmail, sessionCookie, serializeCookie } from './_auth.js';
+import { Redis } from '@upstash/redis';
+import { sessionCookie, serializeCookie, resolvePersonName } from './_auth.js';
+
+const redis = new Redis({
+  url:   process.env.UPSTASH_REDIS_REST_URL  || process.env.KV_REST_API_URL,
+  token: process.env.UPSTASH_REDIS_REST_TOKEN || process.env.KV_REST_API_TOKEN,
+});
 
 const CLIENT_ID = process.env.GOOGLE_CLIENT_ID || '';
 const CLIENT_SECRET = process.env.GOOGLE_CLIENT_SECRET || '';
@@ -94,16 +100,14 @@ export default async function handler(req, res) {
       res.setHeader('Set-Cookie', clearState);
       return bounce(res, '/?auth_error=failed');
     }
-    const person = personForEmail(payload.email);
-    if (!person) {
-      res.setHeader('Set-Cookie', clearState);
-      return bounce(res, '/?auth_error=denied');
-    }
+
+    const email  = payload.email.toLowerCase();
+    const person = await resolvePersonName(redis, email, payload.given_name);
 
     // Success: mint our session cookie (and clear the transient state cookie).
     res.setHeader('Set-Cookie', [
       clearState,
-      sessionCookie({ person, email: payload.email.toLowerCase() }),
+      sessionCookie({ person, email }),
     ]);
     return bounce(res, '/');
   } catch {

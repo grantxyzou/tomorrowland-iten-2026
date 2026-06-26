@@ -140,9 +140,7 @@ function SignIn() {
     if (typeof window === 'undefined') return;
     const code = new URLSearchParams(window.location.search).get('auth_error');
     if (!code) return;
-    setError(code === 'denied'
-      ? "This Google account isn't on the guest list."
-      : 'Sign-in failed. Please try again.');
+    setError('Sign-in failed. Please try again.');
     const url = window.location.pathname + window.location.hash;
     window.history.replaceState(null, '', url);
   }, []);
@@ -176,7 +174,7 @@ function SignIn() {
           completeLogin(await res.json());
           return;
         }
-        if (res.status === 403) setError("This Google account isn't on the guest list.");
+        if (res.status === 403) setError('Sign-in failed. Please try again.');
         else setError('Sign-in failed. Please try again.');
       } catch {
         setError('Network error — check your connection and retry.');
@@ -273,6 +271,11 @@ function SignIn() {
                   }}
                 />
               </div>
+
+              <p style={{ ...mono, fontSize: 10, color: '#555', letterSpacing: '0.05em', lineHeight: 1.6, marginTop: 16, marginBottom: 0, textAlign: 'center' }}>
+                By signing in you agree to our{' '}
+                <a href="/privacy" style={{ color: '#777', textDecorationColor: '#555' }}>Privacy Policy</a>.
+              </p>
 
               {busy && <div style={{ ...sans, fontSize: 13, color: muted, marginTop: 14 }}>Signing in…</div>}
               {error && <div role="alert" style={{ ...sans, fontSize: 13, color: clashRed, marginTop: 14 }}>{error}</div>}
