@@ -12,7 +12,7 @@
  *
  * Bump VERSION to invalidate all caches on a future change.
  */
-const VERSION = 'v3';
+const VERSION = 'v4';
 const SHELL  = `tml-shell-${VERSION}`;   // app shell + same-origin assets
 const API    = `tml-api-${VERSION}`;     // last-known /api/* (picks, lineup, status)
 const FONTS  = `tml-fonts-${VERSION}`;   // Google Fonts
@@ -58,8 +58,10 @@ self.addEventListener('fetch', (event) => {
 
   const url = new URL(request.url);
 
-  // App shell — network-first, fall back to cached index.html offline.
-  if (request.mode === 'navigate') {
+  // App shell — network-first, fall back to cached index.html offline. EXCLUDE
+  // /api/* navigations: the /api/oauth sign-in flow is a top-level navigation
+  // that 302-redirects to Google and back, so the SW must stay out of its way.
+  if (request.mode === 'navigate' && !url.pathname.startsWith('/api/')) {
     event.respondWith(
       fetch(request).catch(() =>
         caches.match(SHELL_URL).then((r) => r || caches.match('/'))
@@ -69,10 +71,12 @@ self.addEventListener('fetch', (event) => {
   }
 
   // Auth + live location must never be cached: a stale auth response or an old
-  // GPS pin served offline would be wrong (and a privacy leak). Go to network
-  // only; if it fails, the app's own logic handles it.
+  // GPS pin served offline would be wrong (and a privacy leak). The /api/oauth
+  // redirect flow must also pass straight through (302s to Google + Set-Cookie).
+  // Go to network only; if it fails, the app's own logic handles it.
   if (url.origin === self.location.origin &&
-      (url.pathname === '/api/auth' || url.pathname === '/api/status')) {
+      (url.pathname === '/api/auth' || url.pathname === '/api/status' ||
+       url.pathname === '/api/oauth')) {
     return; // let the browser do a normal (uncached) network fetch
   }
 
