@@ -1,0 +1,201 @@
+// Vercel Serverless Function — group management.
+// Auto-served at /api/groups.
+//
+// A group is a private crew: members share picks, status, and a map.
+// Each group gets a short id (gid) and an 8-char join code for the /join/<CODE> link.
+//
+// GET  /api/groups           → { groups: [{id, name, role, displayName, color}] }
+// GET  /api/groups?g=<gid>   → { id, name, members: [{userId, displayName, color, role}] }
+// POST {action:'create', name, displayName, color} → { gid, code }
+// POST {action:'join',   code, displayName, color} → { gid }
+// POST {action:'leave',  g}                        → { ok: true }
+
+import crypto from 'crypto';
+import { Redis } from '@upstash/redis';
+import { requireSession, requireMembership } from './_auth.js';
+
+const G0_ID = 'ldg';
+const MAX_NAME_LEN    = 40;
+const MAX_DISPLAY_LEN = 20;
+
+// Ten vivid festival colours — assigned in order to avoid visual collisions.
+const PALETTE = [
+  '#e9b949', // gold  (matches GDL Grant)
+  '#8fb6ff', // blue  (matches GDL Desmond)
+  '#e23b3b', // red   (matches GDL Lawrence)
+  '#4ECDC4', // teal
+  '#96CEB4', // mint
+  '#DDA0DD', // plum
+  '#F7DC6F', // yellow
+  '#BB8FCE', // lavender
+  '#85C1E9', // sky
+  '#98D8C8', // seafoam
+];
+
+const redis = new Redis({
+  url:   process.env.UPSTASH_REDIS_REST_URL  || process.env.KV_REST_API_URL,
+  token: process.env.UPSTASH_REDIS_REST_TOKEN || process.env.KV_REST_API_TOKEN,
+});
+
+function genId() {
+  return crypto.randomBytes(6).toString('base64url').slice(0, 8);
+}
+
+// 8 uppercase hex chars — unguessable, easy to read aloud.
+function genCode() {
+  return crypto.randomBytes(4).toString('hex').toUpperCase();
+}
+
+function pickColor(usedColors) {
+  return PALETTE.find(c => !usedColors.has(c)) ?? PALETTE[usedColors.size % PALETTE.length];
+}
+
+function parseMember(raw) {
+  try { return typeof raw === 'string' ? JSON.parse(raw) : raw; } catch { return null; }
+}
+
+export default async function handler(req, res) {
+  try {
+    res.setHeader('Cache-Control', 'no-store');
+
+    // ── GET ──────────────────────────────────────────────────────────────────
+    if (req.method === 'GET') {
+      const session = requireSession(req, res);
+      if (!session) return;
+      const userId = session.email.toLowerCase();
+
+      // GET ?g=<gid> — group detail with member list
+      if (req.query?.g) {
+        const gid = req.query.g;
+        const mem = await requireMembership(req, res, gid, redis);
+        if (!mem) return;
+
+        const [metaRaw, membersFlat] = await Promise.all([
+          redis.get(`group:${gid}:meta`),
+          redis.hgetall(`group:${gid}:members`),
+        ]);
+        const meta = parseMember(metaRaw) || {};
+        const members = Object.entries(membersFlat || {}).map(([uid, v]) => {
+          const m = parseMember(v) || {};
+          return { userId: uid, displayName: m.displayName, color: m.color, role: m.role };
+        });
+        return res.status(200).json({ id: gid, name: meta.name, members });
+      }
+
+      // GET — list all groups I belong to
+      const groupIds = await redis.smembers(`user:${userId}:groups`);
+      if (!groupIds || groupIds.length === 0) {
+        return res.status(200).json({ groups: [] });
+      }
+
+      const groups = await Promise.all(
+        groupIds.map(async gid => {
+          const [metaRaw, memberRaw] = await Promise.all([
+            redis.get(`group:${gid}:meta`),
+            redis.hget(`group:${gid}:members`, userId),
+          ]);
+          if (!metaRaw || !memberRaw) return null;
+          const meta   = parseMember(metaRaw) || {};
+          const member = parseMember(memberRaw) || {};
+          return { id: gid, name: meta.name, role: member.role, displayName: member.displayName, color: member.color };
+        })
+      );
+      return res.status(200).json({ groups: groups.filter(Boolean) });
+    }
+
+    // ── POST ─────────────────────────────────────────────────────────────────
+    if (req.method === 'POST') {
+      const session = requireSession(req, res);
+      if (!session) return;
+      const userId = session.email.toLowerCase();
+      const body = typeof req.body === 'string' ? JSON.parse(req.body || '{}') : (req.body || {});
+
+      // ── create ───────────────────────────────────────────────────────────
+      if (body.action === 'create') {
+        const name        = String(body.name        || '').trim().slice(0, MAX_NAME_LEN);
+        const displayName = String(body.displayName || '').trim().slice(0, MAX_DISPLAY_LEN);
+        if (!name)        return res.status(400).json({ error: 'name is required' });
+        if (!displayName) return res.status(400).json({ error: 'displayName is required' });
+        const color = PALETTE.includes(body.color) ? body.color : PALETTE[0];
+
+        const gid  = genId();
+        const code = genCode();
+        const now  = Date.now();
+
+        await redis.set(`group:${gid}:meta`, JSON.stringify({
+          id: gid, name, createdBy: userId, createdAt: now,
+        }));
+        await redis.hset(`group:${gid}:members`, {
+          [userId]: JSON.stringify({ displayName, color, role: 'admin', joinedAt: now }),
+        });
+        await redis.set(`joincode:${code}`, gid);
+        await redis.sadd(`user:${userId}:groups`, gid);
+        return res.status(200).json({ gid, code });
+      }
+
+      // ── join ─────────────────────────────────────────────────────────────
+      if (body.action === 'join') {
+        const code        = String(body.code        || '').trim().toUpperCase();
+        const displayName = String(body.displayName || '').trim().slice(0, MAX_DISPLAY_LEN);
+        if (!code)        return res.status(400).json({ error: 'code is required' });
+        if (!displayName) return res.status(400).json({ error: 'displayName is required' });
+
+        const gid = await redis.get(`joincode:${code}`);
+        if (!gid) return res.status(404).json({ error: 'invalid or expired code' });
+
+        const existing = await redis.hget(`group:${gid}:members`, userId);
+        if (existing) return res.status(409).json({ error: 'already a member', gid });
+
+        const membersFlat = await redis.hgetall(`group:${gid}:members`);
+        const usedColors  = new Set(
+          Object.values(membersFlat || {})
+            .map(v => parseMember(v)?.color)
+            .filter(Boolean)
+        );
+        const color = PALETTE.includes(body.color) && !usedColors.has(body.color)
+          ? body.color
+          : pickColor(usedColors);
+
+        const now = Date.now();
+        await redis.hset(`group:${gid}:members`, {
+          [userId]: JSON.stringify({ displayName, color, role: 'member', joinedAt: now }),
+        });
+        await redis.sadd(`user:${userId}:groups`, gid);
+        return res.status(200).json({ gid });
+      }
+
+      // ── leave ─────────────────────────────────────────────────────────────
+      if (body.action === 'leave') {
+        const gid = String(body.g || '').trim();
+        if (!gid) return res.status(400).json({ error: 'g is required' });
+
+        const existingRaw = await redis.hget(`group:${gid}:members`, userId);
+        if (!existingRaw) return res.status(403).json({ error: 'not a member' });
+
+        const member      = parseMember(existingRaw) || {};
+        const displayName = member.displayName;
+
+        await redis.hdel(`group:${gid}:members`, userId);
+        await redis.srem(`user:${userId}:groups`, gid);
+
+        // Best-effort self-data deletion from picks/status/loc.
+        // PR-1 field keys are still person names — update to email in PR-2.
+        const flat = await redis.hgetall(`group:${gid}:picks`);
+        const myPickFields = Object.keys(flat || {}).filter(f => f.endsWith(`|${displayName}`));
+        if (myPickFields.length) await redis.hdel(`group:${gid}:picks`, ...myPickFields);
+        await redis.hdel(`group:${gid}:status`, displayName);
+        await redis.hdel(`group:${gid}:loc`,    displayName);
+
+        return res.status(200).json({ ok: true });
+      }
+
+      return res.status(400).json({ error: 'unknown action' });
+    }
+
+    res.setHeader('Allow', 'GET, POST');
+    return res.status(405).json({ error: 'method not allowed' });
+  } catch (err) {
+    console.error('[groups]', err);
+    return res.status(500).json({ error: 'storage unavailable' });
+  }
+}

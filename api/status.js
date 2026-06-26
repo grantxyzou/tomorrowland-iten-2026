@@ -2,29 +2,22 @@
 // Auto-served at /api/status.
 //
 // Not a chat thread — a glanceable "current status" board. Each person posts
-// one short line ("Heading to mainstage", "Food break", "Where are you?", or
-// free text) and everyone sees it, refreshing on the same near-real-time poll
-// as picks. Built for a field with terrible signal: writes queue offline and
-// flush on reconnect (see src/hooks/useCrewStatus.js).
+// one short line ("Heading to mainstage", "Food break", etc.) and everyone
+// sees it, refreshing on the same near-real-time poll as picks. Built for a
+// field with terrible signal: writes queue offline and flush on reconnect.
 //
-// Storage: two Redis hashes, both keyed by "<person>" with the same ~4h TTL.
-//   crew_status  value = JSON { text, ts }            — the glanceable board
-//   crew_loc     value = JSON { lat, lng, acc, ts }   — opt-in GPS pin
-// They're kept separate so a text post and a location post never clobber each
-// other (no read-modify-write). A few-hour TTL lets stale entries fade after the
-// day winds down (picks have no TTL; statuses + pins do — the deliberate
-// difference). Location sharing is strictly opt-in, client-side.
+// Storage: two Redis hashes per group, both with a ~4h TTL.
+//   group:<gid>:status  field <person> → JSON { text, ts }
+//   group:<gid>:loc     field <person> → JSON { lat, lng, acc, ts }
+// The `g` query param selects the group; omit to use the original GDL crew (g0).
 
 import { Redis } from '@upstash/redis';
-import { requireSession } from './_auth.js';
+import { requireMembership } from './_auth.js';
 
-const PEOPLE = ['Grant', 'Desmond', 'Lawrence'];
-const HASH_KEY = 'crew_status';
-const LOC_KEY = 'crew_loc';
+const G0_ID = 'ldg';
 const TTL_SEC = 60 * 60 * 4;   // statuses + pins fade after ~4h
 const MAX_LEN = 80;
 
-// Support either the Upstash Marketplace vars or the legacy KV_* vars.
 const redis = new Redis({
   url:   process.env.UPSTASH_REDIS_REST_URL  || process.env.KV_REST_API_URL,
   token: process.env.UPSTASH_REDIS_REST_TOKEN || process.env.KV_REST_API_TOKEN,
@@ -35,7 +28,6 @@ const redis = new Redis({
 function toStatuses(flat) {
   const out = {};
   for (const person of Object.keys(flat || {})) {
-    if (!PEOPLE.includes(person)) continue;
     const raw = flat[person];
     try {
       const v = typeof raw === 'string' ? JSON.parse(raw) : raw;
@@ -50,7 +42,6 @@ function toStatuses(flat) {
 function toLocations(flat) {
   const out = {};
   for (const person of Object.keys(flat || {})) {
-    if (!PEOPLE.includes(person)) continue;
     const raw = flat[person];
     try {
       const v = typeof raw === 'string' ? JSON.parse(raw) : raw;
@@ -66,10 +57,15 @@ function toLocations(flat) {
 
 export default async function handler(req, res) {
   try {
-    // Auth gate: reads (incl. live GPS) and writes all need a valid session.
-    // The acting person comes from the verified session, never the body.
-    const session = requireSession(req, res);
-    if (!session) return;
+    const gid = req.query?.g || G0_ID;
+    const HASH_KEY = `group:${gid}:status`;
+    const LOC_KEY  = `group:${gid}:loc`;
+
+    // Auth gate: reads (incl. live GPS) and writes all need a valid session +
+    // group membership. The acting person comes from the verified session.
+    const mem = await requireMembership(req, res, gid, redis);
+    if (!mem) return;
+    const { session } = mem;
     const me = session.person;
 
     if (req.method === 'GET') {

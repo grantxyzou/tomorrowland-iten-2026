@@ -21,6 +21,12 @@ const HHMM = /^([01]\d|2[0-3]):[0-5]\d$/;          // 24h "HH:MM"
 const STATUSES = ['new', 'edited', 'deleted'];
 const FIELDS = ['start', 'end', 'status', 'stage', 'day'];
 
+// When set, only these emails can publish overrides. Falls back to any session
+// when env is blank, preserving current behaviour until PR-3 (open auth).
+const ADMIN_EMAILS = new Set(
+  (process.env.ADMIN_EMAILS || '').split(',').map(e => e.trim().toLowerCase()).filter(Boolean)
+);
+
 // Support either the Upstash Marketplace vars or the legacy KV_* vars.
 const redis = new Redis({
   url:   process.env.UPSTASH_REDIS_REST_URL  || process.env.KV_REST_API_URL,
@@ -64,6 +70,10 @@ export default async function handler(req, res) {
 
     if (req.method === 'POST') {
       const body = typeof req.body === 'string' ? JSON.parse(req.body || '{}') : (req.body || {});
+
+      if (ADMIN_EMAILS.size > 0 && !ADMIN_EMAILS.has(session.email.toLowerCase())) {
+        return res.status(403).json({ error: 'not authorized to publish overrides' });
+      }
 
       // Publishing the timetable is guarded the same way as the picks reset:
       // the explicit confirm token means a stray script can't rewrite the
