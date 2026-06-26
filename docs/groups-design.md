@@ -65,6 +65,16 @@ per-crew. Keep `lineup_overrides` global, but restrict **publishing** to an app
 admin (a small `ADMIN_EMAILS` env), so one random crew can't rewrite the schedule
 for all. Reads stay open to any session.
 
+### Itinerary stays GDL-only (NOT multi-tenant)
+The itinerary (`src/data/trip.js` → `ItineraryTab.jsx`) is **hardcoded trip data
+baked into the bundle** (this crew's hotels, travel legs, bookings, tickets),
+edited by pushing to GitHub. It is neither festival-wide nor live-shared — it's
+*our* trip — and it is not editable in-app. Decision: **leave it exactly as-is and
+gate the Itinerary tab to group 0 (GDL).** Other crews never see it; the
+shareable surface is Lineup + picks + crew map + status. A per-crew itinerary
+*editor* (turning `trip.js` into editable `group:<gid>:trip` data) is explicitly a
+**future phase, only if crews ask for it** — out of scope for this rollout.
+
 ---
 
 ## 3. Access model
@@ -111,6 +121,9 @@ Drop the hardcoded `PEOPLE` filter in `status.js` (membership is the filter now)
 - **Dynamic members:** replace `PERSON_COLORS`/`PERSON_INK` lookups and any
   3-person assumptions (picks columns, crew map markers, presence) with the active
   group's member list. Color assigned from a palette at join, user-editable.
+- **Gate the Itinerary tab to group 0** (see §2): show it only when the active
+  group is GDL; hide the tab entirely for other crews. `trip.js`/`ItineraryTab`
+  are otherwise untouched.
 - **Hooks** (`usePicks`, `useCrewStatus`, `useGeoShare`) take `activeGroupId` and
   call `/api/...?g=<gid>`. Their localStorage cache keys also become group-scoped
   so switching crews doesn't bleed data.
