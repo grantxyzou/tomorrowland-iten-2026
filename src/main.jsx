@@ -3,13 +3,19 @@ import ReactDOM from 'react-dom/client'
 import App from './App.jsx'
 import { AuthProvider } from './auth/AuthContext.jsx'
 import AuthGate from './auth/AuthGate.jsx'
+import { GroupProvider } from './groups/GroupContext.jsx'
+import GroupGate from './components/GroupGate.jsx'
 import './index.css'
 
 ReactDOM.createRoot(document.getElementById('root')).render(
   <React.StrictMode>
     <AuthProvider>
       <AuthGate>
-        <App />
+        <GroupProvider>
+          <GroupGate>
+            <App />
+          </GroupGate>
+        </GroupProvider>
       </AuthGate>
     </AuthProvider>
   </React.StrictMode>,

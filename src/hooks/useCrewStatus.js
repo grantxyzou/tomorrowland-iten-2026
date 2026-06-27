@@ -1,30 +1,28 @@
-import { useState, useRef, useCallback } from 'react';
+import { useState, useRef, useCallback, useEffect } from 'react';
 import { useLivePoll } from './useLivePoll.js';
 import { apiFetch } from '../lib/api.js';
+import { useGroup } from '../groups/GroupContext.jsx';
 
-// Crew status board, synced via /api/status (Upstash Redis), polled in
-// near-real-time. Shapes: statuses { [person]: { text, ts } } and the opt-in
-// location pins { [person]: { lat, lng, acc, ts } }.
+// Crew status board, synced via /api/status?g=<gid> (Upstash Redis).
 //
 // Mirrors usePicks' offline durability: every status write goes into a
 // localStorage-backed outbox (person -> desired status, or 'CLEAR') and is
-// applied optimistically. Failed writes stay queued (we do NOT revert) and flush
-// on reconnect / focus / next poll. Each person only ever writes their own
-// status from their own device, so last-write-wins per person is always correct.
+// applied optimistically. Failed writes stay queued and flush on reconnect /
+// focus / next poll. Each person only ever writes their own status from their
+// own device, so last-write-wins per person is always correct.
 //
 // Location pins ride a second, single-slot outbox: only the LATEST fix per
-// person is worth keeping (it's last-write-wins + server TTL), so a newer fix
-// simply overwrites the queued one. Pins are best-effort and deliberately kept
-// out of pendingCount, so a GPS refresh never flickers the "N to sync" chip.
+// person is worth keeping, so a newer fix simply overwrites the queued one.
 
 const API = '/api/status';
-const CACHE_KEY = 'tml2026_status_cache';
-const OUTBOX_KEY = 'tml2026_status_outbox';
-const LOC_CACHE_KEY = 'tml2026_loc_cache';
-const LOC_OUTBOX_KEY = 'tml2026_loc_outbox';
 const POLL_MS = 5000;
-const IDLE_POLL_MS = 30000;   // back off to this while the app is open but idle
+const IDLE_POLL_MS = 30000;
 const CLEAR = 'CLEAR';
+
+const statusCacheKey  = (gid) => `tml2026_status_cache_${gid}`;
+const statusOutboxKey = (gid) => `tml2026_status_outbox_${gid}`;
+const locCacheKey     = (gid) => `tml2026_loc_cache_${gid}`;
+const locOutboxKey    = (gid) => `tml2026_loc_outbox_${gid}`;
 
 function readJSON(key, fallback) {
   try { const v = JSON.parse(localStorage.getItem(key) || 'null'); return v && typeof v === 'object' ? v : fallback; }
@@ -38,8 +36,7 @@ function readMap(key) {
   } catch { return new Map(); }
 }
 
-// Overlay queued (un-acked) local writes on top of server data so a poll
-// landing mid-write can't flicker the user's own change back.
+// Overlay queued (un-acked) local writes on top of server data.
 function applyPending(server, outbox) {
   const merged = { ...(server || {}) };
   for (const [person, pending] of outbox) {
@@ -50,22 +47,37 @@ function applyPending(server, outbox) {
 }
 
 export function useCrewStatus() {
-  const [statuses, setStatuses] = useState(() => readJSON(CACHE_KEY, {}));
-  const [locations, setLocations] = useState(() => readJSON(LOC_CACHE_KEY, {}));
-  const [pendingCount, setPendingCount] = useState(() => readMap(OUTBOX_KEY).size);
+  const { activeGroupId } = useGroup();
+  const gid = activeGroupId || 'ldg';
 
-  const outboxRef = useRef(readMap(OUTBOX_KEY));
-  const locOutboxRef = useRef(readMap(LOC_OUTBOX_KEY));
-  const flushingRef = useRef(false);
+  const [statuses,  setStatuses]  = useState(() => readJSON(statusCacheKey(gid), {}));
+  const [locations, setLocations] = useState(() => readJSON(locCacheKey(gid), {}));
+  const [pendingCount, setPendingCount] = useState(() => readMap(statusOutboxKey(gid)).size);
+
+  const outboxRef    = useRef(readMap(statusOutboxKey(gid)));
+  const locOutboxRef = useRef(readMap(locOutboxKey(gid)));
+  const flushingRef  = useRef(false);
+  const prevGidRef   = useRef(gid);
+
+  // Re-initialise when the active group changes.
+  useEffect(() => {
+    if (prevGidRef.current === gid) return;
+    prevGidRef.current = gid;
+    outboxRef.current    = readMap(statusOutboxKey(gid));
+    locOutboxRef.current = readMap(locOutboxKey(gid));
+    setStatuses(readJSON(statusCacheKey(gid), {}));
+    setLocations(readJSON(locCacheKey(gid), {}));
+    setPendingCount(outboxRef.current.size);
+  }, [gid]);
 
   const persistOutbox = useCallback(() => {
-    try { localStorage.setItem(OUTBOX_KEY, JSON.stringify([...outboxRef.current])); } catch {}
+    try { localStorage.setItem(statusOutboxKey(gid), JSON.stringify([...outboxRef.current])); } catch {}
     setPendingCount(outboxRef.current.size);
-  }, []);
+  }, [gid]);
 
   const persistLocOutbox = useCallback(() => {
-    try { localStorage.setItem(LOC_OUTBOX_KEY, JSON.stringify([...locOutboxRef.current])); } catch {}
-  }, []);
+    try { localStorage.setItem(locOutboxKey(gid), JSON.stringify([...locOutboxRef.current])); } catch {}
+  }, [gid]);
 
   const applyLocal = useCallback((setter, person, pending) => {
     setter(prev => {
@@ -76,8 +88,6 @@ export function useCrewStatus() {
     });
   }, []);
 
-  // Drain both outboxes; stop on the first failure so we don't hammer a dead
-  // network. An entry is only cleared if it hasn't changed since send.
   const flush = useCallback(async () => {
     if (flushingRef.current) return;
     if (outboxRef.current.size === 0 && locOutboxRef.current.size === 0) return;
@@ -88,7 +98,7 @@ export function useCrewStatus() {
           ? { action: 'clear', person }
           : { person, text: pending.text };
         try {
-          const res = await apiFetch(API, {
+          const res = await apiFetch(`${API}?g=${gid}`, {
             method: 'POST', headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(body),
           });
@@ -97,14 +107,14 @@ export function useCrewStatus() {
             outboxRef.current.delete(person);
             persistOutbox();
           }
-        } catch { flushingRef.current = false; return; } // leave queued; retry later
+        } catch { flushingRef.current = false; return; }
       }
       for (const [person, pending] of [...locOutboxRef.current.entries()]) {
         const body = pending === CLEAR
           ? { action: 'unshare-loc', person }
           : { action: 'location', person, lat: pending.lat, lng: pending.lng, acc: pending.acc };
         try {
-          const res = await apiFetch(API, {
+          const res = await apiFetch(`${API}?g=${gid}`, {
             method: 'POST', headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(body),
           });
@@ -118,26 +128,24 @@ export function useCrewStatus() {
     } finally {
       flushingRef.current = false;
     }
-  }, [persistOutbox, persistLocOutbox]);
+  }, [gid, persistOutbox, persistLocOutbox]);
 
   const fetchStatuses = useCallback(async () => {
     try {
-      const res = await apiFetch(API, { cache: 'no-store' });
+      const res = await apiFetch(`${API}?g=${gid}`, { cache: 'no-store' });
       if (!res.ok) throw new Error('bad status');
       const { statuses: srvStatus, locations: srvLoc } = await res.json();
       const mergedStatus = applyPending(srvStatus || {}, outboxRef.current);
-      const mergedLoc = applyPending(srvLoc || {}, locOutboxRef.current);
+      const mergedLoc    = applyPending(srvLoc    || {}, locOutboxRef.current);
       setStatuses(mergedStatus);
       setLocations(mergedLoc);
       try {
-        localStorage.setItem(CACHE_KEY, JSON.stringify(mergedStatus));
-        localStorage.setItem(LOC_CACHE_KEY, JSON.stringify(mergedLoc));
+        localStorage.setItem(statusCacheKey(gid), JSON.stringify(mergedStatus));
+        localStorage.setItem(locCacheKey(gid),    JSON.stringify(mergedLoc));
       } catch {}
       flush();
-    } catch {
-      // Keep showing whatever we have; retry next poll.
-    }
-  }, [flush]);
+    } catch {}
+  }, [gid, flush]);
 
   const setStatus = useCallback((person, text) => {
     const clean = String(text ?? '').replace(/\s+/g, ' ').trim().slice(0, 80);
@@ -161,7 +169,7 @@ export function useCrewStatus() {
     if (!Number.isFinite(lat) || !Number.isFinite(lng)) return;
     const acc = Number.isFinite(Number(fix?.acc)) ? Math.round(Number(fix.acc)) : null;
     const pending = { lat, lng, acc, ts: Date.now() };
-    locOutboxRef.current.set(person, pending); // latest fix overwrites any queued one
+    locOutboxRef.current.set(person, pending);
     applyLocal(setLocations, person, pending);
     persistLocOutbox();
     flush();
@@ -174,8 +182,6 @@ export function useCrewStatus() {
     flush();
   }, [applyLocal, persistLocOutbox, flush]);
 
-  // Visibility-aware polling with idle back-off — pauses while hidden, full speed
-  // while you interact, slower while open-but-idle. Same posture as usePicks.
   useLivePoll(fetchStatuses, { baseMs: POLL_MS, idleMs: IDLE_POLL_MS }, flush);
 
   return { statuses, locations, setStatus, clearStatus, setLocation, clearLocation, pendingCount };
