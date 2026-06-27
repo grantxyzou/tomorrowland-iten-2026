@@ -1,10 +1,12 @@
-import { useState } from 'react';
+import { useState, useCallback } from 'react';
 import { Analytics } from '@vercel/analytics/react';
 import { LAST_UPDATED } from './data/trip.js';
 import ItineraryTab from './components/ItineraryTab.jsx';
 import LineupTab from './components/LineupTab.jsx';
 import ErrorBoundary from './components/ErrorBoundary.jsx';
 import { useGroup } from './groups/GroupContext.jsx';
+import { useAuth } from './auth/AuthContext.jsx';
+import { apiFetch } from './lib/api.js';
 
 const TABS = [
   { id: 'itinerary', label: 'Itinerary' },
@@ -25,7 +27,9 @@ const G0_ID = 'ldg';
 
 export default function App() {
   const [activeTab, setActiveTab] = useState('itinerary');
-  const { activeGroupId, groups } = useGroup();
+  const [settingsOpen, setSettingsOpen] = useState(false);
+  const { activeGroupId, groups, refetchGroups, setActiveGroupId } = useGroup();
+  const { logout } = useAuth();
   const activeGroup = groups.find(g => g.id === activeGroupId);
   // Only the original LDG crew gets the Itinerary tab (hardcoded trip data).
   const visibleTabs = activeGroupId === G0_ID ? TABS : TABS.filter(t => t.id !== 'itinerary');
@@ -38,6 +42,30 @@ export default function App() {
   const rule     = '#cabda4';
   const accent   = '#a82a13';
   const cardBg   = '#f5efde';
+
+  const handleLeave = useCallback(async () => {
+    if (!activeGroupId) return;
+    try {
+      await apiFetch('/api/groups', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'leave', g: activeGroupId }),
+      });
+      await refetchGroups();
+      // If no groups remain GroupGate shows onboarding; otherwise switch to first group.
+      setActiveGroupId(groups.filter(g => g.id !== activeGroupId)[0]?.id || null);
+    } catch {}
+    setSettingsOpen(false);
+  }, [activeGroupId, groups, refetchGroups, setActiveGroupId]);
+
+  const handleDelete = useCallback(async () => {
+    try {
+      await apiFetch('/api/auth', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'delete' }),
+      });
+    } catch {}
+    logout();
+  }, [logout]);
 
   // "Direction D — Midnight" background for the Lineup tab: cool nebula glows
   // over a near-black midnight wash that bottoms at the canvas/well tone, so the
@@ -79,8 +107,17 @@ export default function App() {
               {activeGroup?.name || 'Tomorrowland 2026'}
             </div>
           </div>
-          {/* Countdown to departure */}
-          <Countdown target="2026-07-15" />
+          {/* Countdown + settings button */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
+            <Countdown target="2026-07-15" />
+            <button
+              aria-label="Settings"
+              onClick={() => setSettingsOpen(true)}
+              style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 6, color: '#938b81', fontSize: 18, lineHeight: 1 }}
+            >
+              ···
+            </button>
+          </div>
         </div>
       </header>
 
@@ -154,10 +191,115 @@ export default function App() {
         </div>
       </main>
 
+      {/* ── Settings overlay ─────────────────────────────── */}
+      {settingsOpen && (
+        <SettingsSheet
+          groupName={activeGroup?.name}
+          onClose={() => setSettingsOpen(false)}
+          onLeave={handleLeave}
+          onDelete={handleDelete}
+          onSignOut={() => { logout(); setSettingsOpen(false); }}
+        />
+      )}
+
       {/* Vercel Web Analytics — sends page views to /_vercel/insights (served
           automatically once Web Analytics is enabled for the project). */}
       <Analytics />
     </div>
+  );
+}
+
+// ── Settings sheet ────────────────────────────────────────────────────────
+function SettingsSheet({ groupName, onClose, onLeave, onDelete, onSignOut }) {
+  const [confirming, setConfirming] = useState(null); // null | 'leave' | 'delete'
+  const sans2 = { fontFamily: '"Inter", system-ui, sans-serif' };
+  const mono2 = { fontFamily: '"JetBrains Mono", ui-monospace, monospace' };
+  const ink2  = '#1a1614';
+  const muted2 = '#5c544c';
+  const rule2  = '#cabda4';
+
+  const rowBtn = (label, color, onClick) => (
+    <button
+      type="button"
+      onClick={onClick}
+      style={{
+        display: 'block', width: '100%', padding: '14px 0', textAlign: 'left',
+        background: 'none', border: 'none', cursor: 'pointer',
+        ...sans2, fontSize: 15, fontWeight: 500, color,
+      }}
+    >{label}</button>
+  );
+
+  return (
+    <>
+      {/* Backdrop */}
+      <div
+        aria-hidden="true"
+        onClick={onClose}
+        style={{ position: 'fixed', inset: 0, zIndex: 60, background: 'rgba(0,0,0,0.45)' }}
+      />
+
+      {/* Sheet */}
+      <div
+        role="dialog"
+        aria-modal="true"
+        aria-label="Settings"
+        style={{
+          position: 'fixed', bottom: 0, left: 0, right: 0, zIndex: 61,
+          background: '#ede7d8', borderRadius: '20px 20px 0 0',
+          padding: '20px 24px calc(32px + env(safe-area-inset-bottom))',
+          boxShadow: '0 -4px 40px rgba(0,0,0,0.18)',
+        }}
+      >
+        <div style={{ width: 36, height: 4, borderRadius: 2, background: rule2, margin: '0 auto 20px' }} />
+
+        {groupName && (
+          <div style={{ ...mono2, fontSize: 10, letterSpacing: '0.2em', textTransform: 'uppercase', color: muted2, marginBottom: 16 }}>
+            {groupName}
+          </div>
+        )}
+
+        {confirming === 'leave' ? (
+          <div>
+            <p style={{ ...sans2, fontSize: 14, color: ink2, marginBottom: 16, lineHeight: 1.5 }}>
+              Leave this crew? Your picks and status will be removed from the crew.
+            </p>
+            <button type="button" onClick={onLeave}
+              style={{ display: 'block', width: '100%', padding: '14px 0', marginBottom: 8, borderRadius: 12, border: 'none', background: '#a82a13', color: '#fff', ...sans2, fontSize: 15, fontWeight: 700, cursor: 'pointer' }}>
+              Yes, leave crew
+            </button>
+            <button type="button" onClick={() => setConfirming(null)}
+              style={{ display: 'block', width: '100%', padding: '12px 0', background: 'none', border: 'none', ...sans2, fontSize: 14, color: muted2, cursor: 'pointer' }}>
+              Cancel
+            </button>
+          </div>
+        ) : confirming === 'delete' ? (
+          <div>
+            <p style={{ ...sans2, fontSize: 14, color: ink2, marginBottom: 16, lineHeight: 1.5 }}>
+              Delete your account? This removes all your data from every crew — permanently.
+            </p>
+            <button type="button" onClick={onDelete}
+              style={{ display: 'block', width: '100%', padding: '14px 0', marginBottom: 8, borderRadius: 12, border: 'none', background: '#a82a13', color: '#fff', ...sans2, fontSize: 15, fontWeight: 700, cursor: 'pointer' }}>
+              Yes, delete my account
+            </button>
+            <button type="button" onClick={() => setConfirming(null)}
+              style={{ display: 'block', width: '100%', padding: '12px 0', background: 'none', border: 'none', ...sans2, fontSize: 14, color: muted2, cursor: 'pointer' }}>
+              Cancel
+            </button>
+          </div>
+        ) : (
+          <div>
+            {rowBtn('Sign out', ink2, onSignOut)}
+            <div style={{ borderTop: `1px solid ${rule2}` }} />
+            {rowBtn('Leave this crew', '#a82a13', () => setConfirming('leave'))}
+            <div style={{ borderTop: `1px solid ${rule2}` }} />
+            {rowBtn('Delete my account', '#a82a13', () => setConfirming('delete'))}
+            <div style={{ borderTop: `1px solid ${rule2}`, marginBottom: 8 }} />
+            <a href="/privacy" style={{ ...sans2, fontSize: 13, color: muted2, textDecoration: 'underline' }}>Privacy policy</a>
+          </div>
+        )}
+      </div>
+    </>
   );
 }
 

@@ -37,6 +37,25 @@ export function personForEmail(email) {
   return ALLOWED.get(String(email || '').trim().toLowerCase()) || null;
 }
 
+// Derive a stable display name for this user by checking group memberships
+// first (so existing crew members keep their pick-field-compatible name),
+// then falling back to Google's given_name, then the email local-part.
+// `redis` is the caller's Redis instance; `userId` must be lowercase email.
+export async function resolvePersonName(redis, userId, givenName) {
+  try {
+    const groupIds = await redis.smembers(`user:${userId}:groups`);
+    if (groupIds?.length > 0) {
+      for (const gid of groupIds) {
+        const raw = await redis.hget(`group:${gid}:members`, userId);
+        if (!raw) continue;
+        const member = typeof raw === 'string' ? JSON.parse(raw) : raw;
+        if (member?.displayName) return member.displayName;
+      }
+    }
+  } catch {}
+  return givenName || userId.split('@')[0] || 'You';
+}
+
 const b64url = (buf) => Buffer.from(buf).toString('base64url');
 
 function hmac(payloadB64) {
