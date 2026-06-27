@@ -17,6 +17,16 @@ import { requireSession, requireMembership } from './_auth.js';
 const G0_ID = 'ldg';
 const MAX_NAME_LEN    = 40;
 const MAX_DISPLAY_LEN = 20;
+const MAX_MEMBERS     = 50;         // hard cap per group
+const MAX_CREATES_DAY = 5;          // creates per user per 24 h
+const MAX_JOINS_HOUR  = 20;         // joins per user per hour
+const CODE_TTL_SEC    = 60 * 60 * 24 * 30; // join codes expire after 30 days
+
+async function checkRateLimit(redis, key, max, windowSec) {
+  const count = await redis.incr(key);
+  if (count === 1) await redis.expire(key, windowSec);
+  return count > max;
+}
 
 // Ten vivid festival colours — assigned in order to avoid visual collisions.
 const PALETTE = [
@@ -118,6 +128,10 @@ export default async function handler(req, res) {
         if (!displayName) return res.status(400).json({ error: 'displayName is required' });
         const color = PALETTE.includes(body.color) ? body.color : PALETTE[0];
 
+        if (await checkRateLimit(redis, `ratelimit:create:${userId}`, MAX_CREATES_DAY, 86400)) {
+          return res.status(429).json({ error: 'too many crews created today — try again tomorrow' });
+        }
+
         const gid  = genId();
         const code = genCode();
         const now  = Date.now();
@@ -128,7 +142,7 @@ export default async function handler(req, res) {
         await redis.hset(`group:${gid}:members`, {
           [userId]: JSON.stringify({ displayName, color, role: 'admin', joinedAt: now }),
         });
-        await redis.set(`joincode:${code}`, gid);
+        await redis.set(`joincode:${code}`, gid, { ex: CODE_TTL_SEC });
         await redis.sadd(`user:${userId}:groups`, gid);
         return res.status(200).json({ gid, code });
       }
@@ -140,6 +154,10 @@ export default async function handler(req, res) {
         if (!code)        return res.status(400).json({ error: 'code is required' });
         if (!displayName) return res.status(400).json({ error: 'displayName is required' });
 
+        if (await checkRateLimit(redis, `ratelimit:join:${userId}`, MAX_JOINS_HOUR, 3600)) {
+          return res.status(429).json({ error: 'too many join attempts — try again in an hour' });
+        }
+
         const gid = await redis.get(`joincode:${code}`);
         if (!gid) return res.status(404).json({ error: 'invalid or expired code' });
 
@@ -147,6 +165,10 @@ export default async function handler(req, res) {
         if (existing) return res.status(409).json({ error: 'already a member', gid });
 
         const membersFlat = await redis.hgetall(`group:${gid}:members`);
+
+        if (Object.keys(membersFlat || {}).length >= MAX_MEMBERS) {
+          return res.status(403).json({ error: 'this crew is full' });
+        }
         const usedColors  = new Set(
           Object.values(membersFlat || {})
             .map(v => parseMember(v)?.color)

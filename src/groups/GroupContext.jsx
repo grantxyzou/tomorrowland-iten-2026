@@ -18,6 +18,8 @@ export function GroupProvider({ children }) {
   const [activeGroupId, _setActive] = useState(() => {
     try { return localStorage.getItem(LS_KEY) || null; } catch { return null; }
   });
+  // Incremented by requestJoinFlow(); GroupGate watches this to enter join mode.
+  const [joinTrigger, setJoinTrigger] = useState(0);
 
   const refetchGroups = useCallback(async () => {
     try {
@@ -69,6 +71,7 @@ export function GroupProvider({ children }) {
     <GroupContext.Provider value={{
       groups, members, activeGroupId, setActiveGroupId,
       colorFor, inkFor, refetchGroups, loading,
+      joinTrigger, requestJoinFlow: () => setJoinTrigger(n => n + 1),
     }}>
       {children}
     </GroupContext.Provider>

@@ -60,7 +60,7 @@ function labelWrap(label, input) {
 }
 
 export default function GroupGate({ children }) {
-  const { groups, loading, setActiveGroupId, refetchGroups } = useGroup();
+  const { groups, loading, setActiveGroupId, refetchGroups, joinTrigger } = useGroup();
 
   // Detect /join/CODE in the URL on mount only.
   const [urlCode] = useState(() => {
@@ -92,6 +92,11 @@ export default function GroupGate({ children }) {
     }
     // If groups.length > 0 and no urlCode, mode stays null → render children.
   }, [loading, groups.length, urlCode]);
+
+  // requestJoinFlow() from GroupContext bumps joinTrigger → enter join mode.
+  useEffect(() => {
+    if (joinTrigger > 0 && !loading) setMode('join');
+  }, [joinTrigger, loading]);
 
   async function handleCreate(e) {
     e.preventDefault();

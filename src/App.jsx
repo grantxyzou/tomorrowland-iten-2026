@@ -28,7 +28,7 @@ const G0_ID = 'ldg';
 export default function App() {
   const [activeTab, setActiveTab] = useState('itinerary');
   const [settingsOpen, setSettingsOpen] = useState(false);
-  const { activeGroupId, groups, refetchGroups, setActiveGroupId } = useGroup();
+  const { activeGroupId, groups, refetchGroups, setActiveGroupId, requestJoinFlow } = useGroup();
   const { logout } = useAuth();
   const activeGroup = groups.find(g => g.id === activeGroupId);
   // Only the original LDG crew gets the Itinerary tab (hardcoded trip data).
@@ -191,10 +191,16 @@ export default function App() {
         </div>
       </main>
 
+      {/* ── iOS install coaching ─────────────────────────── */}
+      <InstallBanner />
+
       {/* ── Settings overlay ─────────────────────────────── */}
       {settingsOpen && (
         <SettingsSheet
-          groupName={activeGroup?.name}
+          groups={groups}
+          activeGroupId={activeGroupId}
+          onSwitchGroup={gid => { setActiveGroupId(gid); setSettingsOpen(false); }}
+          onJoinAnother={() => { setSettingsOpen(false); requestJoinFlow(); }}
           onClose={() => setSettingsOpen(false)}
           onLeave={handleLeave}
           onDelete={handleDelete}
@@ -209,14 +215,51 @@ export default function App() {
   );
 }
 
-// ── Settings sheet ────────────────────────────────────────────────────────
-function SettingsSheet({ groupName, onClose, onLeave, onDelete, onSignOut }) {
-  const [confirming, setConfirming] = useState(null); // null | 'leave' | 'delete'
-  const sans2 = { fontFamily: '"Inter", system-ui, sans-serif' };
+// ── iOS install coaching banner ────────────────────────────────────────────
+function InstallBanner() {
+  const [show, setShow] = useState(() => {
+    if (typeof window === 'undefined') return false;
+    const isIos = /iphone|ipad|ipod/i.test(navigator.userAgent);
+    const isStandalone = window.navigator.standalone === true;
+    try { if (localStorage.getItem('tml_install_dismissed') === '1') return false; } catch {}
+    return isIos && !isStandalone;
+  });
+  if (!show) return null;
+  const dismiss = () => {
+    try { localStorage.setItem('tml_install_dismissed', '1'); } catch {}
+    setShow(false);
+  };
   const mono2 = { fontFamily: '"JetBrains Mono", ui-monospace, monospace' };
-  const ink2  = '#1a1614';
+  return (
+    <div style={{
+      backgroundColor: '#1a1614', color: '#ede7d8', padding: '10px 16px 10px',
+      display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12,
+    }}>
+      <span style={{ ...mono2, fontSize: 11, letterSpacing: '0.04em', lineHeight: 1.5, flex: 1 }}>
+        Add to Home Screen: tap <strong>Share</strong> → <strong>Add to Home Screen</strong>
+      </span>
+      <button
+        type="button"
+        aria-label="Dismiss install prompt"
+        onClick={dismiss}
+        style={{ background: 'none', border: 'none', color: '#938b81', fontSize: 18, cursor: 'pointer', padding: '4px 2px', lineHeight: 1, flexShrink: 0 }}
+      >
+        ✕
+      </button>
+    </div>
+  );
+}
+
+// ── Settings sheet ────────────────────────────────────────────────────────
+function SettingsSheet({ groups, activeGroupId, onSwitchGroup, onJoinAnother, onClose, onLeave, onDelete, onSignOut }) {
+  const [confirming, setConfirming] = useState(null); // null | 'leave' | 'delete'
+  const sans2  = { fontFamily: '"Inter", system-ui, sans-serif' };
+  const mono2  = { fontFamily: '"JetBrains Mono", ui-monospace, monospace' };
+  const ink2   = '#1a1614';
   const muted2 = '#5c544c';
   const rule2  = '#cabda4';
+  const accent2 = '#a82a13';
+  const activeGroup = groups.find(g => g.id === activeGroupId);
 
   const rowBtn = (label, color, onClick) => (
     <button
@@ -253,9 +296,12 @@ function SettingsSheet({ groupName, onClose, onLeave, onDelete, onSignOut }) {
       >
         <div style={{ width: 36, height: 4, borderRadius: 2, background: rule2, margin: '0 auto 20px' }} />
 
-        {groupName && (
-          <div style={{ ...mono2, fontSize: 10, letterSpacing: '0.2em', textTransform: 'uppercase', color: muted2, marginBottom: 16 }}>
-            {groupName}
+        {activeGroup && (
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 16 }}>
+            <span style={{ width: 10, height: 10, borderRadius: '50%', backgroundColor: activeGroup.color, display: 'inline-block', flexShrink: 0 }} />
+            <span style={{ ...mono2, fontSize: 10, letterSpacing: '0.2em', textTransform: 'uppercase', color: muted2 }}>
+              {activeGroup.name}
+            </span>
           </div>
         )}
 
@@ -289,11 +335,41 @@ function SettingsSheet({ groupName, onClose, onLeave, onDelete, onSignOut }) {
           </div>
         ) : (
           <div>
+            {/* Group switcher — shown when user belongs to more than one crew */}
+            {groups.length > 1 && (
+              <>
+                <div style={{ ...mono2, fontSize: 10, letterSpacing: '0.18em', textTransform: 'uppercase', color: muted2, marginBottom: 10 }}>Your crews</div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginBottom: 16 }}>
+                  {groups.map(g => (
+                    <button
+                      key={g.id}
+                      type="button"
+                      onClick={() => onSwitchGroup(g.id)}
+                      style={{
+                        display: 'flex', alignItems: 'center', gap: 10,
+                        padding: '10px 12px', borderRadius: 10, border: 'none', cursor: 'pointer',
+                        background: g.id === activeGroupId ? '#e8dfc8' : 'transparent',
+                        ...sans2, fontSize: 14, fontWeight: g.id === activeGroupId ? 700 : 400, color: ink2,
+                        textAlign: 'left',
+                      }}
+                    >
+                      <span style={{ width: 10, height: 10, borderRadius: '50%', backgroundColor: g.color, flexShrink: 0, display: 'inline-block' }} />
+                      {g.name}
+                      {g.id === activeGroupId && <span style={{ marginLeft: 'auto', ...mono2, fontSize: 10, color: muted2 }}>active</span>}
+                    </button>
+                  ))}
+                </div>
+                <div style={{ borderTop: `1px solid ${rule2}`, marginBottom: 4 }} />
+              </>
+            )}
+
+            {rowBtn('Join another crew', ink2, onJoinAnother)}
+            <div style={{ borderTop: `1px solid ${rule2}` }} />
             {rowBtn('Sign out', ink2, onSignOut)}
             <div style={{ borderTop: `1px solid ${rule2}` }} />
-            {rowBtn('Leave this crew', '#a82a13', () => setConfirming('leave'))}
+            {rowBtn('Leave this crew', accent2, () => setConfirming('leave'))}
             <div style={{ borderTop: `1px solid ${rule2}` }} />
-            {rowBtn('Delete my account', '#a82a13', () => setConfirming('delete'))}
+            {rowBtn('Delete my account', accent2, () => setConfirming('delete'))}
             <div style={{ borderTop: `1px solid ${rule2}`, marginBottom: 8 }} />
             <a href="/privacy" style={{ ...sans2, fontSize: 13, color: muted2, textDecoration: 'underline' }}>Privacy policy</a>
           </div>
