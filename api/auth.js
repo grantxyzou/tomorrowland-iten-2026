@@ -87,11 +87,23 @@ export default async function handler(req, res) {
       try {
         const ticket = await client.verifyIdToken({ idToken, audience: CLIENT_ID });
         payload = ticket.getPayload();
-      } catch {
+      } catch (err) {
+        // DIAGNOSTIC: GIS handed us a token but verification failed. UA tells us
+        // the device/browser; reason is google-auth-library's specific cause.
+        console.error('[auth] login verifyIdToken failed', {
+          stage: 'verifyIdToken',
+          reason: err?.message || String(err),
+          ua: req.headers['user-agent'] || '',
+        });
         return res.status(401).json({ error: 'invalid token' });
       }
 
       if (!payload || payload.email_verified !== true) {
+        console.error('[auth] login email not verified', {
+          stage: 'email-unverified',
+          emailVerified: payload?.email_verified,
+          ua: req.headers['user-agent'] || '',
+        });
         return res.status(401).json({ error: 'email not verified' });
       }
 
@@ -105,6 +117,12 @@ export default async function handler(req, res) {
     res.setHeader('Allow', 'GET, POST');
     return res.status(405).json({ error: 'method not allowed' });
   } catch (err) {
+    console.error('[auth] unhandled error', {
+      method: req.method,
+      reason: err?.message || String(err),
+      stack: err?.stack,
+      ua: req.headers['user-agent'] || '',
+    });
     return res.status(500).json({ error: 'auth error' });
   }
 }
