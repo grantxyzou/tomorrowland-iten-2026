@@ -62,6 +62,12 @@ export default async function handler(req, res) {
     return res.status(405).json({ error: 'method not allowed' });
   }
   if (!CLIENT_ID || !CLIENT_SECRET) {
+    console.error('[oauth] not configured', {
+      stage: 'config',
+      hasClientId: !!CLIENT_ID,
+      hasClientSecret: !!CLIENT_SECRET,
+      ua: req.headers['user-agent'] || '',
+    });
     return bounce(res, '/?auth_error=failed');
   }
 
@@ -70,6 +76,9 @@ export default async function handler(req, res) {
 
   // ── Start step: no code yet → kick off the consent redirect ──
   if (!code) {
+    // DIAGNOSTIC: who is falling through to the redirect fallback? A spike of
+    // Android UAs here means the GIS button isn't working for them.
+    console.log('[oauth] start redirect', { stage: 'start', ua: req.headers['user-agent'] || '' });
     const nonce = crypto.randomBytes(16).toString('hex');
     // Short-lived HttpOnly cookie holds the CSRF state for the round-trip.
     res.setHeader('Set-Cookie', serializeCookie(STATE_COOKIE, nonce, { maxAge: 600 }));
@@ -88,6 +97,15 @@ export default async function handler(req, res) {
     // Clear the state cookie regardless of outcome (single-use).
     const clearState = serializeCookie(STATE_COOKIE, '', { maxAge: 0 });
     if (!expected || !state || state !== expected) {
+      // DIAGNOSTIC: state cookie didn't round-trip. hadExpected:false usually
+      // means the cookie was dropped between start and callback (host mismatch,
+      // 3rd-party-cookie blocking, or an in-app browser that wiped it).
+      console.error('[oauth] state mismatch', {
+        stage: 'state',
+        hadExpected: !!expected,
+        hadState: !!state,
+        ua: req.headers['user-agent'] || '',
+      });
       res.setHeader('Set-Cookie', clearState);
       return bounce(res, '/?auth_error=state');
     }
@@ -97,6 +115,11 @@ export default async function handler(req, res) {
     const payload = ticket.getPayload();
 
     if (!payload || payload.email_verified !== true) {
+      console.error('[oauth] email not verified', {
+        stage: 'email-unverified',
+        emailVerified: payload?.email_verified,
+        ua: req.headers['user-agent'] || '',
+      });
       res.setHeader('Set-Cookie', clearState);
       return bounce(res, '/?auth_error=failed');
     }
@@ -110,7 +133,14 @@ export default async function handler(req, res) {
       sessionCookie({ person, email }),
     ]);
     return bounce(res, '/');
-  } catch {
+  } catch (err) {
+    // DIAGNOSTIC: getToken() or verifyIdToken() threw. reason carries Google's
+    // specific cause (bad code, redirect_uri mismatch, clock skew, etc.).
+    console.error('[oauth] callback failed', {
+      stage: 'token-exchange',
+      reason: err?.message || String(err),
+      ua: req.headers['user-agent'] || '',
+    });
     res.setHeader('Set-Cookie', serializeCookie(STATE_COOKIE, '', { maxAge: 0 }));
     return bounce(res, '/?auth_error=failed');
   }
