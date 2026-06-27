@@ -1,7 +1,8 @@
 import { useState } from 'react';
 import { Lightning, Handshake, ChatCircleText, PaperPlaneTilt, X } from '@phosphor-icons/react';
-import { PEOPLE, STAGES } from '../../../data/lineup.js';
-import { mono, sans, ink, muted, rule, paper, chip, tmrwGold, shRow, PERSON_COLORS, PERSON_INK } from '../theme.js';
+import { STAGES } from '../../../data/lineup.js';
+import { mono, sans, ink, muted, rule, paper, chip, tmrwGold, shRow } from '../theme.js';
+import { useGroup } from '../../../groups/GroupContext.jsx';
 import { timeLabel } from '../time.js';
 import ConflictCombo from '../Overlaps.jsx';
 
@@ -24,6 +25,8 @@ function ago(ts) {
 // through useCrewStatus, which queues them offline and flushes on reconnect.
 function CrewStatusBoard({ crewStatus, activePerson, notify }) {
   const { statuses, setStatus, clearStatus, pendingCount } = crewStatus;
+  const { members, colorFor, inkFor } = useGroup();
+  const crewNames = members.map(m => m.displayName);
   const [text, setText] = useState('');
 
   const send = (msg) => {
@@ -43,13 +46,13 @@ function CrewStatusBoard({ crewStatus, activePerson, notify }) {
 
       {/* One row per person — their latest status, colour-coded; "you" can clear it */}
       <section style={{ borderRadius: 13, overflow: 'hidden', backgroundColor: paper, boxShadow: shRow, marginBottom: 10 }}>
-        {PEOPLE.map((p, i) => {
+        {crewNames.map((p, i) => {
           const st = statuses[p];
           const isMe = p === activePerson;
           return (
             <div key={p} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 14px', borderTop: i === 0 ? 'none' : `1px solid ${rule}55` }}>
-              <span aria-hidden="true" style={{ width: 9, height: 9, borderRadius: '50%', backgroundColor: PERSON_COLORS[p], flexShrink: 0 }} />
-              <span style={{ ...sans, fontSize: 13, fontWeight: 700, color: PERSON_COLORS[p], flexShrink: 0, minWidth: 64 }}>{isMe ? `${p} (you)` : p}</span>
+              <span aria-hidden="true" style={{ width: 9, height: 9, borderRadius: '50%', backgroundColor: colorFor(p), flexShrink: 0 }} />
+              <span style={{ ...sans, fontSize: 13, fontWeight: 700, color: colorFor(p), flexShrink: 0, minWidth: 64 }}>{isMe ? `${p} (you)` : p}</span>
               <span style={{ ...sans, fontSize: 14, color: st ? ink : muted, flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                 {st ? st.text : '—'}
               </span>
@@ -79,7 +82,7 @@ function CrewStatusBoard({ crewStatus, activePerson, notify }) {
           placeholder={`Share where you are, ${activePerson}…`} aria-label="Your status"
           style={{ flex: 1, minWidth: 0, minHeight: 44, padding: '0 14px', borderRadius: 11, border: 'none', backgroundColor: chip, color: ink, ...sans, fontSize: 16 }} />
         <button type="submit" disabled={!text.trim()} aria-label="Share status"
-          style={{ flexShrink: 0, minHeight: 44, padding: '0 16px', borderRadius: 8, border: 'none', backgroundColor: text.trim() ? PERSON_COLORS[activePerson] : rule, color: text.trim() ? PERSON_INK[activePerson] : muted, ...sans, fontSize: 14, fontWeight: 700, cursor: text.trim() ? 'pointer' : 'default', display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+          style={{ flexShrink: 0, minHeight: 44, padding: '0 16px', borderRadius: 8, border: 'none', backgroundColor: text.trim() ? colorFor(activePerson) : rule, color: text.trim() ? inkFor(activePerson) : muted, ...sans, fontSize: 14, fontWeight: 700, cursor: text.trim() ? 'pointer' : 'default', display: 'inline-flex', alignItems: 'center', gap: 6 }}>
           <PaperPlaneTilt size={15} weight="fill" /> Share
         </button>
       </form>
@@ -88,6 +91,8 @@ function CrewStatusBoard({ crewStatus, activePerson, notify }) {
 }
 
 function CrewSection({ title, accent, items, emptyText, showWho }) {
+  const { members, colorFor, inkFor } = useGroup();
+  const crewNames = members.map(m => m.displayName);
   return (
     <div>
       <div style={{ ...mono, fontSize: 10, color: accent, letterSpacing: '0.18em', textTransform: 'uppercase', marginBottom: 8 }}>{title}</div>
@@ -108,10 +113,10 @@ function CrewSection({ title, accent, items, emptyText, showWho }) {
                 </div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 4, flexShrink: 0 }}>
                   {(showWho ? pickers : []).map(p => (
-                    <span key={p} title={p} style={{ ...mono, fontSize: 9, fontWeight: 700, color: PERSON_INK[p], backgroundColor: PERSON_COLORS[p], borderRadius: 3, padding: '2px 5px' }}>{p[0]}</span>
+                    <span key={p} title={p} style={{ ...mono, fontSize: 9, fontWeight: 700, color: inkFor(p), backgroundColor: colorFor(p), borderRadius: 3, padding: '2px 5px' }}>{p[0]}</span>
                   ))}
-                  {!showWho && PEOPLE.map(p => (
-                    <span key={p} title={p} style={{ width: 9, height: 9, borderRadius: '50%', backgroundColor: PERSON_COLORS[p], display: 'inline-block' }} />
+                  {!showWho && crewNames.map(p => (
+                    <span key={p} title={p} style={{ width: 9, height: 9, borderRadius: '50%', backgroundColor: colorFor(p), display: 'inline-block' }} />
                   ))}
                 </div>
               </div>
@@ -126,16 +131,18 @@ function CrewSection({ title, accent, items, emptyText, showWho }) {
 // CREW view — live crew status, per-person totals, the Overlaps section, and
 // consensus lists.
 export default function CrewView({ crew, totalPicks, clashes, clusters, picks, dayHasTimes, activePerson, myColor, crewStatus, notify }) {
+  const { members, colorFor, inkFor } = useGroup();
+  const crewNames = members.map(m => m.displayName);
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
       {/* Live crew status — where is everyone, what's happening */}
       {crewStatus && <CrewStatusBoard crewStatus={crewStatus} activePerson={activePerson} notify={notify} />}
       {/* Per-person totals — colour-filled tags, one per crew member */}
       <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-        {PEOPLE.map(person => (
-          <div key={person} style={{ flex: 1, minWidth: 90, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, padding: '8px 12px', borderRadius: 8, backgroundColor: PERSON_COLORS[person] }}>
-            <span style={{ ...sans, fontSize: 12, fontWeight: 700, color: PERSON_INK[person] }}>{person}</span>
-            <span style={{ ...mono, fontSize: 14, fontWeight: 700, color: PERSON_INK[person] }}>{totalPicks[person]}</span>
+        {crewNames.map(person => (
+          <div key={person} style={{ flex: 1, minWidth: 90, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, padding: '8px 12px', borderRadius: 8, backgroundColor: colorFor(person) }}>
+            <span style={{ ...sans, fontSize: 12, fontWeight: 700, color: inkFor(person) }}>{person}</span>
+            <span style={{ ...mono, fontSize: 14, fontWeight: 700, color: inkFor(person) }}>{totalPicks[person]}</span>
           </div>
         ))}
       </div>
@@ -156,7 +163,7 @@ export default function CrewView({ crew, totalPicks, clashes, clusters, picks, d
       </div>
 
       {/* All three */}
-      <CrewSection title={`Everyone (${PEOPLE.length}/3)`} accent={myColor} items={crew.all3} emptyText="No artist all three of you picked yet." />
+      <CrewSection title={`Everyone (${crewNames.length})`} accent={myColor} items={crew.all3} emptyText="No artist everyone picked yet." />
       {/* Two of three */}
       <CrewSection title="Two of you" accent={muted} items={crew.two} emptyText="No two-way overlaps yet." showWho />
 

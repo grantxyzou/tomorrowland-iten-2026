@@ -1,7 +1,8 @@
 import { useState } from 'react';
 import { Lightning, CaretRight } from '@phosphor-icons/react';
-import { STAGES, PEOPLE } from '../../data/lineup.js';
-import { mono, sans, tmrwGold, tmrwBg, ink, muted, rule, clashRed, clashWell, clashHeader, shRow, PERSON_COLORS } from './theme.js';
+import { STAGES } from '../../data/lineup.js';
+import { mono, sans, tmrwGold, tmrwBg, ink, muted, rule, clashRed, clashWell, clashHeader, shRow } from './theme.js';
+import { useGroup } from '../../groups/GroupContext.jsx';
 import { normSpan, minToLabel } from './time.js';
 
 // ── Overlaps view ────────────────────────────────────────────
@@ -11,10 +12,11 @@ import { normSpan, minToLabel } from './time.js';
 
 // Small reusable cluster of colour-coded person dots.
 export function PersonDots({ people, size = 8 }) {
+  const { colorFor } = useGroup();
   return (
     <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, flexShrink: 0 }}>
       {people.map(p => (
-        <span key={p} title={p} aria-label={p} style={{ width: size, height: size, borderRadius: '50%', backgroundColor: PERSON_COLORS[p], display: 'inline-block' }} />
+        <span key={p} title={p} aria-label={p} style={{ width: size, height: size, borderRadius: '50%', backgroundColor: colorFor(p), display: 'inline-block' }} />
       ))}
     </span>
   );
@@ -23,6 +25,8 @@ export function PersonDots({ people, size = 8 }) {
 // Mini Gantt body for one cluster — hour ticks + a positioned bar per set,
 // shown when an overlap window is expanded.
 export function ClusterGantt({ cl, picks }) {
+  const { members } = useGroup();
+  const crewNames = members.map(m => m.displayName);
   const [lo, hi] = cl.window;
   const span = Math.max(hi - lo, 1);
   const ticks = [];
@@ -40,7 +44,7 @@ export function ClusterGantt({ cl, picks }) {
         const left = ((st - lo) / span) * 100;
         const width = Math.max(((en - st) / span) * 100, 6);
         const stageColor = STAGES[s.stage]?.color || tmrwGold;
-        const pickers = PEOPLE.filter(p => picks[s.id]?.[p]);
+        const pickers = crewNames.filter(p => picks[s.id]?.[p]);
         return (
           <div key={s.id} style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 6 }}>
             <PersonDots people={pickers} size={6} />
@@ -60,8 +64,10 @@ export function ClusterGantt({ cl, picks }) {
 // who's affected); expand a window to reveal its mini Gantt. `me` is the active
 // person, highlighted so you spot your own overlaps first.
 export default function ConflictCombo({ clusters, picks, me }) {
+  const { members, colorFor } = useGroup();
+  const crewNames = members.map(m => m.displayName);
   const [open, setOpen] = useState(() => new Set());
-  const perPerson = PEOPLE.map(p => ({ p, n: clusters.filter(cl => cl.shared.includes(p)).length })).filter(x => x.n > 0);
+  const perPerson = crewNames.map(p => ({ p, n: clusters.filter(cl => cl.shared.includes(p)).length })).filter(x => x.n > 0);
   const toggle = (i) => setOpen(prev => { const next = new Set(prev); next.has(i) ? next.delete(i) : next.add(i); return next; });
   // First two artist names, then "+N" — readable in one collapsed row.
   const names = (cl) => {
@@ -79,10 +85,10 @@ export default function ConflictCombo({ clusters, picks, me }) {
             return (
               <span key={p} style={{
                 display: 'inline-flex', alignItems: 'center', gap: 4, ...mono, fontSize: 10, fontWeight: 700,
-                color: isMe ? tmrwBg : PERSON_COLORS[p], backgroundColor: isMe ? PERSON_COLORS[p] : 'transparent',
+                color: isMe ? tmrwBg : colorFor(p), backgroundColor: isMe ? colorFor(p) : 'transparent',
                 borderRadius: 999, padding: isMe ? '2px 7px' : '2px 0',
               }}>
-                {!isMe && <span aria-hidden="true" style={{ width: 6, height: 6, borderRadius: '50%', backgroundColor: PERSON_COLORS[p] }} />}
+                {!isMe && <span aria-hidden="true" style={{ width: 6, height: 6, borderRadius: '50%', backgroundColor: colorFor(p) }} />}
                 {isMe ? 'You' : p} {n}
               </span>
             );
