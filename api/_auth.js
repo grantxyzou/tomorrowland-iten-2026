@@ -123,3 +123,20 @@ export function requireSession(req, res) {
   }
   return session;
 }
+
+// Membership gate: runs requireSession then checks group:<gid>:members for the
+// caller's email. Returns { session, userId, member } or writes 401/403 and
+// returns null. `redis` is the caller's Redis instance.
+export async function requireMembership(req, res, gid, redis) {
+  const session = requireSession(req, res);
+  if (!session) return null;
+  const userId = session.email.toLowerCase();
+  const raw = await redis.hget(`group:${gid}:members`, userId);
+  if (!raw) {
+    res.setHeader('Cache-Control', 'no-store');
+    res.status(403).json({ error: 'not a member of this group' });
+    return null;
+  }
+  const member = typeof raw === 'string' ? JSON.parse(raw) : raw;
+  return { session, userId, member };
+}

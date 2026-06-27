@@ -1,17 +1,17 @@
 // Vercel Serverless Function — shared DJ picks for the crew.
-// Auto-served at /api/picks (Vercel detects the api/ folder for any project).
+// Auto-served at /api/picks.
 //
-// Storage: a single Redis hash "picks".
+// Storage: a Redis hash per group, keyed group:<gid>:picks.
 //   field = "<setId>|<person>"  value = "1"   (presence == picked)
 // Each toggle is one atomic HSET/HDEL, so concurrent edits never clobber.
+// The `g` query param selects the group; omit to use the original GDL crew (g0).
 
 import { Redis } from '@upstash/redis';
-import { requireSession } from './_auth.js';
+import { requireMembership } from './_auth.js';
 
-const HASH_KEY = 'picks';
+const G0_ID = 'ldg';
 const SEP = '|';
 
-// Support either the Upstash Marketplace vars or the legacy KV_* vars.
 const redis = new Redis({
   url:   process.env.UPSTASH_REDIS_REST_URL  || process.env.KV_REST_API_URL,
   token: process.env.UPSTASH_REDIS_REST_TOKEN || process.env.KV_REST_API_TOKEN,
@@ -32,10 +32,13 @@ function toPicks(flat) {
 
 export default async function handler(req, res) {
   try {
-    // Auth gate: every read and write needs a valid session. The acting person
-    // is taken from the verified session below, never from the request body.
-    const session = requireSession(req, res);
-    if (!session) return;
+    const gid = req.query?.g || G0_ID;
+    const HASH_KEY = `group:${gid}:picks`;
+
+    // Auth gate: every read and write needs a valid session + group membership.
+    const mem = await requireMembership(req, res, gid, redis);
+    if (!mem) return;
+    const { session } = mem;
 
     if (req.method === 'GET') {
       const flat = await redis.hgetall(HASH_KEY);
@@ -47,8 +50,7 @@ export default async function handler(req, res) {
       const body = typeof req.body === 'string' ? JSON.parse(req.body || '{}') : (req.body || {});
 
       // Reset everyone's picks — guarded. A full wipe requires the explicit
-      // phrase, so a stray script or accidental call can't nuke the crew's
-      // data. The check runs BEFORE any delete.
+      // phrase, so a stray script or accidental call can't nuke the crew's data.
       if (body.action === 'reset') {
         if (body.confirm !== 'RESET') {
           return res.status(400).json({ error: 'reset requires confirm: "RESET"' });
@@ -58,14 +60,13 @@ export default async function handler(req, res) {
       }
 
       // Clear all of ONE person's picks (used by the per-person reset).
-      // Only touches the SIGNED-IN person's fields — never the rest of the crew's.
-      // Stashes a 24h backup first so any clear is recoverable server-side.
+      // Only touches the SIGNED-IN person's fields. Stashes a 24h backup first.
       if (body.action === 'clearMine') {
         const person = session.person;
         const flat = (await redis.hgetall(HASH_KEY)) || {};
         const fields = Object.keys(flat).filter(f => f.endsWith(`${SEP}${person}`));
         if (fields.length) {
-          await redis.set(`picks_trash:${person}`, JSON.stringify(fields), { ex: 86400 });
+          await redis.set(`group:${gid}:picks_trash:${person}`, JSON.stringify(fields), { ex: 86400 });
           await redis.hdel(HASH_KEY, ...fields);
         }
         return res.status(200).json({ ok: true, cleared: fields.length });
@@ -74,7 +75,7 @@ export default async function handler(req, res) {
       // Restore the last clear for the signed-in person (server-side undo).
       if (body.action === 'restoreTrash') {
         const person = session.person;
-        const raw = await redis.get(`picks_trash:${person}`);
+        const raw = await redis.get(`group:${gid}:picks_trash:${person}`);
         const fields = Array.isArray(raw) ? raw : (raw ? JSON.parse(raw) : []);
         if (fields.length) {
           const obj = {};
