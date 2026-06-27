@@ -1,6 +1,7 @@
 import { MagnifyingGlass, X, CaretRight } from '@phosphor-icons/react';
 import { STAGES } from '../../../data/lineup.js';
-import { mono, sans, display, ink, muted, rule, paper, chip, tmrwGold, shRow, PERSON_INK, STAGE_ORDER } from '../theme.js';
+import { mono, sans, display, ink, muted, rule, paper, chip, tmrwGold, shRow, STAGE_ORDER } from '../theme.js';
+import { useGroup } from '../../../groups/GroupContext.jsx';
 import ArtistRow from '../ArtistRow.jsx';
 import { StageSpotify } from '../SpotifyExport.jsx';
 
@@ -11,6 +12,7 @@ export default function StageView({
   searchOpen, setSearchOpen, searchPresent, openStages, setOpenStages,
   toggleStage, myColor, picks, activePerson, rowProps, notify,
 }) {
+  const { inkFor } = useGroup();
   return (
     <>
       <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: searchOpen ? 10 : 8, flexWrap: 'wrap' }}>
@@ -61,7 +63,7 @@ export default function StageView({
                   <span aria-hidden="true" style={{ width: 10, height: 10, borderRadius: '50%', backgroundColor: color, boxShadow: `0 0 8px ${color}`, flexShrink: 0 }} />
                   <span aria-hidden="true" style={{ ...display, fontSize: 23, fontWeight: 700, color: ink, letterSpacing: '0.01em', flex: 1 }}>{stage}</span>
                   {picked > 0 && (
-                    <span aria-hidden="true" style={{ ...mono, fontSize: 10, fontWeight: 700, color: PERSON_INK[activePerson], backgroundColor: myColor, borderRadius: 999, padding: '2px 8px' }}>Selected ({picked})</span>
+                    <span aria-hidden="true" style={{ ...mono, fontSize: 10, fontWeight: 700, color: inkFor(activePerson), backgroundColor: myColor, borderRadius: 999, padding: '2px 8px' }}>Selected ({picked})</span>
                   )}
                   <span aria-hidden="true" style={{ ...mono, fontSize: 11, color: muted }}>{liveCount}</span>
                   <CaretRight aria-hidden="true" size={14} weight="bold" color={muted} style={{ flexShrink: 0, transform: open ? 'rotate(90deg)' : 'none', transition: 'transform var(--dur-fast) var(--ease-in-out)' }} />

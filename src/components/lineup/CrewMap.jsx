@@ -1,10 +1,11 @@
 import { useState } from 'react';
 import { MapPin, Warning, Compass } from '@phosphor-icons/react';
-import { PEOPLE, STAGES, STAGE_COORDS } from '../../data/lineup.js';
+import { STAGES, STAGE_COORDS } from '../../data/lineup.js';
 import {
   mono, sans, ink, muted, caption, faint, paper, chip, raised, rule, clashRed, tmrwGold,
-  PERSON_COLORS, PERSON_INK, rRow, rPill,
+  rRow, rPill,
 } from './theme.js';
+import { useGroup } from '../../groups/GroupContext.jsx';
 import { haversineMeters, bearingDeg, compass8, fmtDistance, relativeAngle, relLabel } from './geo.js';
 
 // Compact relative time for a fix/status timestamp ("just now" / "4m" / "2h").
@@ -25,6 +26,7 @@ const selKey = (t) => t && `${t.kind}:${t.id}`;
 // otherwise it falls back to north-up with an N marker. Tapping a blip locks a
 // pointer beam onto it. Pure static SVG — no tiles, no redraw loop.
 function Minimap({ me, targets, heading, selected, onSelect }) {
+  const { colorFor, inkFor } = useGroup();
   const S = 260, c = S / 2, maxR = 112;
   const headingUp = heading != null;
   const maxDist = Math.max(250, ...targets.map(t => t.dist));
@@ -53,7 +55,7 @@ function Minimap({ me, targets, heading, selected, onSelect }) {
 
       {/* top indicator — your facing (heading-up) or North (fallback) */}
       {headingUp
-        ? <polygon points={`${c},2 ${c - 6},14 ${c + 6},14`} fill={PERSON_COLORS[me]} />
+        ? <polygon points={`${c},2 ${c - 6},14 ${c + 6},14`} fill={colorFor(me)} />
         : <text x={c} y="13" fill={faint} textAnchor="middle" style={{ ...mono }} fontSize="10" fontWeight="700">N</text>}
 
       {/* locked-on pointer beam to the selected target */}
@@ -87,8 +89,8 @@ function Minimap({ me, targets, heading, selected, onSelect }) {
       })}
 
       {/* you */}
-      <circle cx={c} cy={c} r="8.5" fill={PERSON_COLORS[me]} stroke={paper} strokeWidth="2" />
-      <text x={c} y={c + 3} textAnchor="middle" fill={PERSON_INK[me]} style={{ ...sans }} fontSize="9" fontWeight="800">{me[0]}</text>
+      <circle cx={c} cy={c} r="8.5" fill={colorFor(me)} stroke={paper} strokeWidth="2" />
+      <text x={c} y={c + 3} textAnchor="middle" fill={inkFor(me)} style={{ ...sans }} fontSize="9" fontWeight="800">{me[0]}</text>
     </svg>
   );
 }
@@ -101,12 +103,14 @@ export default function CrewMap({
   me, locations, statuses, sharing, onEnable, onDisable, myFix, error, supported,
   heading, compassPermission, headingSupported, nextStage,
 }) {
+  const { members, colorFor, inkFor } = useGroup();
+  const crewNames = members.map(m => m.displayName);
   const [selected, setSelected] = useState(null);
   const [showAllStages, setShowAllStages] = useState(false);
   const mine = myFix || locations[me] || null;
 
   // Crew with a live pin, ranked nearest-first when I have a fix.
-  const others = PEOPLE.filter(p => p !== me);
+  const others = crewNames.filter(p => p !== me);
   const located = others.filter(p => locations[p]);
   const peopleRels = mine
     ? located.map(p => ({
@@ -127,7 +131,7 @@ export default function CrewMap({
 
   // Unified target list for the minimap.
   const targets = [
-    ...peopleRels.map(r => ({ kind: 'person', id: r.person, label: r.person[0], color: PERSON_COLORS[r.person], ink: PERSON_INK[r.person], dist: r.dist, bearing: r.bearing })),
+    ...peopleRels.map(r => ({ kind: 'person', id: r.person, label: r.person[0], color: colorFor(r.person), ink: inkFor(r.person), dist: r.dist, bearing: r.bearing })),
     ...shownStages.map(s => ({ kind: 'stage', id: s.name, label: s.name, color: STAGES[s.name]?.color || tmrwGold, dist: s.dist, bearing: s.bearing })),
   ];
   const sel = targets.find(t => selKey(t) === selKey(selected));
@@ -154,7 +158,7 @@ export default function CrewMap({
     <div>
       {/* Share toggle — opt-in, off by default. Enabling also asks for the compass. */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '12px 14px', borderRadius: rRow, backgroundColor: chip, marginBottom: 12 }}>
-        <MapPin size={18} weight="fill" color={sharing ? PERSON_COLORS[me] : muted} style={{ flexShrink: 0 }} />
+        <MapPin size={18} weight="fill" color={sharing ? colorFor(me) : muted} style={{ flexShrink: 0 }} />
         <div style={{ flex: 1, minWidth: 0 }}>
           <div style={{ ...sans, fontSize: 14, fontWeight: 700, color: ink }}>Share my location</div>
           <div style={{ ...mono, fontSize: 10, color: muted, marginTop: 2 }}>
@@ -164,7 +168,7 @@ export default function CrewMap({
         <button onClick={sharing ? onDisable : onEnable} disabled={!supported}
           aria-pressed={sharing} aria-label={sharing ? 'Stop sharing my location' : 'Share my location'}
           style={{ flexShrink: 0, minHeight: 44, padding: '0 16px', borderRadius: rPill, border: 'none', cursor: supported ? 'pointer' : 'default',
-            backgroundColor: sharing ? raised : PERSON_COLORS[me], color: sharing ? muted : PERSON_INK[me], ...sans, fontSize: 13, fontWeight: 700 }}>
+            backgroundColor: sharing ? raised : colorFor(me), color: sharing ? muted : inkFor(me), ...sans, fontSize: 13, fontWeight: 700 }}>
           {sharing ? 'Stop' : 'Share'}
         </button>
       </div>
@@ -209,7 +213,7 @@ export default function CrewMap({
                     onClick={() => setSelected(isSel ? null : { kind: 'person', id: person })}
                     aria-label={`${person}, ${fmtDistance(dist)} ${dirText(bearing)}`}
                     style={{ width: '100%', textAlign: 'left', font: 'inherit', display: 'flex', alignItems: 'center', gap: 10, padding: '11px 14px', cursor: 'pointer', border: 'none', backgroundColor: isSel ? raised : 'transparent', borderTop: i === 0 ? 'none' : `1px solid ${rule}55` }}>
-                    <span aria-hidden="true" style={{ width: 26, height: 26, borderRadius: '50%', backgroundColor: PERSON_COLORS[person], color: PERSON_INK[person], display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 800, fontSize: 12, flexShrink: 0 }}>{person[0]}</span>
+                    <span aria-hidden="true" style={{ width: 26, height: 26, borderRadius: '50%', backgroundColor: colorFor(person), color: inkFor(person), display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 800, fontSize: 12, flexShrink: 0 }}>{person[0]}</span>
                     <span style={{ flex: 1, minWidth: 0 }}>
                       <span style={{ display: 'block', ...sans, fontSize: 15, fontWeight: 700, color: ink }}>{person} · {fmtDistance(dist)} {dirText(bearing)}</span>
                       <span style={{ display: 'block', ...mono, fontSize: 10, color: muted, marginTop: 2 }}>
@@ -233,7 +237,7 @@ export default function CrewMap({
                 <span style={{ ...mono, fontSize: 10, color: muted, letterSpacing: '0.18em', textTransform: 'uppercase' }}>Stages · approx.</span>
                 {stageRels.length > shownStages.length || showAllStages ? (
                   <button onClick={() => setShowAllStages(v => !v)}
-                    style={{ border: 'none', background: 'none', color: PERSON_COLORS[me], ...mono, fontSize: 10, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', cursor: 'pointer', minHeight: 44, padding: '0 4px' }}>
+                    style={{ border: 'none', background: 'none', color: colorFor(me), ...mono, fontSize: 10, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', cursor: 'pointer', minHeight: 44, padding: '0 4px' }}>
                     {showAllStages ? 'Show fewer' : 'Show all'}
                   </button>
                 ) : null}
@@ -272,8 +276,8 @@ export default function CrewMap({
           <section style={{ borderRadius: rRow, overflow: 'hidden', backgroundColor: paper }}>
             {notSharing.map((person, i) => (
               <div key={person} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '11px 14px', borderTop: i === 0 ? 'none' : `1px solid ${rule}55` }}>
-                <span aria-hidden="true" style={{ width: 9, height: 9, borderRadius: '50%', backgroundColor: PERSON_COLORS[person], flexShrink: 0 }} />
-                <span style={{ ...sans, fontSize: 14, fontWeight: 700, color: PERSON_COLORS[person], flexShrink: 0, minWidth: 64 }}>{person}</span>
+                <span aria-hidden="true" style={{ width: 9, height: 9, borderRadius: '50%', backgroundColor: colorFor(person), flexShrink: 0 }} />
+                <span style={{ ...sans, fontSize: 14, fontWeight: 700, color: colorFor(person), flexShrink: 0, minWidth: 64 }}>{person}</span>
                 <span style={{ ...sans, fontSize: 13, color: statuses[person]?.text ? ink : muted, flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                   {statuses[person]?.text || 'location off'}
                 </span>

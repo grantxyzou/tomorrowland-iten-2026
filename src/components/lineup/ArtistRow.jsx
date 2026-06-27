@@ -1,11 +1,13 @@
 import { memo } from 'react';
 import { Lightning } from '@phosphor-icons/react';
 import { STAGES } from '../../data/lineup.js';
-import { mono, tmrwGold, raised, hiTop, faint, bodyMuted, ink, muted, rule, clashRed, checkInk, PERSON_COLORS } from './theme.js';
+import { mono, tmrwGold, raised, hiTop, faint, bodyMuted, ink, muted, rule, clashRed, checkInk } from './theme.js';
+import { useGroup } from '../../groups/GroupContext.jsx';
 import { timeLabel } from './time.js';
 
 // ── Shared artist row ────────────────────────────────────────
 function ArtistRow({ set, myColor, myInk, myPick, others, isClash, showStage, onToggle }) {
+  const { colorFor } = useGroup();
   const stageColor = STAGES[set.stage]?.color || tmrwGold;
   const deleted = set.status === 'deleted';
 
@@ -55,7 +57,7 @@ function ArtistRow({ set, myColor, myInk, myPick, others, isClash, showStage, on
       </div>
       <div style={{ display: 'flex', alignItems: 'center', gap: 4, flexShrink: 0 }}>
         {others.map(p => (
-          <span key={p} role="img" aria-label={`${p} also picked this`} title={p} style={{ width: 8, height: 8, borderRadius: '50%', backgroundColor: PERSON_COLORS[p], display: 'inline-block' }} />
+          <span key={p} role="img" aria-label={`${p} also picked this`} title={p} style={{ width: 8, height: 8, borderRadius: '50%', backgroundColor: colorFor(p), display: 'inline-block' }} />
         ))}
         <span style={{
           width: 22, height: 22, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', marginLeft: 2,

@@ -1,7 +1,5 @@
 // Time helpers shared across the Lineup tab. Festival nights run past midnight,
 // so early-AM times are treated as "late" for ordering/overlap maths.
-import { PEOPLE } from '../../data/lineup.js';
-
 export const hasTime = (s) => Boolean(s.start && s.end);
 export const timeLabel = (s) => (hasTime(s) ? `${s.start} – ${s.end}` : 'Set time TBA');
 export function timeToMin(t) { const [h, m] = t.split(':').map(Number); return h * 60 + m; }
@@ -106,7 +104,7 @@ export function conflictClusters(clashes) {
       if (en > hi) hi = en;
       for (const p of edgeShared.get(cid)) shared.add(p);
     }
-    clusters.push({ sets: compSets, window: [lo, hi], shared: PEOPLE.filter(p => shared.has(p)) });
+    clusters.push({ sets: compSets, window: [lo, hi], shared: [...shared] });
   }
   // Earliest window first.
   return clusters.sort((c1, c2) => c1.window[0] - c2.window[0]);

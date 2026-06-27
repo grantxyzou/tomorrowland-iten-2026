@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { Moon, Lightning, Sparkle, CaretDown, Plus, X, MusicNotes, NavigationArrow } from '@phosphor-icons/react';
-import { bar, paper, chip, well, ink, muted, mono, sans, clashFab, spotifyDot, PERSON_COLORS, PERSON_INK, DAYS, VIEWS, shRow, shBar, rSeg, rTrack, rSheet, rPill, rBadge } from './theme.js';
+import { bar, paper, chip, well, ink, muted, mono, sans, clashFab, spotifyDot, DAYS, VIEWS, shRow, shBar, rSeg, rTrack, rSheet, rPill, rBadge } from './theme.js';
+import { useGroup } from '../../groups/GroupContext.jsx';
 
 const FAB_SIDE_KEY = 'tml2026_fab_side';
 const HOLD_MS = 450; // press-and-hold on the FAB to flip it to the other corner
@@ -15,8 +16,9 @@ export default function TripBar({
   activePerson, activeDay, view, setView, party, crewCount, clashCount,
   onPerson, onDay, onParty, onResolve, onNudge, onSpotify, onWhere,
 }) {
-  const myColor = PERSON_COLORS[activePerson];
-  const onAccent = PERSON_INK[activePerson]; // legible ink on the person's fill
+  const { colorFor, inkFor } = useGroup();
+  const myColor = colorFor(activePerson);
+  const onAccent = inkFor(activePerson); // legible ink on the person's fill
   const dayLabel = DAYS.find(d => d.id === activeDay)?.label || '';
 
   // Which bottom corner the FAB docks to (remembered), whether it's hidden

@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Headphones, Clock, PencilSimple, Check, X, CaretRight, ArrowCounterClockwise } from '@phosphor-icons/react';
-import { mono, sans, display, muted, rule, paper, ink, tmrwBg, bar, tmrwGold, bodyMuted, shRow, PERSON_INK, STAGE_ORDER } from '../theme.js';
+import { mono, sans, display, muted, rule, paper, ink, tmrwBg, bar, tmrwGold, bodyMuted, shRow, STAGE_ORDER } from '../theme.js';
+import { useGroup } from '../../../groups/GroupContext.jsx';
 import { STAGES, sets as BASELINE } from '../../../data/lineup.js';
 import { normSpan } from '../time.js';
 import ArtistRow from '../ArtistRow.jsx';
@@ -24,6 +25,7 @@ export default function TimeView({
   timeline, dayHasTimes, activePerson, dayLabel, rowProps,
   activeDay, myColor, editTimes, setEditTimes, daySets, overrides, publishOverrides, notify,
 }) {
+  const { inkFor } = useGroup();
   // Staged edits: setId → { start, end }. Holds only rows the user has touched.
   const [draft, setDraft] = useState({});
   const [publishing, setPublishing] = useState(false);
@@ -206,7 +208,7 @@ export default function TimeView({
                 Cancel
               </button>
               <button type="button" onClick={doPublish} disabled={publishing}
-                style={{ minHeight: 40, padding: '0 14px', borderRadius: 8, border: 'none', backgroundColor: myColor, color: PERSON_INK[activePerson], ...mono, fontSize: 11, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', cursor: publishing ? 'default' : 'pointer', opacity: publishing ? 0.6 : 1, display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+                style={{ minHeight: 40, padding: '0 14px', borderRadius: 8, border: 'none', backgroundColor: myColor, color: inkFor(activePerson), ...mono, fontSize: 11, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', cursor: publishing ? 'default' : 'pointer', opacity: publishing ? 0.6 : 1, display: 'inline-flex', alignItems: 'center', gap: 6 }}>
                 <Check size={14} weight="bold" /> {publishing ? 'Publishing…' : 'Publish to crew'}
               </button>
             </div>
@@ -251,7 +253,7 @@ export default function TimeView({
                       </button>
                     )}
                     <button type="button" onClick={() => setSelectedId(null)}
-                      style={{ flex: 1, minHeight: 48, borderRadius: 12, border: 'none', backgroundColor: myColor, color: PERSON_INK[activePerson], ...sans, fontSize: 16, fontWeight: 700, cursor: 'pointer' }}>
+                      style={{ flex: 1, minHeight: 48, borderRadius: 12, border: 'none', backgroundColor: myColor, color: inkFor(activePerson), ...sans, fontSize: 16, fontWeight: 700, cursor: 'pointer' }}>
                       Done
                     </button>
                   </div>
