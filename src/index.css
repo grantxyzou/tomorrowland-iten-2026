@@ -149,3 +149,17 @@ button, [role="button"], [role="tab"], [role="option"] {
   .fx-collapse { grid-template-rows: 1fr !important; }
   .fx-collapse[data-open="false"] { grid-template-rows: 0fr !important; }
 }
+
+/* ── Print: itinerary PDF export ──────────────────────────────────────────
+   The printable doc is hidden on screen and revealed only when printing, where
+   everything else is blanked so the PDF contains just the itinerary — no app
+   chrome, regardless of what's on screen (sky header, nav, an open sheet). */
+.print-doc { display: none; }
+
+@media print {
+  html { -webkit-print-color-adjust: exact; print-color-adjust: exact; background: #fff; }
+  body * { visibility: hidden; }
+  .print-doc, .print-doc * { visibility: visible; }
+  .print-doc { display: block; position: absolute; inset: 0; margin: 0; }
+  @page { margin: 18mm; }
+}

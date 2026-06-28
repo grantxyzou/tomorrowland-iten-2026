@@ -1,7 +1,8 @@
 import { useState, useEffect, useCallback } from 'react';
 import { Analytics } from '@vercel/analytics/react';
 import { usePresence } from './hooks/usePresence.js';
-import { LAST_UPDATED, DEFAULT_KICKER, DEFAULT_DEPARTURE } from './data/trip.js';
+import { LAST_UPDATED, DEFAULT_KICKER, DEFAULT_DEPARTURE, days } from './data/trip.js';
+import ItineraryPrintDoc from './components/itinerary/ItineraryPrintDoc.jsx';
 import ItineraryTab from './components/ItineraryTab.jsx';
 import LineupTab from './components/LineupTab.jsx';
 import ErrorBoundary from './components/ErrorBoundary.jsx';
@@ -31,7 +32,7 @@ export default function App() {
   const [settingsOpen, setSettingsOpen] = useState(false);
   // Keep the sheet mounted through its slide-down exit (matches --dur-exit).
   const settingsPresent = usePresence(settingsOpen, 240);
-  const { activeGroupId, groups, refetchGroups, setActiveGroupId, requestJoinFlow, requestCreateFlow } = useGroup();
+  const { activeGroupId, groups, members, refetchGroups, setActiveGroupId, requestJoinFlow, requestCreateFlow } = useGroup();
   const { logout, person, email, refresh } = useAuth();
   const activeGroup = groups.find(g => g.id === activeGroupId);
   // Only the original LDG crew gets the Itinerary tab (hardcoded trip data).
@@ -252,6 +253,18 @@ export default function App() {
           onLeave={handleLeave}
           onDelete={handleDelete}
           onSignOut={() => { logout(); setSettingsOpen(false); }}
+          onExportPdf={() => { setSettingsOpen(false); setTimeout(() => window.print(), 150); }}
+        />
+      )}
+
+      {/* Printable itinerary (hidden on screen; revealed by the print stylesheet).
+          Only the original LDG crew has itinerary data. */}
+      {activeGroupId === G0_ID && (
+        <ItineraryPrintDoc
+          title={activeGroup?.kicker || DEFAULT_KICKER}
+          crewName={activeGroup?.name}
+          people={(members || []).map(m => m.displayName)}
+          days={days}
         />
       )}
 
@@ -298,7 +311,7 @@ function InstallBanner() {
 }
 
 // ── Settings sheet ────────────────────────────────────────────────────────
-function SettingsSheet({ open, dark, groups, activeGroupId, person, email, onSwitchGroup, onJoinAnother, onCreateAnother, onInvite, onRename, onClose, onLeave, onDelete, onSignOut }) {
+function SettingsSheet({ open, dark, groups, activeGroupId, person, email, onSwitchGroup, onJoinAnother, onCreateAnother, onInvite, onRename, onClose, onLeave, onDelete, onSignOut, onExportPdf }) {
   const [confirming, setConfirming] = useState(null); // null | 'leave' | 'delete' | 'invite' | 'rename'
   const [renameVal, setRenameVal] = useState('');
   const [renameErr, setRenameErr] = useState('');
@@ -549,6 +562,7 @@ function SettingsSheet({ open, dark, groups, activeGroupId, person, email, onSwi
             {rowBtn('Join another crew', ink2, onJoinAnother)}
             <div style={{ borderTop: `1px solid ${rule2}` }} />
             {activeGroup && rowBtn('Invite to this crew', ink2, openInvite)}
+            {activeGroupId === G0_ID && rowBtn('Export itinerary as PDF', ink2, onExportPdf)}
             {activeGroup && <div style={{ borderTop: `1px solid ${rule2}` }} />}
             {rowBtn('Sign out', ink2, onSignOut)}
             <div style={{ borderTop: `1px solid ${rule2}` }} />
