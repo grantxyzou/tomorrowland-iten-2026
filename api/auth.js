@@ -17,7 +17,7 @@
 
 import { OAuth2Client } from 'google-auth-library';
 import { Redis } from '@upstash/redis';
-import { getSession, requireSession, sessionCookie, clearCookie, resolvePersonName, isNunu } from './_auth.js';
+import { getSession, requireSession, sessionCookie, clearCookie, resolvePersonName, isNunu, validateDisplayName, remapPickFields } from './_auth.js';
 
 const G0_ID = 'ldg';
 const CLIENT_ID = process.env.GOOGLE_CLIENT_ID || '';
@@ -80,6 +80,92 @@ export default async function handler(req, res) {
 
         res.setHeader('Set-Cookie', clearCookie());
         return res.status(200).json({ ok: true });
+      }
+
+      // Rename: change the caller's display name across ALL their crews and
+      // re-key their picks/status/location, then re-mint the session. Identity is
+      // global (one session.person, data keyed by it everywhere), so renaming has
+      // to be global to stay consistent. Order = data → member records → cookie,
+      // so a partial failure is idempotent (re-running completes it).
+      if (body.action === 'rename') {
+        const session = requireSession(req, res);
+        if (!session) return;
+        const userId = session.email.toLowerCase();
+
+        const check = validateDisplayName(body.name);
+        if (!check.ok) return res.status(400).json({ error: check.error });
+        const N = check.value;
+
+        const groupIds = (await redis.smembers(`user:${userId}:groups`)) || [];
+
+        // Load every crew's roster once: lets us find my old name(s), detect a
+        // global name collision, and guard against sweeping a same-named member.
+        const rosters = {}; // gid -> { email -> member }
+        const oldNames = new Set();
+        if (session.person) oldNames.add(session.person);
+        for (const gid of groupIds) {
+          const flat = await redis.hgetall(`group:${gid}:members`);
+          const roster = {};
+          for (const [email, raw] of Object.entries(flat || {})) {
+            roster[email] = typeof raw === 'string' ? JSON.parse(raw) : raw;
+          }
+          rosters[gid] = roster;
+          if (roster[userId]?.displayName) oldNames.add(roster[userId].displayName);
+        }
+        oldNames.delete(N); // never sweep the target name onto itself
+
+        // Global collision: another member already uses N in any of my crews.
+        for (const gid of groupIds) {
+          for (const [email, m] of Object.entries(rosters[gid])) {
+            if (email !== userId && m?.displayName === N) {
+              return res.status(409).json({ error: 'name taken' });
+            }
+          }
+        }
+
+        // Re-key data first, then member records.
+        for (const gid of groupIds) {
+          const othersNames = new Set(
+            Object.entries(rosters[gid])
+              .filter(([email]) => email !== userId)
+              .map(([, m]) => m?.displayName)
+              .filter(Boolean)
+          );
+          for (const O of oldNames) {
+            if (othersNames.has(O)) continue; // don't steal a same-named member's data
+
+            const picksFlat = await redis.hgetall(`group:${gid}:picks`);
+            for (const [oldF, newF] of remapPickFields(Object.keys(picksFlat || {}), O, N)) {
+              await redis.hset(`group:${gid}:picks`, { [newF]: picksFlat[oldF] });
+              await redis.hdel(`group:${gid}:picks`, oldF);
+            }
+            const st = await redis.hget(`group:${gid}:status`, O);
+            if (st != null) {
+              await redis.hset(`group:${gid}:status`, { [N]: st });
+              await redis.hdel(`group:${gid}:status`, O);
+            }
+            const lc = await redis.hget(`group:${gid}:loc`, O);
+            if (lc != null) {
+              await redis.hset(`group:${gid}:loc`, { [N]: lc });
+              await redis.hdel(`group:${gid}:loc`, O);
+            }
+            const trashKey = `group:${gid}:picks_trash:${O}`;
+            const trash = await redis.get(trashKey);
+            if (trash != null) {
+              const ttl = await redis.ttl(trashKey);
+              await redis.set(`group:${gid}:picks_trash:${N}`, trash, ttl > 0 ? { ex: ttl } : {});
+              await redis.del(trashKey);
+            }
+          }
+          const mine = rosters[gid][userId];
+          if (mine) {
+            await redis.hset(`group:${gid}:members`, { [userId]: JSON.stringify({ ...mine, displayName: N }) });
+          }
+        }
+
+        // Re-mint the session last (so a half-failure leaves session.person = old).
+        res.setHeader('Set-Cookie', sessionCookie({ person: N, email: session.email }));
+        return res.status(200).json({ person: N });
       }
 
       // Default action: login with a Google ID token.
