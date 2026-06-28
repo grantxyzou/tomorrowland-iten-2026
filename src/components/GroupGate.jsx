@@ -60,7 +60,7 @@ function labelWrap(label, input) {
 }
 
 export default function GroupGate({ children }) {
-  const { groups, loading, setActiveGroupId, refetchGroups, joinTrigger } = useGroup();
+  const { groups, loading, setActiveGroupId, refetchGroups, joinTrigger, createTrigger } = useGroup();
 
   // Detect /join/CODE in the URL on mount only.
   const [urlCode] = useState(() => {
@@ -68,9 +68,12 @@ export default function GroupGate({ children }) {
     return m ? m[1].toUpperCase() : null;
   });
 
-  const [mode, setMode] = useState(null); // null | 'landing' | 'create' | 'join'
+  const [mode, setMode] = useState(null); // null | 'landing' | 'create' | 'join' | 'created'
   const [err,  setErr]  = useState('');
   const [busy, setBusy] = useState(false);
+  // After a successful create: the new crew's shareable invite code.
+  const [createdCode, setCreatedCode] = useState('');
+  const [copied, setCopied] = useState(''); // '' | 'code' | 'link'
 
   // Create-crew form
   const [crewName,     setCrewName]     = useState('');
@@ -98,6 +101,19 @@ export default function GroupGate({ children }) {
     if (joinTrigger > 0 && !loading) setMode('join');
   }, [joinTrigger, loading]);
 
+  // requestCreateFlow() from GroupContext bumps createTrigger → enter create mode.
+  useEffect(() => {
+    if (createTrigger > 0 && !loading) { setErr(''); setMode('create'); }
+  }, [createTrigger, loading]);
+
+  async function copy(text, which) {
+    try {
+      await navigator.clipboard.writeText(text);
+      setCopied(which);
+      setTimeout(() => setCopied(''), 1500);
+    } catch {}
+  }
+
   async function handleCreate(e) {
     e.preventDefault();
     if (!crewName.trim() || !displayName.trim()) return;
@@ -112,7 +128,10 @@ export default function GroupGate({ children }) {
       if (!res.ok) { setErr(data.error || 'Could not create crew'); return; }
       await refetchGroups();
       setActiveGroupId(data.gid);
-      setMode(null);
+      // Surface the invite code so the creator can share it, instead of dropping
+      // straight into the (empty) crew. "Done" exits to the app.
+      setCreatedCode(data.code || '');
+      setMode('created');
     } catch {
       setErr('Network error — try again');
     } finally {
@@ -212,11 +231,47 @@ export default function GroupGate({ children }) {
                 {busy ? 'Creating…' : 'Create crew'}
               </button>
 
-              <button type="button" onClick={() => setMode('landing')}
-                style={{ minHeight: 44, border: 'none', background: 'none', color: muted, ...sans, fontSize: 14, cursor: 'pointer', textDecoration: 'underline' }}>
-                Back
-              </button>
+              {hasGroups
+                ? <button type="button" onClick={() => setMode(null)}
+                    style={{ minHeight: 44, border: 'none', background: 'none', color: muted, ...sans, fontSize: 14, cursor: 'pointer', textDecoration: 'underline' }}>
+                    Cancel
+                  </button>
+                : <button type="button" onClick={() => setMode('landing')}
+                    style={{ minHeight: 44, border: 'none', background: 'none', color: muted, ...sans, fontSize: 14, cursor: 'pointer', textDecoration: 'underline' }}>
+                    Back
+                  </button>
+              }
             </form>
+          )}
+
+          {mode === 'created' && (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+              <h2 style={{ ...sans, fontSize: 22, fontWeight: 700, margin: '0 0 4px' }}>Crew created 🎉</h2>
+              <p style={{ ...sans, fontSize: 14, color: muted, margin: 0, lineHeight: 1.5 }}>
+                Share this code (or the link) with your crew so they can join <strong>{crewName}</strong>.
+                It works for 30 days.
+              </p>
+
+              {labelWrap('Invite code',
+                <div style={inputStyle({ ...mono, fontSize: 20, letterSpacing: '0.2em', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 })}>
+                  <span>{createdCode}</span>
+                  <button type="button" onClick={() => copy(createdCode, 'code')}
+                    style={{ border: 'none', background: 'none', cursor: 'pointer', ...sans, fontSize: 13, fontWeight: 700, color: accent }}>
+                    {copied === 'code' ? 'Copied' : 'Copy'}
+                  </button>
+                </div>
+              )}
+
+              <button type="button" onClick={() => copy(`${window.location.origin}/join/${createdCode}`, 'link')}
+                style={{ minHeight: 48, borderRadius: 12, border: `2px solid ${accent}`, background: 'transparent', color: accent, ...sans, fontSize: 15, fontWeight: 700, cursor: 'pointer' }}>
+                {copied === 'link' ? 'Invite link copied!' : 'Copy invite link'}
+              </button>
+
+              <button type="button" onClick={() => { setMode(null); setCrewName(''); setDisplayName(''); setCreatedCode(''); }}
+                style={{ minHeight: 52, borderRadius: 14, border: 'none', backgroundColor: accent, color: '#fff', ...sans, fontSize: 16, fontWeight: 700, cursor: 'pointer' }}>
+                Done
+              </button>
+            </div>
           )}
 
           {mode === 'join' && (

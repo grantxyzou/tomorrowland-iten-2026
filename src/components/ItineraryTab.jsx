@@ -6,6 +6,8 @@ import { usePresence } from '../hooks/usePresence.js';
 import { useWeather } from '../hooks/useWeather.js';
 import { useLocalTime } from '../hooks/useLocalTime.js';
 import { TomorrowlandMark, AirCanadaMark } from './BrandMarks.jsx';
+import { useAuth } from '../auth/AuthContext.jsx';
+import { useGroup } from '../groups/GroupContext.jsx';
 
 // ── Palette ──────────────────────────────────────────────────
 const p = {
@@ -58,9 +60,12 @@ function getTodayIndex() {
   return Math.min(diff, days.length - 1);
 }
 
-export default function ItineraryTab() {
+export default function ItineraryTab({ onOpenAccount }) {
   const todayIdx = getTodayIndex();
   const refs = useRef([]);
+  const { person } = useAuth();
+  const { colorFor, inkFor } = useGroup();
+  const myColor = colorFor(person);
 
   // Auto-scroll to today's card on mount
   useEffect(() => {
@@ -72,21 +77,44 @@ export default function ItineraryTab() {
   }, [todayIdx]);
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-      {days.map((d, idx) => (
-        <div key={d.dateNum} ref={el => refs.current[idx] = el}
-          className="fx-enter" style={{ animationDelay: `${Math.min(idx, 8) * 45}ms` }}>
-          {d.phase && (
-            <PhaseDivider phase={d.phase} idx={idx} />
-          )}
-          <DayCard
-            d={d}
-            isToday={idx === todayIdx}
-            dateStr={dayToDateStr(d)}
-          />
+    <>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 16, paddingBottom: 28 }}>
+        {days.map((d, idx) => (
+          <div key={d.dateNum} ref={el => refs.current[idx] = el}
+            className="fx-enter" style={{ animationDelay: `${Math.min(idx, 8) * 45}ms` }}>
+            {d.phase && (
+              <PhaseDivider phase={d.phase} idx={idx} />
+            )}
+            <DayCard
+              d={d}
+              isToday={idx === todayIdx}
+              dateStr={dayToDateStr(d)}
+            />
+          </div>
+        ))}
+      </div>
+
+      {/* Bottom nav — mirrors the Lineup TripBar (fixed, safe-area), in the
+          Itinerary's light palette. Holds the account chip → shared menu. */}
+      {onOpenAccount && (
+        <div style={{ position: 'fixed', left: 0, right: 0, bottom: 0, zIndex: 45, paddingBottom: 'env(safe-area-inset-bottom)', backgroundColor: p.cardBg, borderTop: `1px solid ${p.rule}`, boxShadow: '0 -2px 16px rgba(0,0,0,0.08)' }}>
+          <div style={{ maxWidth: 680, margin: '0 auto', padding: '8px 16px' }}>
+            <button
+              onClick={onOpenAccount}
+              aria-haspopup="dialog"
+              aria-label={`Signed in as ${person}. Tap for account and crews.`}
+              style={{ display: 'inline-flex', alignItems: 'center', gap: 8, background: 'none', border: 'none', cursor: 'pointer', padding: '6px 8px', color: p.ink, fontFamily: '"Inter", system-ui, sans-serif' }}
+            >
+              <span aria-hidden="true" style={{ width: 24, height: 24, borderRadius: '50%', backgroundColor: myColor, color: inkFor(person), display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 800, fontSize: 12 }}>
+                {person?.[0]?.toUpperCase()}
+              </span>
+              <span style={{ fontSize: 14, fontWeight: 600, maxWidth: 180, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{person}</span>
+              <ChevronDown size={14} color={p.muted} />
+            </button>
+          </div>
         </div>
-      ))}
-    </div>
+      )}
+    </>
   );
 }
 

@@ -25,10 +25,10 @@ import TimeView from './lineup/views/TimeView.jsx';
 import CrewView, { PRESETS } from './lineup/views/CrewView.jsx';
 import { useGroup } from '../groups/GroupContext.jsx';
 
-export default function LineupTab() {
+export default function LineupTab({ onOpenAccount }) {
   const [activeDay, setActiveDay]       = useState('fri');
   // Identity comes from the signed-in session — you are always yourself.
-  const { person: activePerson, email: myEmail, logout } = useAuth();
+  const { person: activePerson } = useAuth();
   const { members, colorFor, inkFor } = useGroup();
   const crewNames = useMemo(() => members.map(m => m.displayName), [members]);
   const [view, setView]                 = useState('stage');
@@ -38,7 +38,8 @@ export default function LineupTab() {
   const [party, setParty]               = useState(false);
   const exitParty = useCallback(() => setParty(false), []);
   // Which Trip Bar sheet is open:
-  // null | 'person' | 'day' | 'overlaps' | 'nudge' | 'spotify' | 'where'.
+  // null | 'day' | 'overlaps' | 'nudge' | 'spotify' | 'where'.
+  // (The account menu lives in the shared App-level sheet via onOpenAccount.)
   const [sheet, setSheet] = useState(null);
   const [nudgeText, setNudgeText] = useState('');
   const [tipDismissed, setTipDismissed] = useState(() => {
@@ -308,30 +309,12 @@ export default function LineupTab() {
       <TripBar
         activePerson={activePerson} activeDay={activeDay} view={view} setView={setView}
         party={party} crewCount={crewCount} clashCount={clashes.length}
-        onPerson={() => setSheet('person')} onDay={() => setSheet('day')} onParty={() => setParty(true)}
+        onPerson={onOpenAccount} onDay={() => setSheet('day')} onParty={() => setParty(true)}
         onResolve={() => setSheet('overlaps')} onNudge={() => setSheet('nudge')}
         onSpotify={() => setSheet('spotify')} onWhere={() => setSheet('where')}
       />
 
       {/* ── Trip Bar sheets ── */}
-      {sheet === 'person' && (
-        <BottomSheet title="Your account" accent={myColor} onClose={() => setSheet(null)}>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 12, minHeight: 56, padding: '0 14px', borderRadius: 14, backgroundColor: raised, ...sans }}>
-              <span aria-hidden="true" style={{ width: 36, height: 36, borderRadius: '50%', backgroundColor: myColor, color: inkFor(activePerson), display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 800, fontSize: 16 }}>{activePerson[0]}</span>
-              <span style={{ flex: 1, minWidth: 0 }}>
-                <span style={{ display: 'block', fontSize: 17, fontWeight: 700, color: myColor }}>{activePerson}</span>
-                {myEmail && <span style={{ display: 'block', fontSize: 12, color: muted, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{myEmail}</span>}
-              </span>
-            </div>
-            <button onClick={() => { setSheet(null); logout(); }}
-              style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, minHeight: 52, padding: '0 14px', borderRadius: 14, border: 'none', cursor: 'pointer', backgroundColor: chip, color: ink, ...sans, fontSize: 15, fontWeight: 700 }}>
-              <X size={18} weight="bold" /> Sign out
-            </button>
-          </div>
-        </BottomSheet>
-      )}
-
       {sheet === 'day' && (
         <BottomSheet title="Which day?" accent={tmrwGold} onClose={() => setSheet(null)}>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>

@@ -28,8 +28,8 @@ const G0_ID = 'ldg';
 export default function App() {
   const [activeTab, setActiveTab] = useState('itinerary');
   const [settingsOpen, setSettingsOpen] = useState(false);
-  const { activeGroupId, groups, refetchGroups, setActiveGroupId, requestJoinFlow } = useGroup();
-  const { logout } = useAuth();
+  const { activeGroupId, groups, refetchGroups, setActiveGroupId, requestJoinFlow, requestCreateFlow } = useGroup();
+  const { logout, person, email } = useAuth();
   const activeGroup = groups.find(g => g.id === activeGroupId);
   // Only the original LDG crew gets the Itinerary tab (hardcoded trip data).
   const visibleTabs = activeGroupId === G0_ID ? TABS : TABS.filter(t => t.id !== 'itinerary');
@@ -56,6 +56,20 @@ export default function App() {
     } catch {}
     setSettingsOpen(false);
   }, [activeGroupId, groups, refetchGroups, setActiveGroupId]);
+
+  // Fetch a shareable invite code for the active crew (members only). Returns the
+  // code string, or null on failure. Used by the "Invite to this crew" menu row.
+  const handleInvite = useCallback(async () => {
+    if (!activeGroupId) return null;
+    try {
+      const res = await apiFetch('/api/groups', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'invite', g: activeGroupId }),
+      });
+      const data = await res.json();
+      return res.ok ? data.code : null;
+    } catch { return null; }
+  }, [activeGroupId]);
 
   const handleDelete = useCallback(async () => {
     try {
@@ -107,16 +121,10 @@ export default function App() {
               {activeGroup?.name || 'Tomorrowland 2026'}
             </div>
           </div>
-          {/* Countdown + settings button */}
+          {/* Countdown — the account/settings menu now lives in the bottom-nav
+              name tap (see TripBar / Itinerary bottom bar → onOpenAccount). */}
           <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
             <Countdown target="2026-07-15" />
-            <button
-              aria-label="Settings"
-              onClick={() => setSettingsOpen(true)}
-              style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 6, color: '#938b81', fontSize: 18, lineHeight: 1 }}
-            >
-              ···
-            </button>
           </div>
         </div>
       </header>
@@ -185,8 +193,8 @@ export default function App() {
         <div key={resolvedTab} className="fx-fade" style={{ opacity: 1 }}>
           {/* Keyed by tab so switching tabs resets a crashed boundary. */}
           <ErrorBoundary key={resolvedTab}>
-            {resolvedTab === 'itinerary' && <ItineraryTab />}
-            {resolvedTab === 'lineup'    && <LineupTab    />}
+            {resolvedTab === 'itinerary' && <ItineraryTab onOpenAccount={() => setSettingsOpen(true)} />}
+            {resolvedTab === 'lineup'    && <LineupTab    onOpenAccount={() => setSettingsOpen(true)} />}
           </ErrorBoundary>
         </div>
       </main>
@@ -199,8 +207,12 @@ export default function App() {
         <SettingsSheet
           groups={groups}
           activeGroupId={activeGroupId}
+          person={person}
+          email={email}
           onSwitchGroup={gid => { setActiveGroupId(gid); setSettingsOpen(false); }}
           onJoinAnother={() => { setSettingsOpen(false); requestJoinFlow(); }}
+          onCreateAnother={() => { setSettingsOpen(false); requestCreateFlow(); }}
+          onInvite={handleInvite}
           onClose={() => setSettingsOpen(false)}
           onLeave={handleLeave}
           onDelete={handleDelete}
@@ -251,8 +263,27 @@ function InstallBanner() {
 }
 
 // ── Settings sheet ────────────────────────────────────────────────────────
-function SettingsSheet({ groups, activeGroupId, onSwitchGroup, onJoinAnother, onClose, onLeave, onDelete, onSignOut }) {
-  const [confirming, setConfirming] = useState(null); // null | 'leave' | 'delete'
+function SettingsSheet({ groups, activeGroupId, person, email, onSwitchGroup, onJoinAnother, onCreateAnother, onInvite, onClose, onLeave, onDelete, onSignOut }) {
+  const [confirming, setConfirming] = useState(null); // null | 'leave' | 'delete' | 'invite'
+  const [inviteCode, setInviteCode] = useState(null);
+  const [inviteBusy, setInviteBusy] = useState(false);
+  const [copied, setCopied] = useState(''); // '' | 'code' | 'link'
+
+  async function openInvite() {
+    setConfirming('invite'); setInviteBusy(true); setInviteCode(null); setCopied('');
+    const code = await onInvite();
+    setInviteCode(code); setInviteBusy(false);
+  }
+  async function copy(text, which) {
+    try { await navigator.clipboard.writeText(text); setCopied(which); setTimeout(() => setCopied(''), 1500); } catch {}
+  }
+  // Readable ink on a coloured avatar (luminance threshold, like GroupContext).
+  const avatarInk = (hex) => {
+    try {
+      const r = parseInt(hex.slice(1, 3), 16), g = parseInt(hex.slice(3, 5), 16), b = parseInt(hex.slice(5, 7), 16);
+      return (0.299 * r + 0.587 * g + 0.114 * b) / 255 > 0.6 ? '#1a1614' : '#fff';
+    } catch { return '#fff'; }
+  };
   const sans2  = { fontFamily: '"Inter", system-ui, sans-serif' };
   const mono2  = { fontFamily: '"JetBrains Mono", ui-monospace, monospace' };
   const ink2   = '#1a1614';
@@ -333,8 +364,50 @@ function SettingsSheet({ groups, activeGroupId, onSwitchGroup, onJoinAnother, on
               Cancel
             </button>
           </div>
+        ) : confirming === 'invite' ? (
+          <div>
+            <p style={{ ...sans2, fontSize: 14, color: ink2, marginBottom: 16, lineHeight: 1.5 }}>
+              Share this code (or link) so friends can join {activeGroup?.name ? <strong>{activeGroup.name}</strong> : 'this crew'}. Works for 30 days.
+            </p>
+            {inviteBusy ? (
+              <p style={{ ...sans2, fontSize: 14, color: muted2, marginBottom: 16 }}>Getting your code…</p>
+            ) : inviteCode ? (
+              <>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, padding: '14px 16px', marginBottom: 8, borderRadius: 12, background: '#f5efde', border: `1px solid ${rule2}` }}>
+                  <span style={{ ...mono2, fontSize: 20, letterSpacing: '0.2em', color: ink2 }}>{inviteCode}</span>
+                  <button type="button" onClick={() => copy(inviteCode, 'code')}
+                    style={{ border: 'none', background: 'none', cursor: 'pointer', ...sans2, fontSize: 13, fontWeight: 700, color: accent2 }}>
+                    {copied === 'code' ? 'Copied' : 'Copy'}
+                  </button>
+                </div>
+                <button type="button" onClick={() => copy(`${window.location.origin}/join/${inviteCode}`, 'link')}
+                  style={{ display: 'block', width: '100%', padding: '14px 0', marginBottom: 8, borderRadius: 12, border: `2px solid ${accent2}`, background: 'transparent', color: accent2, ...sans2, fontSize: 15, fontWeight: 700, cursor: 'pointer' }}>
+                  {copied === 'link' ? 'Invite link copied!' : 'Copy invite link'}
+                </button>
+              </>
+            ) : (
+              <p style={{ ...sans2, fontSize: 14, color: accent2, marginBottom: 16 }}>Couldn’t get a code — try again.</p>
+            )}
+            <button type="button" onClick={() => setConfirming(null)}
+              style={{ display: 'block', width: '100%', padding: '12px 0', background: 'none', border: 'none', ...sans2, fontSize: 14, color: muted2, cursor: 'pointer' }}>
+              Done
+            </button>
+          </div>
         ) : (
           <div>
+            {/* Signed-in identity — who you are (carried over from the old name menu) */}
+            {person && (
+              <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '4px 0 16px' }}>
+                <span aria-hidden="true" style={{ width: 36, height: 36, borderRadius: '50%', backgroundColor: activeGroup?.color || '#888', color: avatarInk(activeGroup?.color || '#888888'), display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 800, fontSize: 16, flexShrink: 0 }}>
+                  {person[0]?.toUpperCase()}
+                </span>
+                <span style={{ minWidth: 0 }}>
+                  <span style={{ display: 'block', ...sans2, fontSize: 16, fontWeight: 700, color: ink2 }}>{person}</span>
+                  {email && <span style={{ display: 'block', ...sans2, fontSize: 12, color: muted2, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{email}</span>}
+                </span>
+              </div>
+            )}
+
             {/* Group switcher — shown when user belongs to more than one crew */}
             {groups.length > 1 && (
               <>
@@ -363,8 +436,12 @@ function SettingsSheet({ groups, activeGroupId, onSwitchGroup, onJoinAnother, on
               </>
             )}
 
+            {rowBtn('Create a new crew', ink2, onCreateAnother)}
+            <div style={{ borderTop: `1px solid ${rule2}` }} />
             {rowBtn('Join another crew', ink2, onJoinAnother)}
             <div style={{ borderTop: `1px solid ${rule2}` }} />
+            {activeGroup && rowBtn('Invite to this crew', ink2, openInvite)}
+            {activeGroup && <div style={{ borderTop: `1px solid ${rule2}` }} />}
             {rowBtn('Sign out', ink2, onSignOut)}
             <div style={{ borderTop: `1px solid ${rule2}` }} />
             {rowBtn('Leave this crew', accent2, () => setConfirming('leave'))}
