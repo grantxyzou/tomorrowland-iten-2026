@@ -10,9 +10,13 @@
  *     need a connection, matching the app's revert-on-failure behaviour.
  *   - Google Fonts: stale-while-revalidate.
  *
- * Bump VERSION to invalidate all caches on a future change.
+ * VERSION is stamped per build (scripts/stamp-sw.mjs replaces __BUILD_ID__ with
+ * the deploy's git SHA) so the SW bytes change every deploy — that's what makes
+ * the browser detect an update and lets the page auto-refresh (see src/main.jsx).
+ * Unstamped (local) it stays the literal placeholder, which is fine: the SW only
+ * registers in production.
  */
-const VERSION = 'v4';
+const VERSION = '__BUILD_ID__';
 const SHELL  = `tml-shell-${VERSION}`;   // app shell + same-origin assets
 const API    = `tml-api-${VERSION}`;     // last-known /api/* (picks, lineup, status)
 const FONTS  = `tml-fonts-${VERSION}`;   // Google Fonts

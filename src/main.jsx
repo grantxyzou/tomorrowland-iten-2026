@@ -30,8 +30,31 @@ ReactDOM.createRoot(document.getElementById('root')).render(
 )
 
 // Register the PWA service worker in production only (keeps Vite HMR uncached).
+//
+// Auto-update: without this, an installed PWA keeps running the old in-memory
+// build on a warm resume — you'd have to force-quit to get a new deploy. The SW
+// already skipWaiting()s + clients.claim()s, so when a new version is detected it
+// takes control and fires `controllerchange`; we reload once to swap to it. We
+// also poke `reg.update()` on focus/visibility so a resumed PWA actually checks
+// for a new version. (sw.js is stamped per deploy, so its bytes change → the
+// browser detects the update. Pick writes live in a persisted outbox, so a
+// reload never loses anything.)
 if ('serviceWorker' in navigator && import.meta.env.PROD) {
   window.addEventListener('load', () => {
-    navigator.serviceWorker.register('/sw.js').catch(() => {})
+    // True when an SW already controls this page (i.e. a return visit). On a
+    // first-ever install the controller is null, so we must NOT reload then.
+    const hadController = !!navigator.serviceWorker.controller
+    let reloaded = false
+    navigator.serviceWorker.addEventListener('controllerchange', () => {
+      if (reloaded || !hadController) return
+      reloaded = true
+      window.location.reload()
+    })
+
+    navigator.serviceWorker.register('/sw.js').then((reg) => {
+      const checkForUpdate = () => { reg.update().catch(() => {}) }
+      document.addEventListener('visibilitychange', () => { if (!document.hidden) checkForUpdate() })
+      window.addEventListener('focus', checkForUpdate)
+    }).catch(() => {})
   })
 }
