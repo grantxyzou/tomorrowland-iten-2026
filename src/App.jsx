@@ -1,5 +1,6 @@
-import { useState, useCallback } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { Analytics } from '@vercel/analytics/react';
+import { usePresence } from './hooks/usePresence.js';
 import { LAST_UPDATED } from './data/trip.js';
 import ItineraryTab from './components/ItineraryTab.jsx';
 import LineupTab from './components/LineupTab.jsx';
@@ -28,6 +29,8 @@ const G0_ID = 'ldg';
 export default function App() {
   const [activeTab, setActiveTab] = useState('itinerary');
   const [settingsOpen, setSettingsOpen] = useState(false);
+  // Keep the sheet mounted through its slide-down exit (matches --dur-exit).
+  const settingsPresent = usePresence(settingsOpen, 240);
   const { activeGroupId, groups, refetchGroups, setActiveGroupId, requestJoinFlow, requestCreateFlow } = useGroup();
   const { logout, person, email } = useAuth();
   const activeGroup = groups.find(g => g.id === activeGroupId);
@@ -43,18 +46,25 @@ export default function App() {
   const accent   = '#a82a13';
   const cardBg   = '#f5efde';
 
+  // Returns { ok } on success, { denied, deniedBy } if Nunu blocks it, else { ok:false }.
   const handleLeave = useCallback(async () => {
-    if (!activeGroupId) return;
+    if (!activeGroupId) return { ok: false };
     try {
-      await apiFetch('/api/groups', {
+      const res = await apiFetch('/api/groups', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ action: 'leave', g: activeGroupId }),
       });
+      if (res.status === 403) {
+        const data = await res.json().catch(() => ({}));
+        if (data.error === 'denied') return { denied: true, deniedBy: data.deniedBy || 'Nunu' };
+      }
+      if (!res.ok) return { ok: false };
       await refetchGroups();
       // If no groups remain GroupGate shows onboarding; otherwise switch to first group.
       setActiveGroupId(groups.filter(g => g.id !== activeGroupId)[0]?.id || null);
-    } catch {}
-    setSettingsOpen(false);
+      setSettingsOpen(false);
+      return { ok: true };
+    } catch { return { ok: false }; }
   }, [activeGroupId, groups, refetchGroups, setActiveGroupId]);
 
   // Fetch a shareable invite code for the active crew (members only). Returns the
@@ -73,12 +83,18 @@ export default function App() {
 
   const handleDelete = useCallback(async () => {
     try {
-      await apiFetch('/api/auth', {
+      const res = await apiFetch('/api/auth', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ action: 'delete' }),
       });
-    } catch {}
-    logout();
+      if (res.status === 403) {
+        const data = await res.json().catch(() => ({}));
+        if (data.error === 'denied') return { denied: true, deniedBy: data.deniedBy || 'Nunu' };
+      }
+      if (!res.ok) return { ok: false };
+      logout();
+      return { ok: true };
+    } catch { return { ok: false }; }
   }, [logout]);
 
   // "Direction D — Midnight" background for the Lineup tab: cool nebula glows
@@ -203,8 +219,9 @@ export default function App() {
       <InstallBanner />
 
       {/* ── Settings overlay ─────────────────────────────── */}
-      {settingsOpen && (
+      {settingsPresent && (
         <SettingsSheet
+          open={settingsOpen}
           groups={groups}
           activeGroupId={activeGroupId}
           person={person}
@@ -263,11 +280,30 @@ function InstallBanner() {
 }
 
 // ── Settings sheet ────────────────────────────────────────────────────────
-function SettingsSheet({ groups, activeGroupId, person, email, onSwitchGroup, onJoinAnother, onCreateAnother, onInvite, onClose, onLeave, onDelete, onSignOut }) {
+function SettingsSheet({ open, groups, activeGroupId, person, email, onSwitchGroup, onJoinAnother, onCreateAnother, onInvite, onClose, onLeave, onDelete, onSignOut }) {
   const [confirming, setConfirming] = useState(null); // null | 'leave' | 'delete' | 'invite'
+
+  // Escape closes; lock background scroll while open (mirrors BottomSheet).
+  useEffect(() => {
+    const onKey = (e) => { if (e.key === 'Escape') onClose(); };
+    document.addEventListener('keydown', onKey);
+    const prevOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    return () => {
+      document.removeEventListener('keydown', onKey);
+      document.body.style.overflow = prevOverflow;
+    };
+  }, [onClose]);
   const [inviteCode, setInviteCode] = useState(null);
   const [inviteBusy, setInviteBusy] = useState(false);
   const [copied, setCopied] = useState(''); // '' | 'code' | 'link'
+  const [deniedBy, setDeniedBy] = useState('Nunu'); // who blocked a leave/delete
+
+  // Run a leave/delete; if Nunu blocks it (403 denied), show the denial instead.
+  async function attempt(fn) {
+    const r = await fn();
+    if (r?.denied) { setDeniedBy(r.deniedBy || 'Nunu'); setConfirming('denied'); }
+  }
 
   async function openInvite() {
     setConfirming('invite'); setInviteBusy(true); setInviteCode(null); setCopied('');
@@ -310,6 +346,8 @@ function SettingsSheet({ groups, activeGroupId, person, email, onSwitchGroup, on
       <div
         aria-hidden="true"
         onClick={onClose}
+        className="fx-overlay"
+        data-open={open}
         style={{ position: 'fixed', inset: 0, zIndex: 60, background: 'rgba(0,0,0,0.45)' }}
       />
 
@@ -318,6 +356,8 @@ function SettingsSheet({ groups, activeGroupId, person, email, onSwitchGroup, on
         role="dialog"
         aria-modal="true"
         aria-label="Settings"
+        className="fx-sheet"
+        data-open={open}
         style={{
           position: 'fixed', bottom: 0, left: 0, right: 0, zIndex: 61,
           background: '#ede7d8', borderRadius: '20px 20px 0 0',
@@ -341,7 +381,7 @@ function SettingsSheet({ groups, activeGroupId, person, email, onSwitchGroup, on
             <p style={{ ...sans2, fontSize: 14, color: ink2, marginBottom: 16, lineHeight: 1.5 }}>
               Leave this crew? Your picks and status will be removed from the crew.
             </p>
-            <button type="button" onClick={onLeave}
+            <button type="button" onClick={() => attempt(onLeave)}
               style={{ display: 'block', width: '100%', padding: '14px 0', marginBottom: 8, borderRadius: 12, border: 'none', background: '#a82a13', color: '#fff', ...sans2, fontSize: 15, fontWeight: 700, cursor: 'pointer' }}>
               Yes, leave crew
             </button>
@@ -355,7 +395,7 @@ function SettingsSheet({ groups, activeGroupId, person, email, onSwitchGroup, on
             <p style={{ ...sans2, fontSize: 14, color: ink2, marginBottom: 16, lineHeight: 1.5 }}>
               Delete your account? This removes all your data from every crew — permanently.
             </p>
-            <button type="button" onClick={onDelete}
+            <button type="button" onClick={() => attempt(onDelete)}
               style={{ display: 'block', width: '100%', padding: '14px 0', marginBottom: 8, borderRadius: 12, border: 'none', background: '#a82a13', color: '#fff', ...sans2, fontSize: 15, fontWeight: 700, cursor: 'pointer' }}>
               Yes, delete my account
             </button>
@@ -391,6 +431,17 @@ function SettingsSheet({ groups, activeGroupId, person, email, onSwitchGroup, on
             <button type="button" onClick={() => setConfirming(null)}
               style={{ display: 'block', width: '100%', padding: '12px 0', background: 'none', border: 'none', ...sans2, fontSize: 14, color: muted2, cursor: 'pointer' }}>
               Done
+            </button>
+          </div>
+        ) : confirming === 'denied' ? (
+          <div>
+            <p style={{ ...sans2, fontSize: 17, fontWeight: 700, color: ink2, marginBottom: 8, lineHeight: 1.45 }}>
+              No, your request has been denied by {deniedBy}.
+            </p>
+            <p style={{ ...sans2, fontSize: 14, color: muted2, marginBottom: 18 }}>Sorry. 🙅</p>
+            <button type="button" onClick={() => setConfirming(null)}
+              style={{ display: 'block', width: '100%', padding: '14px 0', borderRadius: 12, border: 'none', background: ink2, color: '#fff', ...sans2, fontSize: 15, fontWeight: 700, cursor: 'pointer' }}>
+              OK
             </button>
           </div>
         ) : (
