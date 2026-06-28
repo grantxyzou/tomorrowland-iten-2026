@@ -53,6 +53,33 @@ export function isNunu(email) {
   return isNunuEmail(email, process.env.NUNU_EMAILS || 'grantxyzou@gmail.com');
 }
 
+// Display-name rules + pick-field re-keying for the in-crew rename feature.
+// Picks are stored as `<setId>|<person>` (api/picks.js), so a name must not
+// contain "|", and re-keying splits on the LAST separator (setIds may contain "|").
+export const MAX_DISPLAY_LEN = 20;
+const PICK_SEP = '|';
+
+export function validateDisplayName(raw) {
+  const value = String(raw ?? '').trim();
+  if (!value) return { ok: false, error: 'name is required' };
+  if (value.length > MAX_DISPLAY_LEN) return { ok: false, error: 'name is too long' };
+  if (value.includes(PICK_SEP)) return { ok: false, error: 'name cannot contain "|"' };
+  return { ok: true, value };
+}
+
+// Given picks-hash field keys, return [oldField, newField] pairs for fields whose
+// person (the part after the last "|") exactly equals oldName, re-keyed to newName.
+export function remapPickFields(fieldKeys, oldName, newName) {
+  const out = [];
+  for (const field of fieldKeys || []) {
+    const s = String(field);
+    const i = s.lastIndexOf(PICK_SEP);
+    if (i === -1) continue;
+    if (s.slice(i + 1) === oldName) out.push([s, s.slice(0, i + 1) + newName]);
+  }
+  return out;
+}
+
 // Derive a stable display name for this user by checking group memberships
 // first (so existing crew members keep their pick-field-compatible name),
 // then falling back to Google's given_name, then the email local-part.

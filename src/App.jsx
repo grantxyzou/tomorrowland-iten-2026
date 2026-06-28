@@ -32,7 +32,7 @@ export default function App() {
   // Keep the sheet mounted through its slide-down exit (matches --dur-exit).
   const settingsPresent = usePresence(settingsOpen, 240);
   const { activeGroupId, groups, refetchGroups, setActiveGroupId, requestJoinFlow, requestCreateFlow } = useGroup();
-  const { logout, person, email } = useAuth();
+  const { logout, person, email, refresh } = useAuth();
   const activeGroup = groups.find(g => g.id === activeGroupId);
   // Only the original LDG crew gets the Itinerary tab (hardcoded trip data).
   const visibleTabs = activeGroupId === G0_ID ? TABS : TABS.filter(t => t.id !== 'itinerary');
@@ -80,6 +80,22 @@ export default function App() {
       return res.ok ? data.code : null;
     } catch { return null; }
   }, [activeGroupId]);
+
+  // Rename the signed-in user across all their crews. Returns {ok} or {ok:false,error}.
+  const handleRename = useCallback(async (name) => {
+    try {
+      const res = await apiFetch('/api/auth', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'rename', name }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) return { ok: false, error: data.error || 'Could not rename' };
+      await refresh();        // pick up the re-minted session.person
+      await refetchGroups();  // refresh roster (+ colorFor/inkFor) with the new name
+      setSettingsOpen(false);
+      return { ok: true };
+    } catch { return { ok: false, error: 'Network error — try again' }; }
+  }, [refresh, refetchGroups]);
 
   const handleDelete = useCallback(async () => {
     try {
@@ -231,6 +247,7 @@ export default function App() {
           onJoinAnother={() => { setSettingsOpen(false); requestJoinFlow(); }}
           onCreateAnother={() => { setSettingsOpen(false); requestCreateFlow(); }}
           onInvite={handleInvite}
+          onRename={handleRename}
           onClose={() => setSettingsOpen(false)}
           onLeave={handleLeave}
           onDelete={handleDelete}
@@ -281,8 +298,11 @@ function InstallBanner() {
 }
 
 // ── Settings sheet ────────────────────────────────────────────────────────
-function SettingsSheet({ open, dark, groups, activeGroupId, person, email, onSwitchGroup, onJoinAnother, onCreateAnother, onInvite, onClose, onLeave, onDelete, onSignOut }) {
-  const [confirming, setConfirming] = useState(null); // null | 'leave' | 'delete' | 'invite'
+function SettingsSheet({ open, dark, groups, activeGroupId, person, email, onSwitchGroup, onJoinAnother, onCreateAnother, onInvite, onRename, onClose, onLeave, onDelete, onSignOut }) {
+  const [confirming, setConfirming] = useState(null); // null | 'leave' | 'delete' | 'invite' | 'rename'
+  const [renameVal, setRenameVal] = useState('');
+  const [renameErr, setRenameErr] = useState('');
+  const [renameBusy, setRenameBusy] = useState(false);
 
   // Escape closes; lock background scroll while open (mirrors BottomSheet).
   useEffect(() => {
@@ -436,6 +456,37 @@ function SettingsSheet({ open, dark, groups, activeGroupId, person, email, onSwi
               Done
             </button>
           </div>
+        ) : confirming === 'rename' ? (
+          <div>
+            <p style={{ ...sans2, fontSize: 14, color: muted2, marginBottom: 12, lineHeight: 1.5 }}>
+              Your name shows to your crews and is used across all of them.
+            </p>
+            <input
+              value={renameVal}
+              onChange={e => { setRenameVal(e.target.value); setRenameErr(''); }}
+              maxLength={20}
+              autoFocus
+              placeholder="Your name"
+              aria-label="Your name"
+              style={{ width: '100%', boxSizing: 'border-box', minHeight: 48, borderRadius: 10, border: `1.5px solid ${rule2}`, padding: '0 14px', ...sans2, fontSize: 16, background: t.field, color: ink2, outline: 'none', marginBottom: renameErr ? 8 : 16 }}
+            />
+            {renameErr && <p style={{ ...sans2, fontSize: 13, color: accent2, margin: '0 0 12px' }}>{renameErr}</p>}
+            <button type="button" disabled={renameBusy || !renameVal.trim()}
+              onClick={async () => {
+                setRenameBusy(true); setRenameErr('');
+                const r = await onRename(renameVal.trim());
+                setRenameBusy(false);
+                if (!r?.ok) setRenameErr(r?.error || 'Could not rename');
+                // On success the sheet closes itself (App sets settingsOpen=false).
+              }}
+              style={{ display: 'block', width: '100%', padding: '14px 0', marginBottom: 8, borderRadius: 12, border: 'none', background: t.ink, color: t.bg, ...sans2, fontSize: 15, fontWeight: 700, cursor: 'pointer', opacity: (renameBusy || !renameVal.trim()) ? 0.55 : 1 }}>
+              {renameBusy ? 'Saving…' : 'Save'}
+            </button>
+            <button type="button" onClick={() => setConfirming(null)}
+              style={{ display: 'block', width: '100%', padding: '12px 0', background: 'none', border: 'none', ...sans2, fontSize: 14, color: muted2, cursor: 'pointer' }}>
+              Cancel
+            </button>
+          </div>
         ) : confirming === 'denied' ? (
           <div>
             <p style={{ ...sans2, fontSize: 17, fontWeight: 700, color: ink2, marginBottom: 8, lineHeight: 1.45 }}>
@@ -461,6 +512,9 @@ function SettingsSheet({ open, dark, groups, activeGroupId, person, email, onSwi
                 </span>
               </div>
             )}
+
+            {rowBtn('Change my name', ink2, () => { setRenameVal(person || ''); setRenameErr(''); setConfirming('rename'); })}
+            <div style={{ borderTop: `1px solid ${rule2}`, marginBottom: 4 }} />
 
             {/* Group switcher — shown when user belongs to more than one crew */}
             {groups.length > 1 && (
