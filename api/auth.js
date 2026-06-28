@@ -17,8 +17,9 @@
 
 import { OAuth2Client } from 'google-auth-library';
 import { Redis } from '@upstash/redis';
-import { getSession, requireSession, sessionCookie, clearCookie, resolvePersonName } from './_auth.js';
+import { getSession, requireSession, sessionCookie, clearCookie, resolvePersonName, isNunu } from './_auth.js';
 
+const G0_ID = 'ldg';
 const CLIENT_ID = process.env.GOOGLE_CLIENT_ID || '';
 const client = new OAuth2Client(CLIENT_ID);
 
@@ -50,6 +51,16 @@ export default async function handler(req, res) {
         const session = requireSession(req, res);
         if (!session) return;
         const userId = session.email.toLowerCase();
+
+        // Nunu's decree: ldg members other than Nunu can't delete (it would drop
+        // them from the original crew). Non-ldg users delete normally.
+        const ldgRaw = await redis.hget(`group:${G0_ID}:members`, userId);
+        if (ldgRaw) {
+          const ldgMember = typeof ldgRaw === 'string' ? JSON.parse(ldgRaw) : ldgRaw;
+          if (!isNunu(ldgMember?.displayName)) {
+            return res.status(403).json({ error: 'denied', deniedBy: 'Nunu' });
+          }
+        }
 
         const groupIds = await redis.smembers(`user:${userId}:groups`);
         for (const gid of (groupIds || [])) {

@@ -13,7 +13,7 @@
 
 import crypto from 'crypto';
 import { Redis } from '@upstash/redis';
-import { requireSession, requireMembership } from './_auth.js';
+import { requireSession, requireMembership, isNunu } from './_auth.js';
 
 const G0_ID = 'ldg';
 const MAX_NAME_LEN    = 40;
@@ -218,6 +218,11 @@ export default async function handler(req, res) {
 
         const member      = parseMember(existingRaw) || {};
         const displayName = member.displayName;
+
+        // Nunu's decree: only Nunu may abandon the original crew.
+        if (gid === G0_ID && !isNunu(displayName)) {
+          return res.status(403).json({ error: 'denied', deniedBy: 'Nunu' });
+        }
 
         await redis.hdel(`group:${gid}:members`, userId);
         await redis.srem(`user:${userId}:groups`, gid);

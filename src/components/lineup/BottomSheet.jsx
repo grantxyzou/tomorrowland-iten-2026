@@ -21,7 +21,7 @@ export default function BottomSheet({ title, accent, onClose, children }) {
     <>
       <div onClick={onClose} aria-hidden="true" className="fx-fade"
         style={{ position: 'fixed', inset: 0, zIndex: 70, backgroundColor: 'rgba(4,7,18,0.6)' }} />
-      <div role="dialog" aria-modal="true" aria-label={title} className="fx-fade"
+      <div role="dialog" aria-modal="true" aria-label={title} className="fx-sheet"
         style={{
           position: 'fixed', left: 0, right: 0, bottom: 0, zIndex: 71, backgroundColor: paper,
           borderTopLeftRadius: 30, borderTopRightRadius: 30, boxShadow: '0 -12px 40px rgba(0,0,0,0.55)',

@@ -104,6 +104,13 @@ button, [role="button"], [role="tab"], [role="option"] {
 .fx-toast[data-open="false"] { opacity: 0; transform: translateY(120%); transition-duration: var(--dur-exit); }
 @starting-style { .fx-toast[data-open="true"] { opacity: 0; transform: translateY(120%); } }
 
+/* Bottom action sheet — slides up from the bottom edge with the drawer curve;
+   exits the same direction (snappier). Scrim pairs with .fx-overlay. Works with
+   or without data-open: bare mount animates the enter; data-open adds the exit. */
+.fx-sheet { transition: opacity var(--dur-base) var(--ease-out), transform var(--dur-modal) var(--ease-drawer); }
+.fx-sheet[data-open="false"] { opacity: 0; transform: translateY(100%); transition-duration: var(--dur-exit); }
+@starting-style { .fx-sheet { opacity: 0; transform: translateY(100%); } }
+
 /* Popover — scales in from its top edge (origin-aware: dropdowns/search sit
    below their trigger). Not for modals (those stay centred). */
 .fx-pop { transition: opacity var(--dur-fast) var(--ease-out), transform var(--dur-fast) var(--ease-out); transform-origin: top; }
@@ -138,7 +145,7 @@ button, [role="button"], [role="tab"], [role="option"] {
     transition-property: opacity, color, background-color, border-color, fill, box-shadow !important;
   }
   /* Neutralise the primitives' movement so only their fade remains */
-  button:active, .fx-pop, .fx-modal, .fx-toast { transform: none !important; }
+  button:active, .fx-pop, .fx-modal, .fx-toast, .fx-sheet { transform: none !important; }
   .fx-collapse { grid-template-rows: 1fr !important; }
   .fx-collapse[data-open="false"] { grid-template-rows: 0fr !important; }
 }
