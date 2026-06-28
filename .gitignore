@@ -31,3 +31,7 @@ npm-debug.log*
 
 # Playwright MCP test artifacts
 .playwright-mcp/
+
+# Local MCP server config (activated from .mcp.json.proposed; may reference
+# local env vars — keep out of git).
+.mcp.json
