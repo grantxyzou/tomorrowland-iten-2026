@@ -222,6 +222,7 @@ export default function App() {
       {settingsPresent && (
         <SettingsSheet
           open={settingsOpen}
+          dark={dark}
           groups={groups}
           activeGroupId={activeGroupId}
           person={person}
@@ -280,7 +281,7 @@ function InstallBanner() {
 }
 
 // ── Settings sheet ────────────────────────────────────────────────────────
-function SettingsSheet({ open, groups, activeGroupId, person, email, onSwitchGroup, onJoinAnother, onCreateAnother, onInvite, onClose, onLeave, onDelete, onSignOut }) {
+function SettingsSheet({ open, dark, groups, activeGroupId, person, email, onSwitchGroup, onJoinAnother, onCreateAnother, onInvite, onClose, onLeave, onDelete, onSignOut }) {
   const [confirming, setConfirming] = useState(null); // null | 'leave' | 'delete' | 'invite'
 
   // Escape closes; lock background scroll while open (mirrors BottomSheet).
@@ -322,10 +323,12 @@ function SettingsSheet({ open, groups, activeGroupId, person, email, onSwitchGro
   };
   const sans2  = { fontFamily: '"Inter", system-ui, sans-serif' };
   const mono2  = { fontFamily: '"JetBrains Mono", ui-monospace, monospace' };
-  const ink2   = '#1a1614';
-  const muted2 = '#5c544c';
-  const rule2  = '#cabda4';
-  const accent2 = '#a82a13';
+  // Theme-aware palette: dark navy on the Lineup tab (matches the lineup sheets),
+  // light cream on the Itinerary tab. Aliases keep the JSX below unchanged.
+  const t = dark
+    ? { bg: '#10162e', ink: '#eef1fb', muted: '#9aa3c4', rule: '#243056', field: '#161d3a', activeRow: '#1a2347', accent: '#ff7a6b', dangerBg: '#c0392b' }
+    : { bg: '#ede7d8', ink: '#1a1614', muted: '#5c544c', rule: '#cabda4', field: '#f5efde', activeRow: '#e8dfc8', accent: '#a82a13', dangerBg: '#a82a13' };
+  const ink2 = t.ink, muted2 = t.muted, rule2 = t.rule, accent2 = t.accent;
   const activeGroup = groups.find(g => g.id === activeGroupId);
 
   const rowBtn = (label, color, onClick) => (
@@ -360,9 +363,9 @@ function SettingsSheet({ open, groups, activeGroupId, person, email, onSwitchGro
         data-open={open}
         style={{
           position: 'fixed', bottom: 0, left: 0, right: 0, zIndex: 61,
-          background: '#ede7d8', borderRadius: '20px 20px 0 0',
+          background: t.bg, borderRadius: '20px 20px 0 0',
           padding: '20px 24px calc(32px + env(safe-area-inset-bottom))',
-          boxShadow: '0 -4px 40px rgba(0,0,0,0.18)',
+          boxShadow: dark ? '0 -12px 40px rgba(0,0,0,0.55)' : '0 -4px 40px rgba(0,0,0,0.18)',
         }}
       >
         <div style={{ width: 36, height: 4, borderRadius: 2, background: rule2, margin: '0 auto 20px' }} />
@@ -382,7 +385,7 @@ function SettingsSheet({ open, groups, activeGroupId, person, email, onSwitchGro
               Leave this crew? Your picks and status will be removed from the crew.
             </p>
             <button type="button" onClick={() => attempt(onLeave)}
-              style={{ display: 'block', width: '100%', padding: '14px 0', marginBottom: 8, borderRadius: 12, border: 'none', background: '#a82a13', color: '#fff', ...sans2, fontSize: 15, fontWeight: 700, cursor: 'pointer' }}>
+              style={{ display: 'block', width: '100%', padding: '14px 0', marginBottom: 8, borderRadius: 12, border: 'none', background: t.dangerBg, color: '#fff', ...sans2, fontSize: 15, fontWeight: 700, cursor: 'pointer' }}>
               Yes, leave crew
             </button>
             <button type="button" onClick={() => setConfirming(null)}
@@ -396,7 +399,7 @@ function SettingsSheet({ open, groups, activeGroupId, person, email, onSwitchGro
               Delete your account? This removes all your data from every crew — permanently.
             </p>
             <button type="button" onClick={() => attempt(onDelete)}
-              style={{ display: 'block', width: '100%', padding: '14px 0', marginBottom: 8, borderRadius: 12, border: 'none', background: '#a82a13', color: '#fff', ...sans2, fontSize: 15, fontWeight: 700, cursor: 'pointer' }}>
+              style={{ display: 'block', width: '100%', padding: '14px 0', marginBottom: 8, borderRadius: 12, border: 'none', background: t.dangerBg, color: '#fff', ...sans2, fontSize: 15, fontWeight: 700, cursor: 'pointer' }}>
               Yes, delete my account
             </button>
             <button type="button" onClick={() => setConfirming(null)}
@@ -413,7 +416,7 @@ function SettingsSheet({ open, groups, activeGroupId, person, email, onSwitchGro
               <p style={{ ...sans2, fontSize: 14, color: muted2, marginBottom: 16 }}>Getting your code…</p>
             ) : inviteCode ? (
               <>
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, padding: '14px 16px', marginBottom: 8, borderRadius: 12, background: '#f5efde', border: `1px solid ${rule2}` }}>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, padding: '14px 16px', marginBottom: 8, borderRadius: 12, background: t.field, border: `1px solid ${rule2}` }}>
                   <span style={{ ...mono2, fontSize: 20, letterSpacing: '0.2em', color: ink2 }}>{inviteCode}</span>
                   <button type="button" onClick={() => copy(inviteCode, 'code')}
                     style={{ border: 'none', background: 'none', cursor: 'pointer', ...sans2, fontSize: 13, fontWeight: 700, color: accent2 }}>
@@ -440,7 +443,7 @@ function SettingsSheet({ open, groups, activeGroupId, person, email, onSwitchGro
             </p>
             <p style={{ ...sans2, fontSize: 14, color: muted2, marginBottom: 18 }}>Sorry. 🙅</p>
             <button type="button" onClick={() => setConfirming(null)}
-              style={{ display: 'block', width: '100%', padding: '14px 0', borderRadius: 12, border: 'none', background: ink2, color: '#fff', ...sans2, fontSize: 15, fontWeight: 700, cursor: 'pointer' }}>
+              style={{ display: 'block', width: '100%', padding: '14px 0', borderRadius: 12, border: 'none', background: t.ink, color: t.bg, ...sans2, fontSize: 15, fontWeight: 700, cursor: 'pointer' }}>
               OK
             </button>
           </div>
@@ -472,7 +475,7 @@ function SettingsSheet({ open, groups, activeGroupId, person, email, onSwitchGro
                       style={{
                         display: 'flex', alignItems: 'center', gap: 10,
                         padding: '10px 12px', borderRadius: 10, border: 'none', cursor: 'pointer',
-                        background: g.id === activeGroupId ? '#e8dfc8' : 'transparent',
+                        background: g.id === activeGroupId ? t.activeRow : 'transparent',
                         ...sans2, fontSize: 14, fontWeight: g.id === activeGroupId ? 700 : 400, color: ink2,
                         textAlign: 'left',
                       }}
