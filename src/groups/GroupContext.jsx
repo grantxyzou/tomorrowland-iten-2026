@@ -20,6 +20,8 @@ export function GroupProvider({ children }) {
   });
   // Incremented by requestJoinFlow(); GroupGate watches this to enter join mode.
   const [joinTrigger, setJoinTrigger] = useState(0);
+  // Incremented by requestCreateFlow(); GroupGate watches this to enter create mode.
+  const [createTrigger, setCreateTrigger] = useState(0);
 
   const refetchGroups = useCallback(async () => {
     try {
@@ -72,6 +74,7 @@ export function GroupProvider({ children }) {
       groups, members, activeGroupId, setActiveGroupId,
       colorFor, inkFor, refetchGroups, loading,
       joinTrigger, requestJoinFlow: () => setJoinTrigger(n => n + 1),
+      createTrigger, requestCreateFlow: () => setCreateTrigger(n => n + 1),
     }}>
       {children}
     </GroupContext.Provider>

@@ -8,6 +8,7 @@
 // GET  /api/groups?g=<gid>   → { id, name, members: [{userId, displayName, color, role}] }
 // POST {action:'create', name, displayName, color} → { gid, code }
 // POST {action:'join',   code, displayName, color} → { gid }
+// POST {action:'invite', g}                        → { code }   (members only)
 // POST {action:'leave',  g}                        → { ok: true }
 
 import crypto from 'crypto';
@@ -137,7 +138,7 @@ export default async function handler(req, res) {
         const now  = Date.now();
 
         await redis.set(`group:${gid}:meta`, JSON.stringify({
-          id: gid, name, createdBy: userId, createdAt: now,
+          id: gid, name, createdBy: userId, createdAt: now, code,
         }));
         await redis.hset(`group:${gid}:members`, {
           [userId]: JSON.stringify({ displayName, color, role: 'admin', joinedAt: now }),
@@ -184,6 +185,27 @@ export default async function handler(req, res) {
         });
         await redis.sadd(`user:${userId}:groups`, gid);
         return res.status(200).json({ gid });
+      }
+
+      // ── invite ─────────────────────────────────────────────────────────────
+      // Return a shareable join code for a crew the caller belongs to. Reuses the
+      // crew's stored code while it's still valid; otherwise mints a fresh one and
+      // persists it on the meta (so older crews like `ldg`, created before codes
+      // were stored, get one on first invite). Multiple codes → same gid is fine.
+      if (body.action === 'invite') {
+        const gid = String(body.g || '').trim();
+        if (!gid) return res.status(400).json({ error: 'g is required' });
+        const mem = await requireMembership(req, res, gid, redis);
+        if (!mem) return;
+
+        const meta = parseMember(await redis.get(`group:${gid}:meta`)) || {};
+        if (meta.code && (await redis.get(`joincode:${meta.code}`)) === gid) {
+          return res.status(200).json({ code: meta.code });
+        }
+        const code = genCode();
+        await redis.set(`joincode:${code}`, gid, { ex: CODE_TTL_SEC });
+        await redis.set(`group:${gid}:meta`, JSON.stringify({ ...meta, id: meta.id || gid, code }));
+        return res.status(200).json({ code });
       }
 
       // ── leave ─────────────────────────────────────────────────────────────
