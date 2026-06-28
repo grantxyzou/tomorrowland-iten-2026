@@ -39,11 +39,18 @@ export function personForEmail(email) {
 
 // Gag (Nunu's decree): in the original crew, only "Nunu" may leave or delete —
 // everyone else there (Desmond & Lawrence, the only other accounts) is blocked.
-// Nunu is identified by their crew display name (default "Grant"; override with
-// NUNU_NAME). Identity-by-name keeps it zero-config and robust to multiple emails.
-const NUNU_NAME = (process.env.NUNU_NAME || 'Grant').trim().toLowerCase();
-export function isNunu(displayName) {
-  return String(displayName || '').trim().toLowerCase() === NUNU_NAME;
+// Identified by EMAIL so it survives display-name renames. isNunuEmail is the
+// pure decision function (tested); isNunu wires in the env config.
+export function isNunuEmail(email, nunuEmails) {
+  const set = new Set(
+    String(nunuEmails || '').split(',').map(e => e.trim().toLowerCase()).filter(Boolean)
+  );
+  return set.has(String(email || '').trim().toLowerCase());
+}
+// Configure with NUNU_EMAILS (comma-separated); defaults to the owner so the
+// gag is zero-config.
+export function isNunu(email) {
+  return isNunuEmail(email, process.env.NUNU_EMAILS || 'grantxyzou@gmail.com');
 }
 
 // Derive a stable display name for this user by checking group memberships

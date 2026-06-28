@@ -220,7 +220,7 @@ export default async function handler(req, res) {
         const displayName = member.displayName;
 
         // Nunu's decree: only Nunu may abandon the original crew.
-        if (gid === G0_ID && !isNunu(displayName)) {
+        if (gid === G0_ID && !isNunu(userId)) {
           return res.status(403).json({ error: 'denied', deniedBy: 'Nunu' });
         }
 

@@ -54,12 +54,9 @@ export default async function handler(req, res) {
 
         // Nunu's decree: ldg members other than Nunu can't delete (it would drop
         // them from the original crew). Non-ldg users delete normally.
-        const ldgRaw = await redis.hget(`group:${G0_ID}:members`, userId);
-        if (ldgRaw) {
-          const ldgMember = typeof ldgRaw === 'string' ? JSON.parse(ldgRaw) : ldgRaw;
-          if (!isNunu(ldgMember?.displayName)) {
-            return res.status(403).json({ error: 'denied', deniedBy: 'Nunu' });
-          }
+        const inLdg = await redis.hexists(`group:${G0_ID}:members`, userId);
+        if (inLdg && !isNunu(userId)) {
+          return res.status(403).json({ error: 'denied', deniedBy: 'Nunu' });
         }
 
         const groupIds = await redis.smembers(`user:${userId}:groups`);
