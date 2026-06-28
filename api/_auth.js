@@ -67,6 +67,31 @@ export function validateDisplayName(raw) {
   return { ok: true, value };
 }
 
+export const MAX_KICKER_LEN = 40;
+
+// Per-crew header label (e.g. "Europe 2026"). Optional: blank/missing is valid
+// and means "fall back to the default". Trimmed and length-capped.
+export function validateKicker(raw) {
+  const value = String(raw ?? '').trim();
+  if (!value) return { ok: true, value: undefined };
+  if (value.length > MAX_KICKER_LEN) return { ok: false, error: 'kicker is too long' };
+  return { ok: true, value };
+}
+
+// Per-crew countdown target. Optional; when set it must be a real YYYY-MM-DD.
+// The round-trip check rejects impossible dates (e.g. 2027-02-30) that the Date
+// constructor would otherwise silently roll over.
+export function validateDepartureDate(raw) {
+  const value = String(raw ?? '').trim();
+  if (!value) return { ok: true, value: undefined };
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) return { ok: false, error: 'date must be YYYY-MM-DD' };
+  const d = new Date(value + 'T00:00:00Z');
+  if (Number.isNaN(d.getTime()) || d.toISOString().slice(0, 10) !== value) {
+    return { ok: false, error: 'invalid date' };
+  }
+  return { ok: true, value };
+}
+
 // Given picks-hash field keys, return [oldField, newField] pairs for fields whose
 // person (the part after the last "|") exactly equals oldName, re-keyed to newName.
 export function remapPickFields(fieldKeys, oldName, newName) {

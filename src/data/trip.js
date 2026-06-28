@@ -8,6 +8,12 @@
 export const LAST_UPDATED = '2026-06-07T12:00:00';
 export const LAST_UPDATE_NOTE = 'Initial build — all bookings current';
 
+// Defaults for the per-crew header (kicker label + countdown date). A crew that
+// didn't set its own (e.g. the original "ldg" crew) falls back to these, so the
+// header looks unchanged. New crews override them at creation (see GroupGate).
+export const DEFAULT_KICKER = 'Europe 2026';
+export const DEFAULT_DEPARTURE = '2026-07-15';
+
 // ─── Hotels ──────────────────────────────────────────────────
 const lindner = {
   name: 'Lindner Hotel Antwerp – JDV by Hyatt',

@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { Analytics } from '@vercel/analytics/react';
 import { usePresence } from './hooks/usePresence.js';
-import { LAST_UPDATED } from './data/trip.js';
+import { LAST_UPDATED, DEFAULT_KICKER, DEFAULT_DEPARTURE } from './data/trip.js';
 import ItineraryTab from './components/ItineraryTab.jsx';
 import LineupTab from './components/LineupTab.jsx';
 import ErrorBoundary from './components/ErrorBoundary.jsx';
@@ -147,7 +147,7 @@ export default function App() {
         <div style={{ maxWidth: 680, margin: '0 auto', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
           <div>
             <div style={{ ...mono, fontSize: 10, letterSpacing: '0.2em', textTransform: 'uppercase', color: '#938b81' }}>
-              Europe 2026
+              {activeGroup?.kicker || DEFAULT_KICKER}
             </div>
             <div style={{ fontSize: 14, fontWeight: 600, letterSpacing: '-0.01em', marginTop: 2 }}>
               {activeGroup?.name || 'Tomorrowland 2026'}
@@ -156,7 +156,7 @@ export default function App() {
           {/* Countdown — the account/settings menu now lives in the bottom-nav
               name tap (see TripBar / Itinerary bottom bar → onOpenAccount). */}
           <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
-            <Countdown target="2026-07-15" />
+            <Countdown target={activeGroup?.departureDate || DEFAULT_DEPARTURE} />
           </div>
         </div>
       </header>

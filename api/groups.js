@@ -4,16 +4,16 @@
 // A group is a private crew: members share picks, status, and a map.
 // Each group gets a short id (gid) and an 8-char join code for the /join/<CODE> link.
 //
-// GET  /api/groups           → { groups: [{id, name, role, displayName, color}] }
+// GET  /api/groups           → { groups: [{id, name, kicker, departureDate, role, displayName, color}] }
 // GET  /api/groups?g=<gid>   → { id, name, members: [{userId, displayName, color, role}] }
-// POST {action:'create', name, displayName, color} → { gid, code }
+// POST {action:'create', name, displayName, color, kicker?, departureDate?} → { gid, code }
 // POST {action:'join',   code, displayName, color} → { gid }
 // POST {action:'invite', g}                        → { code }   (members only)
 // POST {action:'leave',  g}                        → { ok: true }
 
 import crypto from 'crypto';
 import { Redis } from '@upstash/redis';
-import { requireSession, requireMembership, isNunu } from './_auth.js';
+import { requireSession, requireMembership, isNunu, validateKicker, validateDepartureDate } from './_auth.js';
 
 const G0_ID = 'ldg';
 const MAX_NAME_LEN    = 40;
@@ -108,7 +108,7 @@ export default async function handler(req, res) {
           if (!metaRaw || !memberRaw) return null;
           const meta   = parseMember(metaRaw) || {};
           const member = parseMember(memberRaw) || {};
-          return { id: gid, name: meta.name, role: member.role, displayName: member.displayName, color: member.color };
+          return { id: gid, name: meta.name, kicker: meta.kicker, departureDate: meta.departureDate, role: member.role, displayName: member.displayName, color: member.color };
         })
       );
       return res.status(200).json({ groups: groups.filter(Boolean) });
@@ -129,6 +129,12 @@ export default async function handler(req, res) {
         if (!displayName) return res.status(400).json({ error: 'displayName is required' });
         const color = PALETTE.includes(body.color) ? body.color : PALETTE[0];
 
+        // Optional per-crew header fields (fall back to app defaults when unset).
+        const kicker = validateKicker(body.kicker);
+        if (!kicker.ok) return res.status(400).json({ error: kicker.error });
+        const departureDate = validateDepartureDate(body.departureDate);
+        if (!departureDate.ok) return res.status(400).json({ error: departureDate.error });
+
         if (await checkRateLimit(redis, `ratelimit:create:${userId}`, MAX_CREATES_DAY, 86400)) {
           return res.status(429).json({ error: 'too many crews created today — try again tomorrow' });
         }
@@ -139,6 +145,8 @@ export default async function handler(req, res) {
 
         await redis.set(`group:${gid}:meta`, JSON.stringify({
           id: gid, name, createdBy: userId, createdAt: now, code,
+          ...(kicker.value        ? { kicker: kicker.value }               : {}),
+          ...(departureDate.value ? { departureDate: departureDate.value } : {}),
         }));
         await redis.hset(`group:${gid}:members`, {
           [userId]: JSON.stringify({ displayName, color, role: 'admin', joinedAt: now }),

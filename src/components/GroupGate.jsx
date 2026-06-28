@@ -79,6 +79,8 @@ export default function GroupGate({ children }) {
   const [crewName,     setCrewName]     = useState('');
   const [displayName,  setDisplayName]  = useState('');
   const [color,        setColor]        = useState(PALETTE[0]);
+  const [kicker,        setKicker]        = useState(''); // optional header label e.g. "Ibiza 2027"
+  const [departureDate, setDepartureDate] = useState(''); // optional YYYY-MM-DD countdown target
 
   // Join-crew form
   const [joinCode,    setJoinCode]    = useState('');
@@ -122,7 +124,7 @@ export default function GroupGate({ children }) {
       const res = await apiFetch('/api/groups', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ action: 'create', name: crewName.trim(), displayName: displayName.trim(), color }),
+        body: JSON.stringify({ action: 'create', name: crewName.trim(), displayName: displayName.trim(), color, kicker: kicker.trim(), departureDate }),
       });
       const data = await res.json();
       if (!res.ok) { setErr(data.error || 'Could not create crew'); return; }
@@ -209,6 +211,17 @@ export default function GroupGate({ children }) {
               {labelWrap('Crew name',
                 <input value={crewName} onChange={e => setCrewName(e.target.value)}
                   maxLength={40} required placeholder="e.g. The Budhole"
+                  style={inputStyle()} />
+              )}
+
+              {labelWrap('Trip label (optional)',
+                <input value={kicker} onChange={e => setKicker(e.target.value)}
+                  maxLength={40} placeholder="e.g. Europe 2026"
+                  style={inputStyle()} />
+              )}
+
+              {labelWrap('Departure date (optional)',
+                <input type="date" value={departureDate} onChange={e => setDepartureDate(e.target.value)}
                   style={inputStyle()} />
               )}
 
