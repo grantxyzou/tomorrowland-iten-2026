@@ -131,7 +131,8 @@ export default function App() {
   const activeIndex = visibleTabs.findIndex(t => t.id === resolvedTab);
 
   return (
-    <div style={{ minHeight: '100dvh', color: ink, position: 'relative' }}>
+    <>
+    <div className="app-shell" style={{ minHeight: '100dvh', color: ink, position: 'relative' }}>
 
       {/* Single page-level heading for screen readers / document outline. */}
       <h1 className="sr-only">Tomorrowland 2026 trip planner</h1>
@@ -257,21 +258,23 @@ export default function App() {
         />
       )}
 
-      {/* Printable itinerary (hidden on screen; revealed by the print stylesheet).
-          Only the original LDG crew has itinerary data. */}
-      {activeGroupId === G0_ID && (
-        <ItineraryPrintDoc
-          title={activeGroup?.kicker || DEFAULT_KICKER}
-          crewName={activeGroup?.name}
-          people={(members || []).map(m => m.displayName)}
-          days={days}
-        />
-      )}
-
       {/* Vercel Web Analytics — sends page views to /_vercel/insights (served
           automatically once Web Analytics is enabled for the project). */}
       <Analytics />
     </div>
+
+    {/* Printable itinerary — a SIBLING of the app shell (not nested) so the print
+        stylesheet can hide .app-shell entirely (display:none) without hiding this,
+        leaving no blank trailing pages. Only the original LDG crew has itinerary data. */}
+    {activeGroupId === G0_ID && (
+      <ItineraryPrintDoc
+        title={activeGroup?.kicker || DEFAULT_KICKER}
+        crewName={activeGroup?.name}
+        people={(members || []).map(m => m.displayName)}
+        days={days}
+      />
+    )}
+    </>
   );
 }
 

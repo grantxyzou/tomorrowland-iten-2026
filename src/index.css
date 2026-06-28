@@ -157,9 +157,13 @@ button, [role="button"], [role="tab"], [role="option"] {
 .print-doc { display: none; }
 
 @media print {
-  html { -webkit-print-color-adjust: exact; print-color-adjust: exact; background: #fff; }
-  body * { visibility: hidden; }
-  .print-doc, .print-doc * { visibility: visible; }
-  .print-doc { display: block; position: absolute; inset: 0; margin: 0; }
-  @page { margin: 18mm; }
+  html, body { background: #fff; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  /* The app shell is a SIBLING of .print-doc — remove it from the print flow
+     entirely (not just hide it) so it contributes no blank trailing pages. Then
+     the doc prints in normal flow. Identical on mobile and desktop print. */
+  .app-shell { display: none !important; }
+  .print-doc { display: block; }
+  /* Avoid splitting a day's block across pages where possible. */
+  .print-doc section { break-inside: avoid; }
+  @page { margin: 16mm; }
 }
