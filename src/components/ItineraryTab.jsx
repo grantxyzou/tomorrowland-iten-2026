@@ -8,6 +8,12 @@ import { useLocalTime } from '../hooks/useLocalTime.js';
 import { TomorrowlandMark, AirCanadaMark } from './BrandMarks.jsx';
 import { useAuth } from '../auth/AuthContext.jsx';
 import { useGroup } from '../groups/GroupContext.jsx';
+import { timeToMin } from './lineup/time.js';
+import SkyHeader from './itinerary/SkyHeader.jsx';
+import TimelineScrubber from './itinerary/TimelineScrubber.jsx';
+
+// Start minute of an event whose time is "HH:MM" or "HH:MM – HH:MM".
+const eventStartMin = (t) => timeToMin(String(t).slice(0, 5));
 
 // ── Palette ──────────────────────────────────────────────────
 const p = {
@@ -67,6 +73,28 @@ export default function ItineraryTab({ onOpenAccount }) {
   const { colorFor, inkFor } = useGroup();
   const myColor = colorFor(person);
 
+  // Sky timeline — one value drives everything (spec §1). `liveMinute` ticks from
+  // the device clock every 30s; `scrubMin` (null = live) holds a dragged minute.
+  const [scrubMin, setScrubMin] = useState(null);
+  const [liveMinute, setLiveMinute] = useState(() => {
+    const n = new Date(); return n.getHours() * 60 + n.getMinutes();
+  });
+  useEffect(() => {
+    const id = setInterval(() => {
+      const n = new Date(); setLiveMinute(n.getHours() * 60 + n.getMinutes());
+    }, 30000);
+    return () => clearInterval(id);
+  }, []);
+  const effectiveMinute = scrubMin ?? liveMinute;
+
+  // Header context derived from the existing day data (no new model this slice).
+  const today = todayIdx >= 0 ? days[todayIdx] : null;
+  const dayLabel = today ? `${today.month} ${today.dateNum}` : null;
+  const nextEvent = today?.events?.find(e => eventStartMin(e.time) >= effectiveMinute);
+  const nextLabel = nextEvent
+    ? (nextEvent.label.length > 34 ? nextEvent.label.slice(0, 33) + '…' : nextEvent.label)
+    : null;
+
   // Auto-scroll to today's card on mount
   useEffect(() => {
     if (todayIdx >= 0 && refs.current[todayIdx]) {
@@ -78,6 +106,18 @@ export default function ItineraryTab({ onOpenAccount }) {
 
   return (
     <>
+      {/* Sky header + scrubber — bleed out of the tab panel's 24px/16px padding
+          so the sky runs flush under the tab bar and to the column edges. */}
+      <div style={{ margin: '-24px -16px 16px', overflow: 'hidden', borderBottomLeftRadius: 14, borderBottomRightRadius: 14 }}>
+        <SkyHeader minute={effectiveMinute} dayLabel={dayLabel} nextLabel={nextLabel} />
+        <TimelineScrubber
+          minute={effectiveMinute}
+          isLive={scrubMin === null}
+          onScrub={setScrubMin}
+          onSync={() => setScrubMin(null)}
+        />
+      </div>
+
       <div style={{ display: 'flex', flexDirection: 'column', gap: 16, paddingBottom: 28 }}>
         {days.map((d, idx) => (
           <div key={d.dateNum} ref={el => refs.current[idx] = el}
