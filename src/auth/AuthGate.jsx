@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useAuth } from './AuthContext.jsx';
 import { tmrwGold, muted, clashRed, sans, display, mono } from '../components/lineup/theme.js';
+import { isInAppBrowser, platformOS, chromeIntentUrl } from '../lib/inAppBrowser.js';
 
 // Gates the whole app behind Google sign-in. While the session bootstraps we
 // show a splash; signed in → render the app; otherwise → the cinematic sign-in
@@ -94,9 +95,62 @@ function NameField({ bright }) {
   );
 }
 
+// Shown instead of the Google button when we're inside an in-app browser, where
+// Google blocks OAuth. Coaches the user into a real browser: a one-tap Chrome
+// escape on Android, an instruction on iOS, plus a copy-link both can use. A
+// quiet "try anyway" link keeps a false positive from locking anyone out.
+function WebViewCoach() {
+  const [copied, setCopied] = useState(false);
+  const os = platformOS();
+  const href = typeof window !== 'undefined' ? window.location.href : '/';
+
+  const copyLink = async () => {
+    try {
+      await navigator.clipboard.writeText(href);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch {
+      setCopied(false);
+    }
+  };
+
+  return (
+    <div role="group" aria-label="Open in your browser to sign in">
+      <div style={coachCard}>
+        <div style={{ ...sans, fontSize: 15, fontWeight: 700, color: '#fff', marginBottom: 6 }}>
+          Open in your browser to sign in
+        </div>
+        <div style={{ ...mono, fontSize: 11, color: '#8a8a8a', lineHeight: 1.55 }}>
+          Google blocks sign-in inside apps like Instagram and WhatsApp. Continue in your browser to finish.
+        </div>
+
+        {os === 'android' && (
+          <a href={chromeIntentUrl(href)} style={{ ...authBtn, marginTop: 16 }}>Open in Chrome</a>
+        )}
+        {os === 'ios' && (
+          <div style={{ ...sans, fontSize: 13, color: '#cbd2e8', lineHeight: 1.5, marginTop: 14 }}>
+            Tap the <strong>⋯</strong> or <strong>Share</strong> icon, then choose{' '}
+            <strong>&ldquo;Open in Browser&rdquo;</strong> (or &ldquo;Open in Safari&rdquo;).
+          </div>
+        )}
+
+        <button type="button" onClick={copyLink} style={{ ...authBtnGhost, marginTop: 10 }}>
+          {copied ? 'Link copied ✓' : 'Copy link'}
+        </button>
+      </div>
+
+      <a href="/api/oauth" style={tryAnyway}>Try signing in anyway &rarr;</a>
+    </div>
+  );
+}
+
 function SignIn() {
   const [error, setError] = useState(null);
   const [introOver, setIntroOver] = useState(() => prefersReduced());
+  // Detected once: are we inside an app's embedded browser (Instagram/WhatsApp/
+  // …) where Google refuses OAuth? If so we coach to a real browser instead of
+  // showing a dead "Sign in with Google" button.
+  const [inApp] = useState(() => isInAppBrowser());
 
   // Run the intro once, then settle. Skip button / unmount clear the timer.
   useEffect(() => {
@@ -154,18 +208,24 @@ function SignIn() {
                 Forget about Monday to Friday, &rsquo;cause we&rsquo;ve been working like a slave.
               </div>
 
-              {/* Sign-in is a plain top-level navigation to the server-side OAuth
-                  redirect flow (/api/oauth) — works in any browser that can follow
-                  a link. No client-side Google JS, no overlay. */}
-              <a href="/api/oauth" style={authBtn}>
-                <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true">
-                  <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" />
-                  <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" />
-                  <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l3.66-2.84z" />
-                  <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" />
-                </svg>
-                Sign in with Google
-              </a>
+              {inApp ? (
+                /* Opened inside an app's in-app browser — Google refuses OAuth
+                   here, so coach the user into a real browser instead. */
+                <WebViewCoach />
+              ) : (
+                /* Sign-in is a plain top-level navigation to the server-side OAuth
+                   redirect flow (/api/oauth) — works in any browser that can follow
+                   a link. No client-side Google JS, no overlay. */
+                <a href="/api/oauth" style={authBtn}>
+                  <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true">
+                    <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" />
+                    <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" />
+                    <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l3.66-2.84z" />
+                    <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" />
+                  </svg>
+                  Sign in with Google
+                </a>
+              )}
 
               <p style={{ ...mono, fontSize: 10, color: '#555', letterSpacing: '0.05em', lineHeight: 1.6, marginTop: 16, marginBottom: 0, textAlign: 'center' }}>
                 By signing in you agree to our{' '}
@@ -263,6 +323,23 @@ const authBtn = {
   borderRadius: 30, border: '1px solid #3c3c3c', background: '#202124', color: '#fff',
   ...sans, fontWeight: 500, fontSize: 15, letterSpacing: '0.25px',
   textDecoration: 'none', cursor: 'pointer',
+};
+
+const coachCard = {
+  border: '1px solid rgba(233,185,73,.28)', borderRadius: 14, background: 'rgba(233,185,73,.05)',
+  padding: '16px 16px 18px', textAlign: 'left',
+};
+
+const authBtnGhost = {
+  width: '100%', height: 46, boxSizing: 'border-box',
+  display: 'flex', alignItems: 'center', justifyContent: 'center',
+  borderRadius: 30, border: '1px solid #3c3c3c', background: 'transparent', color: '#eee',
+  ...sans, fontWeight: 500, fontSize: 14, cursor: 'pointer', textDecoration: 'none',
+};
+
+const tryAnyway = {
+  display: 'block', textAlign: 'center', marginTop: 14,
+  ...mono, fontSize: 11, letterSpacing: '0.04em', color: '#666', textDecoration: 'none',
 };
 
 const notch = {
