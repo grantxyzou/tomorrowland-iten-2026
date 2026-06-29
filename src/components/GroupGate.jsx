@@ -44,8 +44,18 @@ function inputStyle(override = {}) {
     minHeight: 48, borderRadius: 10, border: `1.5px solid ${rule}`,
     padding: '0 14px', ...sans, fontSize: 15,
     backgroundColor: field, color: ink, outline: 'none',
+    // The gate is a light surface — tell the browser so the native date picker's
+    // calendar icon + popup render in light scheme (not a washed-out dark icon).
+    colorScheme: 'light',
     ...override,
   };
+}
+
+// Today as YYYY-MM-DD (local) — used as the date input's min so past departure
+// dates can't be chosen.
+function todayISO() {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 }
 
 function labelWrap(label, input) {
@@ -222,6 +232,7 @@ export default function GroupGate({ children }) {
 
               {labelWrap('Departure date (optional)',
                 <input type="date" value={departureDate} onChange={e => setDepartureDate(e.target.value)}
+                  min={todayISO()} max="2099-12-31"
                   style={inputStyle()} />
               )}
 
