@@ -149,6 +149,10 @@ export default function App() {
   // high-contrast light palette, so the App chrome follows suit on that tab. The
   // Lineup tab is always dark.
   const dark = !(outdoor && resolvedTab === 'itinerary');
+  // On the Itinerary tab the sky gradient IS the header (it carries the kicker,
+  // crew name and countdown), so the dark masthead + updated banner are hidden
+  // and the tab bar sits at the very top.
+  const isItin = resolvedTab === 'itinerary';
   const lineupAccent = '#e9b949'; // gold active-tab indicator (Direction D spotlight)
   const activeIndex = visibleTabs.findIndex(t => t.id === resolvedTab);
 
@@ -166,36 +170,38 @@ export default function App() {
       <div aria-hidden="true" style={{ position: 'fixed', inset: 0, zIndex: -1, backgroundColor: paper, opacity: dark ? 0 : 1, transition: 'opacity var(--dur-theme) var(--ease-out)' }} />
       <div aria-hidden="true" style={{ position: 'fixed', inset: 0, zIndex: -1, backgroundColor: '#0a0e22', backgroundImage: lineupAtmosphere, opacity: dark ? 1 : 0, transition: 'opacity var(--dur-theme) var(--ease-out)' }} />
 
-      {/* ── Top bar ─────────────────────────────────────────── */}
-      <header style={{ backgroundColor: ink, color: paper, padding: '12px 16px', paddingTop: 'calc(12px + env(safe-area-inset-top))', position: 'sticky', top: 0, zIndex: 50 }}>
-        <div style={{ maxWidth: 680, margin: '0 auto', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-          <div>
-            <div style={{ ...mono, fontSize: 10, letterSpacing: '0.2em', textTransform: 'uppercase', color: '#938b81' }}>
-              {activeGroup?.kicker || DEFAULT_KICKER}
+      {/* ── Top bar ─── (hidden on Itinerary: the sky gradient is the header) ── */}
+      {!isItin && (
+        <header style={{ backgroundColor: ink, color: paper, padding: '12px 16px', paddingTop: 'calc(12px + env(safe-area-inset-top))', position: 'sticky', top: 0, zIndex: 50 }}>
+          <div style={{ maxWidth: 680, margin: '0 auto', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+            <div>
+              <div style={{ ...mono, fontSize: 10, letterSpacing: '0.2em', textTransform: 'uppercase', color: '#938b81' }}>
+                {activeGroup?.kicker || DEFAULT_KICKER}
+              </div>
+              <div style={{ fontSize: 14, fontWeight: 600, letterSpacing: '-0.01em', marginTop: 2 }}>
+                {activeGroup?.name || 'Tomorrowland 2026'}
+              </div>
             </div>
-            <div style={{ fontSize: 14, fontWeight: 600, letterSpacing: '-0.01em', marginTop: 2 }}>
-              {activeGroup?.name || 'Tomorrowland 2026'}
+            <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
+              <Countdown target={activeGroup?.departureDate || DEFAULT_DEPARTURE} />
             </div>
           </div>
-          {/* Countdown — the account/settings menu now lives in the bottom-nav
-              name tap (see TripBar / Itinerary bottom bar → onOpenAccount). */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
-            <Countdown target={activeGroup?.departureDate || DEFAULT_DEPARTURE} />
-          </div>
-        </div>
-      </header>
+        </header>
+      )}
 
-      {/* ── Last updated banner ─────────────────────────────── */}
-      <div style={{ backgroundColor: dark ? '#0c1228' : cardBg, borderBottom: `1px solid ${dark ? '#1c2342' : rule}`, padding: '6px 16px', transition: 'background-color var(--dur-theme) var(--ease-out), border-color var(--dur-theme) var(--ease-out)' }}>
-        <div style={{ maxWidth: 680, margin: '0 auto', display: 'flex', alignItems: 'center', gap: 8 }}>
-          <span style={{ ...mono, fontSize: 10, color: dark ? '#9aa3c4' : muted, letterSpacing: '0.12em', textTransform: 'uppercase', transition: 'color var(--dur-theme) var(--ease-out)' }}>
-            Updated {formatUpdated(LAST_UPDATED)}
-          </span>
+      {/* ── Last updated banner ─── (hidden on Itinerary) ── */}
+      {!isItin && (
+        <div style={{ backgroundColor: dark ? '#0c1228' : cardBg, borderBottom: `1px solid ${dark ? '#1c2342' : rule}`, padding: '6px 16px', transition: 'background-color var(--dur-theme) var(--ease-out), border-color var(--dur-theme) var(--ease-out)' }}>
+          <div style={{ maxWidth: 680, margin: '0 auto', display: 'flex', alignItems: 'center', gap: 8 }}>
+            <span style={{ ...mono, fontSize: 10, color: dark ? '#9aa3c4' : muted, letterSpacing: '0.12em', textTransform: 'uppercase', transition: 'color var(--dur-theme) var(--ease-out)' }}>
+              Updated {formatUpdated(LAST_UPDATED)}
+            </span>
+          </div>
         </div>
-      </div>
+      )}
 
       {/* ── Tab bar ─────────────────────────────────────────── */}
-      <nav role="tablist" aria-label="Sections" style={{ backgroundColor: dark ? '#0c1228' : paper, borderBottom: `1px solid ${dark ? '#1c2342' : rule}`, position: 'sticky', top: 53, zIndex: 40, transition: 'background-color var(--dur-theme) var(--ease-out), border-color var(--dur-theme) var(--ease-out)' }}>
+      <nav role="tablist" aria-label="Sections" style={{ backgroundColor: dark ? '#0c1228' : paper, borderBottom: `1px solid ${dark ? '#1c2342' : rule}`, position: 'sticky', top: isItin ? 0 : 53, zIndex: 40, paddingTop: isItin ? 'env(safe-area-inset-top)' : 0, transition: 'background-color var(--dur-theme) var(--ease-out), border-color var(--dur-theme) var(--ease-out)' }}>
         <div style={{ position: 'relative', maxWidth: 680, margin: '0 auto', display: 'flex', overflowX: 'auto' }} className="no-scrollbar">
           {visibleTabs.map(tab => {
             const active = resolvedTab === tab.id;
@@ -249,7 +255,7 @@ export default function App() {
         <div key={resolvedTab} className="fx-fade" style={{ opacity: 1 }}>
           {/* Keyed by tab so switching tabs resets a crashed boundary. */}
           <ErrorBoundary key={resolvedTab}>
-            {resolvedTab === 'itinerary' && <ItineraryTab onOpenAccount={() => setSettingsOpen(true)} freezeSky={freezeSky} outdoor={outdoor} />}
+            {resolvedTab === 'itinerary' && <ItineraryTab onOpenAccount={() => setSettingsOpen(true)} freezeSky={freezeSky} outdoor={outdoor} kicker={activeGroup?.kicker || DEFAULT_KICKER} crewName={activeGroup?.name} departureDate={activeGroup?.departureDate || DEFAULT_DEPARTURE} />}
             {resolvedTab === 'lineup'    && <LineupTab    onOpenAccount={() => setSettingsOpen(true)} />}
           </ErrorBoundary>
         </div>

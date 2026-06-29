@@ -121,7 +121,7 @@ const PREFERS_REDUCED_MOTION =
     ? window.matchMedia('(prefers-reduced-motion: reduce)').matches
     : false;
 
-export default function ItineraryTab({ onOpenAccount, freezeSky = false, outdoor = false }) {
+export default function ItineraryTab({ onOpenAccount, freezeSky = false, outdoor = false, kicker, crewName, departureDate }) {
   const todayIdx = getTodayIndex();
   const refs = useRef([]);
   const { person } = useAuth();
@@ -179,16 +179,19 @@ export default function ItineraryTab({ onOpenAccount, freezeSky = false, outdoor
           is a no-op. Sits over the App's static dark layer, behind all content. */}
       <div aria-hidden="true" style={{ position: 'fixed', inset: 0, zIndex: -1, backgroundColor: pal.canvas, transition: PREFERS_REDUCED_MOTION ? 'none' : 'background-color 1.2s linear' }} />
 
-      {/* Sky header + scrubber — bleed out of the tab panel's 24px/16px padding
-          so the sky runs flush under the tab bar and to the column edges. */}
+      {/* Sky header IS the page header now — it carries the kicker, crew name and
+          countdown (overlaid on the gradient). Bleeds out of the tab panel's
+          24px/16px padding so it runs flush under the tab bar and to the edges.
+          The scrubber lives in a fixed transport bar at the bottom (see below). */}
       <div style={{ margin: '-24px -16px 16px', overflow: 'hidden', borderBottomLeftRadius: 14, borderBottomRightRadius: 14 }}>
-        <SkyHeader minute={effectiveMinute} dayLabel={dayLabel} nextLabel={nextLabel} outdoor={outdoor} />
-        <TimelineScrubber
+        <SkyHeader
           minute={effectiveMinute}
-          isLive={scrubMin === null}
-          onScrub={setScrubMin}
-          onSync={() => setScrubMin(null)}
+          dayLabel={dayLabel}
+          nextLabel={nextLabel}
           outdoor={outdoor}
+          kicker={kicker}
+          crewName={crewName}
+          departureDate={departureDate}
         />
       </div>
 
@@ -226,26 +229,39 @@ export default function ItineraryTab({ onOpenAccount, freezeSky = false, outdoor
         </div>
       )}
 
-      {/* Bottom nav — mirrors the Lineup TripBar (fixed, safe-area), in the
-          Itinerary's light palette. Holds the account chip → shared menu. */}
-      {onOpenAccount && (
-        <div style={{ position: 'fixed', left: 0, right: 0, bottom: 0, zIndex: 45, paddingBottom: 'env(safe-area-inset-bottom)', backgroundColor: pal.bar, borderTop: `1px solid ${pal.rule}`, boxShadow: '0 -2px 16px rgba(0,0,0,0.35)' }}>
-          <div style={{ maxWidth: 680, margin: '0 auto', padding: '8px 16px' }}>
-            <button
-              onClick={onOpenAccount}
-              aria-haspopup="dialog"
-              aria-label={`Signed in as ${person}. Tap for account and crews.`}
-              style={{ display: 'inline-flex', alignItems: 'center', gap: 8, background: 'none', border: 'none', cursor: 'pointer', padding: '6px 8px', color: pal.ink, fontFamily: '"Inter", system-ui, sans-serif' }}
-            >
-              <span aria-hidden="true" style={{ width: 24, height: 24, borderRadius: '50%', backgroundColor: myColor, color: inkFor(person), display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 800, fontSize: 12 }}>
-                {person?.[0]?.toUpperCase()}
-              </span>
-              <span style={{ fontSize: 14, fontWeight: 600, maxWidth: 180, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{person}</span>
-              <ChevronDown size={14} color={pal.muted} />
-            </button>
+      {/* Spacer so scrollable content clears the fixed bottom transport bar. */}
+      <div aria-hidden="true" style={{ height: 150 }} />
+
+      {/* Fixed bottom transport bar — the timeline scrubber sits above the account
+          nav, like a media transport control: always visible while you scroll, and
+          it drives the sky header (top) + agenda (middle). */}
+      <div style={{ position: 'fixed', left: 0, right: 0, bottom: 0, zIndex: 45, paddingBottom: 'env(safe-area-inset-bottom)', boxShadow: '0 -2px 16px rgba(0,0,0,0.35)' }}>
+        <TimelineScrubber
+          minute={effectiveMinute}
+          isLive={scrubMin === null}
+          onScrub={setScrubMin}
+          onSync={() => setScrubMin(null)}
+          outdoor={outdoor}
+        />
+        {onOpenAccount && (
+          <div style={{ backgroundColor: pal.bar, borderTop: `1px solid ${pal.rule}` }}>
+            <div style={{ maxWidth: 680, margin: '0 auto', padding: '6px 16px' }}>
+              <button
+                onClick={onOpenAccount}
+                aria-haspopup="dialog"
+                aria-label={`Signed in as ${person}. Tap for account and crews.`}
+                style={{ display: 'inline-flex', alignItems: 'center', gap: 8, background: 'none', border: 'none', cursor: 'pointer', padding: '6px 8px', color: pal.ink, fontFamily: '"Inter", system-ui, sans-serif' }}
+              >
+                <span aria-hidden="true" style={{ width: 24, height: 24, borderRadius: '50%', backgroundColor: myColor, color: inkFor(person), display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 800, fontSize: 12 }}>
+                  {person?.[0]?.toUpperCase()}
+                </span>
+                <span style={{ fontSize: 14, fontWeight: 600, maxWidth: 180, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{person}</span>
+                <ChevronDown size={14} color={pal.muted} />
+              </button>
+            </div>
           </div>
-        </div>
-      )}
+        )}
+      </div>
     </PalCtx.Provider>
   );
 }
