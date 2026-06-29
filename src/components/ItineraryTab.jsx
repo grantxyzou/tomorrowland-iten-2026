@@ -230,37 +230,38 @@ export default function ItineraryTab({ onOpenAccount, freezeSky = false, outdoor
       )}
 
       {/* Spacer so scrollable content clears the fixed bottom transport bar. */}
-      <div aria-hidden="true" style={{ height: 150 }} />
+      <div aria-hidden="true" style={{ height: 176 }} />
 
-      {/* Fixed bottom transport bar — the timeline scrubber sits above the account
-          nav, like a media transport control: always visible while you scroll, and
-          it drives the sky header (top) + agenda (middle). */}
-      <div style={{ position: 'fixed', left: 0, right: 0, bottom: 0, zIndex: 45, paddingBottom: 'env(safe-area-inset-bottom)', boxShadow: '0 -2px 16px rgba(0,0,0,0.35)' }}>
-        <TimelineScrubber
-          minute={effectiveMinute}
-          isLive={scrubMin === null}
-          onScrub={setScrubMin}
-          onSync={() => setScrubMin(null)}
-          outdoor={outdoor}
-        />
-        {onOpenAccount && (
-          <div style={{ backgroundColor: pal.bar, borderTop: `1px solid ${pal.rule}` }}>
-            <div style={{ maxWidth: 680, margin: '0 auto', padding: '6px 16px' }}>
+      {/* Fixed bottom transport bar — the scrubber + account chip in one rounded,
+          contained bar that matches the Lineup tab's bottom bar (TripBar): same
+          surface, rounded top, shadow, and 680-wide centred column. The scrubber
+          drives the sky header (top) + agenda (middle) like a media transport. */}
+      <div style={{ position: 'fixed', left: 0, right: 0, bottom: 0, zIndex: 45 }}>
+        <div style={{ backgroundColor: pal.bar, borderTop: `1px solid ${pal.rule}`, borderTopLeftRadius: 22, borderTopRightRadius: 22, boxShadow: '0 -12px 30px rgba(0,0,0,0.45)', paddingBottom: 'env(safe-area-inset-bottom)' }}>
+          <div style={{ maxWidth: 680, margin: '0 auto', padding: '6px 16px 12px' }}>
+            <TimelineScrubber
+              minute={effectiveMinute}
+              isLive={scrubMin === null}
+              onScrub={setScrubMin}
+              onSync={() => setScrubMin(null)}
+              outdoor={outdoor}
+            />
+            {onOpenAccount && (
               <button
                 onClick={onOpenAccount}
                 aria-haspopup="dialog"
                 aria-label={`Signed in as ${person}. Tap for account and crews.`}
-                style={{ display: 'inline-flex', alignItems: 'center', gap: 8, background: 'none', border: 'none', cursor: 'pointer', padding: '6px 8px', color: pal.ink, fontFamily: '"Inter", system-ui, sans-serif' }}
+                style={{ marginTop: 8, display: 'inline-flex', alignItems: 'center', gap: 8, minHeight: 40, padding: '0 12px', borderRadius: 999, backgroundColor: pal.raised, border: `1px solid ${pal.rule}`, color: pal.ink, fontFamily: '"Inter", system-ui, sans-serif', fontSize: 14, fontWeight: 700, cursor: 'pointer' }}
               >
-                <span aria-hidden="true" style={{ width: 24, height: 24, borderRadius: '50%', backgroundColor: myColor, color: inkFor(person), display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 800, fontSize: 12 }}>
+                <span aria-hidden="true" style={{ width: 22, height: 22, borderRadius: '50%', backgroundColor: myColor, color: inkFor(person), display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 800, fontSize: 12 }}>
                   {person?.[0]?.toUpperCase()}
                 </span>
-                <span style={{ fontSize: 14, fontWeight: 600, maxWidth: 180, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{person}</span>
-                <ChevronDown size={14} color={pal.muted} />
+                <span style={{ maxWidth: 160, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{person}</span>
+                <ChevronDown size={13} color={pal.muted} />
               </button>
-            </div>
+            )}
           </div>
-        )}
+        </div>
       </div>
     </PalCtx.Provider>
   );

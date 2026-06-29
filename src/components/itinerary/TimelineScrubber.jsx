@@ -37,7 +37,7 @@ export default function TimelineScrubber({ minute, isLive, onScrub, onSync, outd
   const left = `${pct(minute)}%`;
 
   return (
-    <div style={{ background: c.bar, padding: '14px 18px 12px' }}>
+    <div style={{ padding: '8px 0 2px' }}>
       {/* Header row: label + Sync */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 }}>
         <span style={{ ...mono, fontSize: 9, letterSpacing: '0.18em', color: c.text }}>TIMELINE</span>
@@ -66,9 +66,12 @@ export default function TimelineScrubber({ minute, isLive, onScrub, onSync, outd
         </div>
       </div>
 
-      {/* Hour labels */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', ...mono, fontSize: 9, color: c.text, marginTop: 8, letterSpacing: '0.06em' }}>
-        <span>00:00</span><span>06:00</span><span>12:00</span><span>18:00</span><span>24:00</span>
+      {/* Hour labels — absolutely placed at their exact track percentages so each
+          sits under the thumb at that time (space-between insets the ends). */}
+      <div style={{ position: 'relative', height: 12, marginTop: 8, ...mono, fontSize: 9, color: c.text, letterSpacing: '0.06em' }}>
+        {[['00:00', 0], ['06:00', 25], ['12:00', 50], ['18:00', 75], ['24:00', 100]].map(([t, x]) => (
+          <span key={t} style={{ position: 'absolute', left: `${x}%`, transform: x === 0 ? 'none' : x === 100 ? 'translateX(-100%)' : 'translateX(-50%)' }}>{t}</span>
+        ))}
       </div>
     </div>
   );
