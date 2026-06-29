@@ -153,6 +153,44 @@ export default function App() {
   // crew name and countdown), so the dark masthead + updated banner are hidden
   // and the tab bar sits at the very top.
   const isItin = resolvedTab === 'itinerary';
+
+  // Tab switcher. `sticky` pins it below the masthead on the Lineup tab; on the
+  // Itinerary tab it's rendered (non-sticky) inside the sky banner instead.
+  const renderTabBar = (sticky) => (
+    <nav role="tablist" aria-label="Sections" style={{ backgroundColor: dark ? '#0c1228' : paper, borderBottom: `1px solid ${dark ? '#1c2342' : rule}`, ...(sticky ? { position: 'sticky', top: 53 } : { position: 'relative' }), zIndex: 40, transition: 'background-color var(--dur-theme) var(--ease-out), border-color var(--dur-theme) var(--ease-out)' }}>
+      <div style={{ position: 'relative', maxWidth: 680, margin: '0 auto', display: 'flex', overflowX: 'auto' }} className="no-scrollbar">
+        {visibleTabs.map(tab => {
+          const active = resolvedTab === tab.id;
+          return (
+            <button
+              key={tab.id}
+              role="tab"
+              id={`tab-${tab.id}`}
+              aria-selected={active}
+              aria-controls="tabpanel"
+              onClick={() => setActiveTab(tab.id)}
+              style={{
+                ...mono, flex: 1, padding: '12px 16px', minHeight: 44, fontSize: 11,
+                fontWeight: active ? 700 : 500, letterSpacing: '0.18em', textTransform: 'uppercase',
+                color: active ? (dark ? lineupAccent : accent) : (dark ? '#9aa3c4' : muted),
+                background: 'none', border: 'none', cursor: 'pointer', whiteSpace: 'nowrap',
+                transition: 'transform var(--dur-press) var(--ease-out), color var(--dur-base) var(--ease-out)',
+              }}
+            >
+              {tab.label}
+            </button>
+          );
+        })}
+        {/* Sliding active-tab indicator. */}
+        <span aria-hidden="true" style={{
+          position: 'absolute', bottom: 0, left: 0, height: 2, borderRadius: 2,
+          width: `${100 / visibleTabs.length}%`, transform: `translateX(${activeIndex * 100}%)`,
+          backgroundColor: dark ? lineupAccent : accent,
+          transition: 'transform var(--dur-base) var(--ease-drawer), background-color var(--dur-theme) var(--ease-out)',
+        }} />
+      </div>
+    </nav>
+  );
   const lineupAccent = '#e9b949'; // gold active-tab indicator (Direction D spotlight)
   const activeIndex = visibleTabs.findIndex(t => t.id === resolvedTab);
 
@@ -200,62 +238,22 @@ export default function App() {
         </div>
       )}
 
-      {/* ── Tab bar ─────────────────────────────────────────── */}
-      <nav role="tablist" aria-label="Sections" style={{ backgroundColor: dark ? '#0c1228' : paper, borderBottom: `1px solid ${dark ? '#1c2342' : rule}`, position: 'sticky', top: isItin ? 0 : 53, zIndex: 40, paddingTop: isItin ? 'env(safe-area-inset-top)' : 0, transition: 'background-color var(--dur-theme) var(--ease-out), border-color var(--dur-theme) var(--ease-out)' }}>
-        <div style={{ position: 'relative', maxWidth: 680, margin: '0 auto', display: 'flex', overflowX: 'auto' }} className="no-scrollbar">
-          {visibleTabs.map(tab => {
-            const active = resolvedTab === tab.id;
-            return (
-              <button
-                key={tab.id}
-                role="tab"
-                id={`tab-${tab.id}`}
-                aria-selected={active}
-                aria-controls="tabpanel"
-                onClick={() => setActiveTab(tab.id)}
-                style={{
-                  ...mono,
-                  flex: 1,
-                  padding: '12px 16px',
-                  minHeight: 44,
-                  fontSize: 11,
-                  fontWeight: active ? 700 : 500,
-                  letterSpacing: '0.18em',
-                  textTransform: 'uppercase',
-                  color: active ? (dark ? lineupAccent : accent) : (dark ? '#9aa3c4' : muted),
-                  background: 'none',
-                  border: 'none',
-                  cursor: 'pointer',
-                  whiteSpace: 'nowrap',
-                  transition: 'transform var(--dur-press) var(--ease-out), color var(--dur-base) var(--ease-out)',
-                }}
-              >
-                {tab.label}
-              </button>
-            );
-          })}
-          {/* Sliding active-tab indicator — glides between tabs and eases
-              its colour (rust → gold) as the theme crossfades. */}
-          <span aria-hidden="true" style={{
-            position: 'absolute', bottom: 0, left: 0, height: 2, borderRadius: 2,
-            width: `${100 / visibleTabs.length}%`, transform: `translateX(${activeIndex * 100}%)`,
-            backgroundColor: dark ? lineupAccent : accent,
-            transition: 'transform var(--dur-base) var(--ease-drawer), background-color var(--dur-theme) var(--ease-out)',
-          }} />
-        </div>
-      </nav>
+      {/* ── Tab bar ─── On Lineup it lives here (below the masthead). On Itinerary
+          it's moved into the sky banner (rendered inside ItineraryTab, before the
+          day selector), so the sky gradient is the very top of the page. ── */}
+      {!isItin && renderTabBar(true)}
 
       {/* ── Tab content ─────────────────────────────────────── */}
       <main
         id="tabpanel"
         role="tabpanel"
         aria-labelledby={`tab-${resolvedTab}`}
-        style={{ maxWidth: 680, margin: '0 auto', padding: '24px max(16px, env(safe-area-inset-right)) calc(64px + env(safe-area-inset-bottom)) max(16px, env(safe-area-inset-left))' }}
+        style={{ maxWidth: 680, margin: '0 auto', padding: `${isItin ? 'calc(24px + env(safe-area-inset-top))' : '24px'} max(16px, env(safe-area-inset-right)) calc(64px + env(safe-area-inset-bottom)) max(16px, env(safe-area-inset-left))` }}
       >
         <div key={resolvedTab} className="fx-fade" style={{ opacity: 1 }}>
           {/* Keyed by tab so switching tabs resets a crashed boundary. */}
           <ErrorBoundary key={resolvedTab}>
-            {resolvedTab === 'itinerary' && <ItineraryTab onOpenAccount={() => setSettingsOpen(true)} freezeSky={freezeSky} outdoor={outdoor} kicker={activeGroup?.kicker || DEFAULT_KICKER} crewName={activeGroup?.name} departureDate={activeGroup?.departureDate || DEFAULT_DEPARTURE} />}
+            {resolvedTab === 'itinerary' && <ItineraryTab onOpenAccount={() => setSettingsOpen(true)} freezeSky={freezeSky} outdoor={outdoor} kicker={activeGroup?.kicker || DEFAULT_KICKER} crewName={activeGroup?.name} departureDate={activeGroup?.departureDate || DEFAULT_DEPARTURE} tabBar={renderTabBar(false)} />}
             {resolvedTab === 'lineup'    && <LineupTab    onOpenAccount={() => setSettingsOpen(true)} />}
           </ErrorBoundary>
         </div>

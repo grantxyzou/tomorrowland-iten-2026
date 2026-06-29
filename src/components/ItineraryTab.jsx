@@ -121,7 +121,7 @@ const PREFERS_REDUCED_MOTION =
     ? window.matchMedia('(prefers-reduced-motion: reduce)').matches
     : false;
 
-export default function ItineraryTab({ onOpenAccount, freezeSky = false, outdoor = false, kicker, crewName, departureDate }) {
+export default function ItineraryTab({ onOpenAccount, freezeSky = false, outdoor = false, kicker, crewName, departureDate, tabBar = null }) {
   const todayIdx = getTodayIndex();
   const refs = useRef([]);
   const { person } = useAuth();
@@ -193,6 +193,8 @@ export default function ItineraryTab({ onOpenAccount, freezeSky = false, outdoor
           crewName={crewName}
           departureDate={departureDate}
         />
+        {/* Itinerary | Lineup switcher — the bottom strip of the sky banner. */}
+        {tabBar}
       </div>
 
       {/* Day selector + time-relative agenda are the primary view (spec §4). The
