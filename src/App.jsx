@@ -30,6 +30,16 @@ const G0_ID = 'ldg';
 export default function App() {
   const [activeTab, setActiveTab] = useState('itinerary');
   const [settingsOpen, setSettingsOpen] = useState(false);
+  // a11y (§8): persisted "Freeze sky" flag — pins the Itinerary sky/tint so it
+  // doesn't auto-advance (predictability for photosensitive/anxious users).
+  const [freezeSky, setFreezeSky] = useState(() => {
+    try { return localStorage.getItem('tml_freezeSky') === '1'; } catch { return false; }
+  });
+  const toggleFreezeSky = () => setFreezeSky(v => {
+    const nv = !v;
+    try { localStorage.setItem('tml_freezeSky', nv ? '1' : '0'); } catch {}
+    return nv;
+  });
   // Keep the sheet mounted through its slide-down exit (matches --dur-exit).
   const settingsPresent = usePresence(settingsOpen, 240);
   const { activeGroupId, groups, members, refetchGroups, setActiveGroupId, requestJoinFlow, requestCreateFlow } = useGroup();
@@ -229,7 +239,7 @@ export default function App() {
         <div key={resolvedTab} className="fx-fade" style={{ opacity: 1 }}>
           {/* Keyed by tab so switching tabs resets a crashed boundary. */}
           <ErrorBoundary key={resolvedTab}>
-            {resolvedTab === 'itinerary' && <ItineraryTab onOpenAccount={() => setSettingsOpen(true)} />}
+            {resolvedTab === 'itinerary' && <ItineraryTab onOpenAccount={() => setSettingsOpen(true)} freezeSky={freezeSky} />}
             {resolvedTab === 'lineup'    && <LineupTab    onOpenAccount={() => setSettingsOpen(true)} />}
           </ErrorBoundary>
         </div>
@@ -257,6 +267,8 @@ export default function App() {
           onDelete={handleDelete}
           onSignOut={() => { logout(); setSettingsOpen(false); }}
           onExportPdf={() => { setSettingsOpen(false); setTimeout(() => window.print(), 150); }}
+          freezeSky={freezeSky}
+          onToggleFreezeSky={toggleFreezeSky}
         />
       )}
 
@@ -316,7 +328,7 @@ function InstallBanner() {
 }
 
 // ── Settings sheet ────────────────────────────────────────────────────────
-function SettingsSheet({ open, dark, groups, activeGroupId, person, email, onSwitchGroup, onJoinAnother, onCreateAnother, onInvite, onRename, onClose, onLeave, onDelete, onSignOut, onExportPdf }) {
+function SettingsSheet({ open, dark, groups, activeGroupId, person, email, onSwitchGroup, onJoinAnother, onCreateAnother, onInvite, onRename, onClose, onLeave, onDelete, onSignOut, onExportPdf, freezeSky, onToggleFreezeSky }) {
   const [confirming, setConfirming] = useState(null); // null | 'leave' | 'delete' | 'invite' | 'rename'
   const [renameVal, setRenameVal] = useState('');
   const [renameErr, setRenameErr] = useState('');
@@ -568,6 +580,7 @@ function SettingsSheet({ open, dark, groups, activeGroupId, person, email, onSwi
             <div style={{ borderTop: `1px solid ${rule2}` }} />
             {activeGroup && rowBtn('Invite to this crew', ink2, openInvite)}
             {activeGroupId === G0_ID && rowBtn('Export itinerary as PDF', ink2, onExportPdf)}
+            {activeGroupId === G0_ID && rowBtn(`Freeze sky · ${freezeSky ? 'On' : 'Off'}`, ink2, onToggleFreezeSky)}
             {activeGroup && <div style={{ borderTop: `1px solid ${rule2}` }} />}
             {rowBtn('Sign out', ink2, onSignOut)}
             <div style={{ borderTop: `1px solid ${rule2}` }} />

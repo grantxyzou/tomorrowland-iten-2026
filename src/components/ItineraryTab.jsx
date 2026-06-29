@@ -102,7 +102,13 @@ function getTodayIndex() {
   return Math.min(diff, days.length - 1);
 }
 
-export default function ItineraryTab({ onOpenAccount }) {
+// a11y (§8): honour the OS "reduce motion" setting — read once at module load.
+const PREFERS_REDUCED_MOTION =
+  typeof window !== 'undefined' && window.matchMedia
+    ? window.matchMedia('(prefers-reduced-motion: reduce)').matches
+    : false;
+
+export default function ItineraryTab({ onOpenAccount, freezeSky = false }) {
   const todayIdx = getTodayIndex();
   const refs = useRef([]);
   const { person } = useAuth();
@@ -116,12 +122,17 @@ export default function ItineraryTab({ onOpenAccount }) {
   const [liveMinute, setLiveMinute] = useState(() => {
     const n = new Date(); return n.getHours() * 60 + n.getMinutes();
   });
+  // a11y (§8): "Freeze sky" pins the palette — pause the auto-advance so the sky
+  // and tint never change on their own (predictable for photosensitive users).
+  // Scrubbing still works on demand. Reduced-motion is handled separately (the
+  // 30s tick is already discrete, with no continuous animation).
   useEffect(() => {
+    if (freezeSky) return;
     const id = setInterval(() => {
       const n = new Date(); setLiveMinute(n.getHours() * 60 + n.getMinutes());
     }, 30000);
     return () => clearInterval(id);
-  }, []);
+  }, [freezeSky]);
   const effectiveMinute = scrubMin ?? liveMinute;
   const pal = useMemo(() => tintedPalette(effectiveMinute), [effectiveMinute]);
 
@@ -147,7 +158,7 @@ export default function ItineraryTab({ onOpenAccount }) {
       {/* Ambient backdrop — washes the whole tab warm at dawn / cool at dusk
           (spec §5). Outside those windows pal.canvas === the base canvas, so this
           is a no-op. Sits over the App's static dark layer, behind all content. */}
-      <div aria-hidden="true" style={{ position: 'fixed', inset: 0, zIndex: -1, backgroundColor: pal.canvas, transition: 'background-color 1.2s linear' }} />
+      <div aria-hidden="true" style={{ position: 'fixed', inset: 0, zIndex: -1, backgroundColor: pal.canvas, transition: PREFERS_REDUCED_MOTION ? 'none' : 'background-color 1.2s linear' }} />
 
       {/* Sky header + scrubber — bleed out of the tab panel's 24px/16px padding
           so the sky runs flush under the tab bar and to the column edges. */}
