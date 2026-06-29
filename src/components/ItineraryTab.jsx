@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useContext, useEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { ArrowDown, Check, Plane, Car, Clock, Bed, ChevronDown, QrCode, X } from 'lucide-react';
 import { days } from '../data/trip.js';
@@ -13,6 +13,19 @@ import SkyHeader from './itinerary/SkyHeader.jsx';
 import TimelineScrubber from './itinerary/TimelineScrubber.jsx';
 import AgendaPanel from './itinerary/AgendaPanel.jsx';
 import { agendaAt } from './itinerary/agenda.js';
+import { tintAt, mixSurface } from './itinerary/tint.js';
+
+// Surfaces carry the ambient dawn/dusk tint (spec §5); deeper surfaces take more.
+// Text/accent tokens never tint. PalCtx hands the (possibly tinted) surfaces down
+// so every card/panel reacts to the same effective minute as the sky.
+const PalCtx = React.createContext(p);
+const usePal = () => useContext(PalCtx);
+function tintedPalette(minute) {
+  const t = tintAt(minute);
+  if (!t.strength) return p;
+  const mix = (hex, mult) => mixSurface(hex, t, mult);
+  return { ...p, canvas: mix(p.canvas, 1.8), bar: mix(p.bar, 1.2), card: mix(p.card, 1.0), panel: mix(p.panel, 0.85), raised: mix(p.raised, 0.7) };
+}
 
 // Start minute of an event whose time is "HH:MM" or "HH:MM – HH:MM".
 const eventStartMin = (t) => timeToMin(String(t).slice(0, 5));
@@ -109,6 +122,7 @@ export default function ItineraryTab({ onOpenAccount }) {
     return () => clearInterval(id);
   }, []);
   const effectiveMinute = scrubMin ?? liveMinute;
+  const pal = useMemo(() => tintedPalette(effectiveMinute), [effectiveMinute]);
 
   // Header context derived from the existing day data (no new model this slice).
   const today = todayIdx >= 0 ? days[todayIdx] : null;
@@ -128,7 +142,12 @@ export default function ItineraryTab({ onOpenAccount }) {
   }, [todayIdx]);
 
   return (
-    <>
+    <PalCtx.Provider value={pal}>
+      {/* Ambient backdrop — washes the whole tab warm at dawn / cool at dusk
+          (spec §5). Outside those windows pal.canvas === the base canvas, so this
+          is a no-op. Sits over the App's static dark layer, behind all content. */}
+      <div aria-hidden="true" style={{ position: 'fixed', inset: 0, zIndex: -1, backgroundColor: pal.canvas, transition: 'background-color 1.2s linear' }} />
+
       {/* Sky header + scrubber — bleed out of the tab panel's 24px/16px padding
           so the sky runs flush under the tab bar and to the column edges. */}
       <div style={{ margin: '-24px -16px 16px', overflow: 'hidden', borderBottomLeftRadius: 14, borderBottomRightRadius: 14 }}>
@@ -179,7 +198,7 @@ export default function ItineraryTab({ onOpenAccount }) {
       {/* Bottom nav — mirrors the Lineup TripBar (fixed, safe-area), in the
           Itinerary's light palette. Holds the account chip → shared menu. */}
       {onOpenAccount && (
-        <div style={{ position: 'fixed', left: 0, right: 0, bottom: 0, zIndex: 45, paddingBottom: 'env(safe-area-inset-bottom)', backgroundColor: p.bar, borderTop: `1px solid ${p.rule}`, boxShadow: '0 -2px 16px rgba(0,0,0,0.35)' }}>
+        <div style={{ position: 'fixed', left: 0, right: 0, bottom: 0, zIndex: 45, paddingBottom: 'env(safe-area-inset-bottom)', backgroundColor: pal.bar, borderTop: `1px solid ${p.rule}`, boxShadow: '0 -2px 16px rgba(0,0,0,0.35)' }}>
           <div style={{ maxWidth: 680, margin: '0 auto', padding: '8px 16px' }}>
             <button
               onClick={onOpenAccount}
@@ -196,7 +215,7 @@ export default function ItineraryTab({ onOpenAccount }) {
           </div>
         </div>
       )}
-    </>
+    </PalCtx.Provider>
   );
 }
 
@@ -219,13 +238,14 @@ function PhaseDivider({ phase, idx }) {
 
 // ── Day card ─────────────────────────────────────────────────
 function DayCard({ d, isToday, dateStr }) {
+  const pal = usePal();
   const isGap       = d.isGap === true;
   const isTmrw      = d.isTomorrowland === true;
   const isFlightDay = d.travel?.isFlight === true;
 
   // Flight days are now ordinary dark cards; the Air Canada identity lives in the
   // (black/red) travel panel + watermark, so the card itself joins the dark ladder.
-  const cardBg    = isGap ? p.gapBg : isTmrw ? p.tmrwBg : p.card;
+  const cardBg    = isGap ? p.gapBg : isTmrw ? p.tmrwBg : pal.card;
   const cardBorder = isGap
     ? `1.5px dashed ${p.gapAccent}`
     : isTmrw
@@ -292,7 +312,8 @@ function DayCard({ d, isToday, dateStr }) {
 
 // ── Date chip ────────────────────────────────────────────────
 function DateChip({ d, isTmrw, isGap }) {
-  const bg    = isGap ? p.raised : isTmrw ? p.tmrwChipBg : p.raised;
+  const pal = usePal();
+  const bg    = isGap ? pal.raised : isTmrw ? p.tmrwChipBg : pal.raised;
   const label = isGap ? p.bodyMuted : isTmrw ? p.tmrwGold : p.accent;
   const month = isTmrw ? p.tmrwChipLabel : p.muted;
 
@@ -396,7 +417,8 @@ function WeatherPill({ weather, wmo, loading, isTmrw }) {
 function BookingRefs({ refs, isTmrw, isFlightDay }) {
   const [open, setOpen] = React.useState(false);
   const present = usePresence(open, 200);
-  const bg     = isFlightDay ? '#111' : isTmrw ? 'rgba(13,5,24,0.6)' : p.panel;
+  const pal = usePal();
+  const bg     = isFlightDay ? '#111' : isTmrw ? 'rgba(13,5,24,0.6)' : pal.panel;
   const border = isFlightDay ? '#222' : isTmrw ? p.tmrwPanelBorder : p.rule;
   const label  = isFlightDay ? p.acMuted : isTmrw ? p.tmrwBodyMuted : p.muted;
   const val    = isFlightDay ? '#fff' : isTmrw ? p.tmrwBodyText : p.ink;
@@ -432,13 +454,14 @@ function BookingRefs({ refs, isTmrw, isFlightDay }) {
 
 // ── Lodging panel ────────────────────────────────────────────
 function LodgingPanel({ lodging, isTmrw }) {
-  const bg     = isTmrw ? p.tmrwPanel : lodging.isGap ? p.gapBg : p.panel;
+  const pal = usePal();
+  const bg     = isTmrw ? p.tmrwPanel : lodging.isGap ? p.gapBg : pal.panel;
   const border = isTmrw ? p.tmrwPanelBorder : p.rule;
   const icon   = lodging.isGap ? p.gapAccent : isTmrw ? p.tmrwGold : p.accent;
   const label  = isTmrw ? p.tmrwBodyText : p.ink;
   const sub    = isTmrw ? p.tmrwBodyMuted : p.muted;
   const name   = lodging.isGap ? p.bodyMuted : isTmrw ? p.tmrwBodyText : p.ink;
-  const badgeBg = lodging.booked ? (isTmrw ? p.tmrwGold : p.raised) : 'transparent';
+  const badgeBg = lodging.booked ? (isTmrw ? p.tmrwGold : pal.raised) : 'transparent';
   const badgeBorder = lodging.booked ? 'none' : `1px solid ${lodging.isGap ? p.gapAccent : isTmrw ? p.tmrwGold : p.accent}`;
   const badgeText = lodging.booked ? (isTmrw ? p.tmrwChipBg : p.onDark) : (lodging.isGap ? p.gapAccent : isTmrw ? p.tmrwGold : p.accent);
 
@@ -472,7 +495,8 @@ function LodgingPanel({ lodging, isTmrw }) {
 
 // ── Schedule panel ───────────────────────────────────────────
 function SchedulePanel({ events, isTmrw }) {
-  const bg     = isTmrw ? p.tmrwPanel : p.panel;
+  const pal = usePal();
+  const bg     = isTmrw ? p.tmrwPanel : pal.panel;
   const border = isTmrw ? p.tmrwPanelBorder : p.rule;
   const label  = isTmrw ? p.tmrwBodyText : p.ink;
   const time   = isTmrw ? p.tmrwGold : p.accent;
@@ -584,18 +608,19 @@ function TravelPanel({ travel }) {
   const isFlight = travel.isFlight === true;
   const isCar    = travel.isCar === true;
 
-  const bg         = isFlight ? p.acBlack : p.panel;
+  const pal = usePal();
+  const bg         = isFlight ? p.acBlack : pal.panel;
   const border     = isFlight ? p.acBlack : p.rule;
   const icon       = isFlight ? p.acRed   : p.accent;
   const headLabel  = isFlight ? '#fff'    : p.ink;
   const fareColor  = isFlight ? p.acMuted : p.muted;
   const costColor  = isFlight ? '#fff'    : p.ink;
   const innerRule  = isFlight ? '#2a2a2a' : p.rule;
-  const chipBg     = isFlight ? p.acRed   : p.raised;
+  const chipBg     = isFlight ? p.acRed   : pal.raised;
   const chipText   = isFlight ? '#fff'    : p.onDark;
   const legFrom    = isFlight ? '#fff'    : p.ink;
   const legTime    = isFlight ? p.acMuted : p.muted;
-  const tagBg      = travel.booked ? (isFlight ? '#fff' : p.raised) : 'transparent';
+  const tagBg      = travel.booked ? (isFlight ? '#fff' : pal.raised) : 'transparent';
   const tagBorder  = travel.booked ? 'none' : `1px solid ${isFlight ? p.acRedText : p.accent}`;
   const tagText    = travel.booked ? (isFlight ? p.acRed : p.onDark) : (isFlight ? p.acRedText : p.accent);
   const checkColor = isFlight ? p.acRed : p.onDark;
