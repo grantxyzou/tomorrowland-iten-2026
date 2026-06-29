@@ -15,18 +15,6 @@ import AgendaPanel from './itinerary/AgendaPanel.jsx';
 import { agendaAt } from './itinerary/agenda.js';
 import { tintAt, mixSurface } from './itinerary/tint.js';
 
-// Surfaces carry the ambient dawn/dusk tint (spec §5); deeper surfaces take more.
-// Text/accent tokens never tint. PalCtx hands the (possibly tinted) surfaces down
-// so every card/panel reacts to the same effective minute as the sky.
-const PalCtx = React.createContext(p);
-const usePal = () => useContext(PalCtx);
-function tintedPalette(minute) {
-  const t = tintAt(minute);
-  if (!t.strength) return p;
-  const mix = (hex, mult) => mixSurface(hex, t, mult);
-  return { ...p, canvas: mix(p.canvas, 1.8), bar: mix(p.bar, 1.2), card: mix(p.card, 1.0), panel: mix(p.panel, 0.85), raised: mix(p.raised, 0.7) };
-}
-
 // Start minute of an event whose time is "HH:MM" or "HH:MM – HH:MM".
 const eventStartMin = (t) => timeToMin(String(t).slice(0, 5));
 
@@ -77,6 +65,19 @@ const p = {
   docInk: '#1a1614', docRule: '#cabda4',
 };
 const mono = { fontFamily: '"JetBrains Mono", ui-monospace, monospace' };
+
+// Surfaces carry the ambient dawn/dusk tint (spec §5); deeper surfaces take more.
+// Text/accent tokens never tint. PalCtx hands the (possibly tinted) surfaces down
+// so every card/panel reacts to the same effective minute as the sky. Defined
+// AFTER `p` so createContext(p) doesn't hit `p`'s temporal dead zone at load.
+const PalCtx = React.createContext(p);
+const usePal = () => useContext(PalCtx);
+function tintedPalette(minute) {
+  const t = tintAt(minute);
+  if (!t.strength) return p;
+  const mix = (hex, mult) => mixSurface(hex, t, mult);
+  return { ...p, canvas: mix(p.canvas, 1.8), bar: mix(p.bar, 1.2), card: mix(p.card, 1.0), panel: mix(p.panel, 0.85), raised: mix(p.raised, 0.7) };
+}
 
 // Format date as YYYY-MM-DD for weather API
 function dayToDateStr(day) {
