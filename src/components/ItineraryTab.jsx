@@ -40,6 +40,7 @@ const p = {
   accentInk: '#240a04', // dark ink on a bright accent / gold fill
   onDark:    '#eef1fb', // light text on a dark fill
   rule:      '#1c2342', // hairline divider
+  pillBg:    'rgba(255,255,255,0.06)', // subtle chip fill (weather pills)
   // Gap days — cool, de-emphasised, dashed.
   gapBg:     '#0c1430',
   gapAccent: '#8c93b8',
@@ -64,6 +65,18 @@ const p = {
   // Ticket viewer is an intentionally LIGHT document overlay — dark ink for it.
   docInk: '#1a1614', docRule: '#cabda4',
 };
+// Outdoor mode (§6) — a high-contrast LIGHT override for direct sunlight. Same
+// keys as the dark palette so every component is palette-agnostic; only surfaces,
+// text, accent, rule and gap flip. Festival/flight identity tokens are inherited
+// from `p` (they stay dark and distinct even on the light tab). No tint outdoors.
+const LIGHT = {
+  ...p,
+  canvas: '#dde3f0', bar: '#cdd6e8', card: '#f4f7fc', panel: '#e8edf6', raised: '#ffffff',
+  ink: '#060c1c', bodyMuted: '#2f3a54', muted: '#5b677f', caption: '#6b7690',
+  accent: '#a82a13', accentInk: '#ffffff', onDark: '#060c1c', rule: '#c2cdde',
+  gapBg: '#e4e9f3', gapAccent: '#6b7690', pillBg: 'rgba(0,0,0,0.05)',
+};
+
 const mono = { fontFamily: '"JetBrains Mono", ui-monospace, monospace' };
 
 // Surfaces carry the ambient dawn/dusk tint (spec §5); deeper surfaces take more.
@@ -108,7 +121,7 @@ const PREFERS_REDUCED_MOTION =
     ? window.matchMedia('(prefers-reduced-motion: reduce)').matches
     : false;
 
-export default function ItineraryTab({ onOpenAccount, freezeSky = false }) {
+export default function ItineraryTab({ onOpenAccount, freezeSky = false, outdoor = false }) {
   const todayIdx = getTodayIndex();
   const refs = useRef([]);
   const { person } = useAuth();
@@ -137,7 +150,9 @@ export default function ItineraryTab({ onOpenAccount, freezeSky = false }) {
     return () => clearInterval(id);
   }, [freezeSky]);
   const effectiveMinute = scrubMin ?? liveMinute;
-  const pal = useMemo(() => tintedPalette(effectiveMinute), [effectiveMinute]);
+  // Outdoor mode = fixed light palette (no tint). Otherwise the dark palette with
+  // the ambient dawn/dusk tint applied to surfaces.
+  const pal = useMemo(() => (outdoor ? LIGHT : tintedPalette(effectiveMinute)), [outdoor, effectiveMinute]);
 
   // The agenda + sky header reflect the selected day (the scrubber sets the time
   // within it). dayLabel/nextLabel come from the viewed day, not just "today".
@@ -167,12 +182,13 @@ export default function ItineraryTab({ onOpenAccount, freezeSky = false }) {
       {/* Sky header + scrubber — bleed out of the tab panel's 24px/16px padding
           so the sky runs flush under the tab bar and to the column edges. */}
       <div style={{ margin: '-24px -16px 16px', overflow: 'hidden', borderBottomLeftRadius: 14, borderBottomRightRadius: 14 }}>
-        <SkyHeader minute={effectiveMinute} dayLabel={dayLabel} nextLabel={nextLabel} />
+        <SkyHeader minute={effectiveMinute} dayLabel={dayLabel} nextLabel={nextLabel} outdoor={outdoor} />
         <TimelineScrubber
           minute={effectiveMinute}
           isLive={scrubMin === null}
           onScrub={setScrubMin}
           onSync={() => setScrubMin(null)}
+          outdoor={outdoor}
         />
       </div>
 
@@ -181,12 +197,12 @@ export default function ItineraryTab({ onOpenAccount, freezeSky = false }) {
           updates it; the full day-by-day list tucks behind a toggle. */}
       <DaySelector idx={viewDayIdx} isToday={viewDayIdx === todayIdx} onChange={setViewDayIdx} />
 
-      <AgendaPanel agenda={agendaAt(viewDay, effectiveMinute)} />
+      <AgendaPanel agenda={agendaAt(viewDay, effectiveMinute)} outdoor={outdoor} />
 
       <button
         onClick={() => setShowFull(f => !f)}
         aria-expanded={showFull}
-        style={{ width: '100%', background: 'none', border: 'none', cursor: 'pointer', ...mono, fontSize: 10, letterSpacing: '0.16em', textTransform: 'uppercase', color: p.muted, padding: '10px 0 14px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}
+        style={{ width: '100%', background: 'none', border: 'none', cursor: 'pointer', ...mono, fontSize: 10, letterSpacing: '0.16em', textTransform: 'uppercase', color: pal.muted, padding: '10px 0 14px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}
       >
         Full itinerary
         <ChevronDown size={12} style={{ transform: showFull ? 'rotate(180deg)' : 'none', transition: 'transform var(--dur-base) var(--ease-in-out)' }} />
@@ -213,19 +229,19 @@ export default function ItineraryTab({ onOpenAccount, freezeSky = false }) {
       {/* Bottom nav — mirrors the Lineup TripBar (fixed, safe-area), in the
           Itinerary's light palette. Holds the account chip → shared menu. */}
       {onOpenAccount && (
-        <div style={{ position: 'fixed', left: 0, right: 0, bottom: 0, zIndex: 45, paddingBottom: 'env(safe-area-inset-bottom)', backgroundColor: pal.bar, borderTop: `1px solid ${p.rule}`, boxShadow: '0 -2px 16px rgba(0,0,0,0.35)' }}>
+        <div style={{ position: 'fixed', left: 0, right: 0, bottom: 0, zIndex: 45, paddingBottom: 'env(safe-area-inset-bottom)', backgroundColor: pal.bar, borderTop: `1px solid ${pal.rule}`, boxShadow: '0 -2px 16px rgba(0,0,0,0.35)' }}>
           <div style={{ maxWidth: 680, margin: '0 auto', padding: '8px 16px' }}>
             <button
               onClick={onOpenAccount}
               aria-haspopup="dialog"
               aria-label={`Signed in as ${person}. Tap for account and crews.`}
-              style={{ display: 'inline-flex', alignItems: 'center', gap: 8, background: 'none', border: 'none', cursor: 'pointer', padding: '6px 8px', color: p.ink, fontFamily: '"Inter", system-ui, sans-serif' }}
+              style={{ display: 'inline-flex', alignItems: 'center', gap: 8, background: 'none', border: 'none', cursor: 'pointer', padding: '6px 8px', color: pal.ink, fontFamily: '"Inter", system-ui, sans-serif' }}
             >
               <span aria-hidden="true" style={{ width: 24, height: 24, borderRadius: '50%', backgroundColor: myColor, color: inkFor(person), display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 800, fontSize: 12 }}>
                 {person?.[0]?.toUpperCase()}
               </span>
               <span style={{ fontSize: 14, fontWeight: 600, maxWidth: 180, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{person}</span>
-              <ChevronDown size={14} color={p.muted} />
+              <ChevronDown size={14} color={pal.muted} />
             </button>
           </div>
         </div>
@@ -253,7 +269,7 @@ function DaySelector({ idx, isToday, onChange }) {
         <ChevronDown size={18} style={{ transform: 'rotate(90deg)' }} />
       </button>
       <div style={{ textAlign: 'center' }}>
-        <div style={{ ...mono, fontSize: 9, letterSpacing: '0.18em', color: isToday ? p.accent : pal.muted }}>
+        <div style={{ ...mono, fontSize: 9, letterSpacing: '0.18em', color: isToday ? pal.accent : pal.muted }}>
           {isToday ? 'TODAY' : 'DAY'}
         </div>
         <div style={{ ...mono, fontSize: 13, fontWeight: 700, color: pal.ink, letterSpacing: '0.04em' }}>
@@ -269,17 +285,18 @@ function DaySelector({ idx, isToday, onChange }) {
 
 // ── Phase divider ────────────────────────────────────────────
 function PhaseDivider({ phase, idx }) {
-  const color = phase.includes('OPEN') ? p.gapAccent
-              : phase === 'TOMORROWLAND' ? p.tmrwGold // gold reads on the dark canvas
-              : p.muted;
+  const pal = usePal();
+  const color = phase.includes('OPEN') ? pal.gapAccent
+              : phase === 'TOMORROWLAND' ? pal.tmrwGold // gold reads on the dark canvas
+              : pal.muted;
   return (
     <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 12, marginTop: idx === 0 ? 0 : 24 }}>
       {/* Lines on both sides so the label is always centred (incl. the first) */}
-      <div style={{ flex: 1, height: 1, backgroundColor: p.rule }} />
+      <div style={{ flex: 1, height: 1, backgroundColor: pal.rule }} />
       <span style={{ ...mono, fontSize: 10, letterSpacing: '0.25em', textTransform: 'uppercase', fontWeight: 700, color }}>
         {phase}
       </span>
-      <div style={{ flex: 1, height: 1, backgroundColor: p.rule }} />
+      <div style={{ flex: 1, height: 1, backgroundColor: pal.rule }} />
     </div>
   );
 }
@@ -293,14 +310,14 @@ function DayCard({ d, isToday, dateStr }) {
 
   // Flight days are now ordinary dark cards; the Air Canada identity lives in the
   // (black/red) travel panel + watermark, so the card itself joins the dark ladder.
-  const cardBg    = isGap ? p.gapBg : isTmrw ? p.tmrwBg : pal.card;
+  const cardBg    = isGap ? pal.gapBg : isTmrw ? pal.tmrwBg : pal.card;
   const cardBorder = isGap
-    ? `1.5px dashed ${p.gapAccent}`
+    ? `1.5px dashed ${pal.gapAccent}`
     : isTmrw
-    ? `1px solid ${p.tmrwBorder}`
+    ? `1px solid ${pal.tmrwBorder}`
     : isToday
-    ? `2px solid ${p.accent}`
-    : `1px solid ${p.rule}`;
+    ? `2px solid ${pal.accent}`
+    : `1px solid ${pal.rule}`;
 
   return (
     <div style={{ borderRadius: 8, overflow: 'hidden', border: cardBorder, backgroundColor: cardBg, position: 'relative' }}>
@@ -309,20 +326,20 @@ function DayCard({ d, isToday, dateStr }) {
         // Same fix as the flight card: fixed top anchor (no shift on expand) and
         // a positive right inset so the mark sits fully on-card, never clipped.
         <div aria-hidden="true" style={{ position: 'absolute', top: 18, right: 16, width: 132, height: 132, opacity: 0.09, pointerEvents: 'none', zIndex: 0 }}>
-          <TomorrowlandMark color={p.tmrwGold} style={{ width: '100%', height: '100%' }} />
+          <TomorrowlandMark color={pal.tmrwGold} style={{ width: '100%', height: '100%' }} />
         </div>
       )}
       {isFlightDay && (
         // Anchored to a fixed top (not 50% of a variable-height card, which made it
         // slide when Booking Refs expands) and inset fully on-card so it isn't clipped.
         <div aria-hidden="true" style={{ position: 'absolute', top: 18, right: 16, width: 132, height: 132, opacity: 0.08, pointerEvents: 'none', zIndex: 0 }}>
-          <AirCanadaMark color={p.acRed} style={{ width: '100%', height: '100%' }} />
+          <AirCanadaMark color={pal.acRed} style={{ width: '100%', height: '100%' }} />
         </div>
       )}
 
       {/* Today indicator */}
       {isToday && (
-        <div style={{ backgroundColor: p.accent, color: p.accentInk, textAlign: 'center', padding: '3px 0', fontSize: 10, letterSpacing: '0.2em', textTransform: 'uppercase', fontWeight: 700, ...mono }}>
+        <div style={{ backgroundColor: pal.accent, color: pal.accentInk, textAlign: 'center', padding: '3px 0', fontSize: 10, letterSpacing: '0.2em', textTransform: 'uppercase', fontWeight: 700, ...mono }}>
           Today
         </div>
       )}
@@ -361,18 +378,18 @@ function DayCard({ d, isToday, dateStr }) {
 // ── Date chip ────────────────────────────────────────────────
 function DateChip({ d, isTmrw, isGap }) {
   const pal = usePal();
-  const bg    = isGap ? pal.raised : isTmrw ? p.tmrwChipBg : pal.raised;
-  const label = isGap ? p.bodyMuted : isTmrw ? p.tmrwGold : p.accent;
-  const month = isTmrw ? p.tmrwChipLabel : p.muted;
+  const bg    = isGap ? pal.raised : isTmrw ? pal.tmrwChipBg : pal.raised;
+  const label = isGap ? pal.bodyMuted : isTmrw ? pal.tmrwGold : pal.accent;
+  const month = isTmrw ? pal.tmrwChipLabel : pal.muted;
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '16px 12px', backgroundColor: bg, color: p.onDark, minWidth: 80, flexShrink: 0 }}>
+    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '16px 12px', backgroundColor: bg, color: pal.onDark, minWidth: 80, flexShrink: 0 }}>
       <span style={{ ...mono, fontSize: 10, letterSpacing: '0.2em', textTransform: 'uppercase', color: month }}>{d.month}</span>
       <span style={{ fontSize: 36, fontWeight: 700, letterSpacing: '-0.02em', lineHeight: 1, marginTop: 2 }}>{d.dateNum}</span>
       <span style={{ ...mono, fontSize: 10, letterSpacing: '0.15em', textTransform: 'uppercase', fontWeight: 700, color: label, marginTop: 4 }}>{d.dayOfWeek.slice(0, 3)}</span>
       {isTmrw && (
         <div style={{ display: 'flex', gap: 3, marginTop: 8 }}>
-          {[p.tmlBlue, p.tmlRed, p.tmlGreen, p.tmlYellow].map((c, i) => (
+          {[pal.tmlBlue, pal.tmlRed, pal.tmlGreen, pal.tmlYellow].map((c, i) => (
             <span key={i} style={{ width: 5, height: 5, borderRadius: '50%', backgroundColor: c, display: 'block' }} />
           ))}
         </div>
@@ -383,14 +400,15 @@ function DateChip({ d, isTmrw, isGap }) {
 
 // ── Header content (city, status, weather, time) ─────────────
 function HeaderContent({ d, isTmrw, isGap, dateStr }) {
+  const pal = usePal();
   const { weather, wmo, loading } = useWeather(d.timezone, dateStr);
   const localTime = useLocalTime(d.timezone);
 
-  const cityColor  = isGap ? p.gapAccent : isTmrw ? p.tmrwGold : p.ink;
-  const dotColor   = isGap ? p.gapAccent : isTmrw ? p.tmrwGold : p.accent;
-  const statColor  = isGap ? p.gapAccent : isTmrw ? p.tmrwGold : p.accent;
-  const labelColor = isTmrw ? p.tmrwBodyMuted : p.muted;
-  const noteColor  = isTmrw ? p.tmrwBodyMuted : p.muted;
+  const cityColor  = isGap ? pal.gapAccent : isTmrw ? pal.tmrwGold : pal.ink;
+  const dotColor   = isGap ? pal.gapAccent : isTmrw ? pal.tmrwGold : pal.accent;
+  const statColor  = isGap ? pal.gapAccent : isTmrw ? pal.tmrwGold : pal.accent;
+  const labelColor = isTmrw ? pal.tmrwBodyMuted : pal.muted;
+  const noteColor  = isTmrw ? pal.tmrwBodyMuted : pal.muted;
 
   return (
     <div style={{ flex: 1, padding: '14px 16px', minWidth: 0 }}>
@@ -427,8 +445,9 @@ function HeaderContent({ d, isTmrw, isGap, dateStr }) {
 
 // ── Weather pill ─────────────────────────────────────────────
 function WeatherPill({ weather, wmo, loading, isTmrw }) {
-  const bg   = isTmrw ? 'rgba(232,184,75,0.12)' : 'rgba(255,255,255,0.06)';
-  const text = isTmrw ? p.tmrwGold : p.bodyMuted;
+  const pal = usePal();
+  const bg   = isTmrw ? 'rgba(232,184,75,0.12)' : pal.pillBg;
+  const text = isTmrw ? pal.tmrwGold : pal.bodyMuted;
   // display:flex (not inline-flex) so each chip stretches to fill its grid
   // cell; the grid gives every chip an equal width regardless of content.
   const chip = { display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 4, backgroundColor: bg, borderRadius: 4, padding: '3px 7px', ...mono, fontSize: 10, color: text, fontWeight: 600, whiteSpace: 'nowrap' };
@@ -467,9 +486,9 @@ function BookingRefs({ refs, isTmrw, isFlightDay }) {
   const present = usePresence(open, 200);
   const pal = usePal();
   const bg     = isFlightDay ? '#111' : isTmrw ? 'rgba(13,5,24,0.6)' : pal.panel;
-  const border = isFlightDay ? '#222' : isTmrw ? p.tmrwPanelBorder : p.rule;
-  const label  = isFlightDay ? p.acMuted : isTmrw ? p.tmrwBodyMuted : p.muted;
-  const val    = isFlightDay ? '#fff' : isTmrw ? p.tmrwBodyText : p.ink;
+  const border = isFlightDay ? '#222' : isTmrw ? pal.tmrwPanelBorder : pal.rule;
+  const label  = isFlightDay ? pal.acMuted : isTmrw ? pal.tmrwBodyMuted : pal.muted;
+  const val    = isFlightDay ? '#fff' : isTmrw ? pal.tmrwBodyText : pal.ink;
 
   return (
     <div style={{ borderTop: `1px solid ${border}`, backgroundColor: bg, position: 'relative', zIndex: 1 }}>
@@ -503,15 +522,15 @@ function BookingRefs({ refs, isTmrw, isFlightDay }) {
 // ── Lodging panel ────────────────────────────────────────────
 function LodgingPanel({ lodging, isTmrw }) {
   const pal = usePal();
-  const bg     = isTmrw ? p.tmrwPanel : lodging.isGap ? p.gapBg : pal.panel;
-  const border = isTmrw ? p.tmrwPanelBorder : p.rule;
-  const icon   = lodging.isGap ? p.gapAccent : isTmrw ? p.tmrwGold : p.accent;
-  const label  = isTmrw ? p.tmrwBodyText : p.ink;
-  const sub    = isTmrw ? p.tmrwBodyMuted : p.muted;
-  const name   = lodging.isGap ? p.bodyMuted : isTmrw ? p.tmrwBodyText : p.ink;
-  const badgeBg = lodging.booked ? (isTmrw ? p.tmrwGold : pal.raised) : 'transparent';
-  const badgeBorder = lodging.booked ? 'none' : `1px solid ${lodging.isGap ? p.gapAccent : isTmrw ? p.tmrwGold : p.accent}`;
-  const badgeText = lodging.booked ? (isTmrw ? p.tmrwChipBg : p.onDark) : (lodging.isGap ? p.gapAccent : isTmrw ? p.tmrwGold : p.accent);
+  const bg     = isTmrw ? pal.tmrwPanel : lodging.isGap ? pal.gapBg : pal.panel;
+  const border = isTmrw ? pal.tmrwPanelBorder : pal.rule;
+  const icon   = lodging.isGap ? pal.gapAccent : isTmrw ? pal.tmrwGold : pal.accent;
+  const label  = isTmrw ? pal.tmrwBodyText : pal.ink;
+  const sub    = isTmrw ? pal.tmrwBodyMuted : pal.muted;
+  const name   = lodging.isGap ? pal.bodyMuted : isTmrw ? pal.tmrwBodyText : pal.ink;
+  const badgeBg = lodging.booked ? (isTmrw ? pal.tmrwGold : pal.raised) : 'transparent';
+  const badgeBorder = lodging.booked ? 'none' : `1px solid ${lodging.isGap ? pal.gapAccent : isTmrw ? pal.tmrwGold : pal.accent}`;
+  const badgeText = lodging.booked ? (isTmrw ? pal.tmrwChipBg : pal.onDark) : (lodging.isGap ? pal.gapAccent : isTmrw ? pal.tmrwGold : pal.accent);
 
   return (
     <div style={{ borderTop: `1px solid ${border}`, backgroundColor: bg, padding: '14px 16px', position: 'relative', zIndex: 1 }}>
@@ -544,11 +563,11 @@ function LodgingPanel({ lodging, isTmrw }) {
 // ── Schedule panel ───────────────────────────────────────────
 function SchedulePanel({ events, isTmrw }) {
   const pal = usePal();
-  const bg     = isTmrw ? p.tmrwPanel : pal.panel;
-  const border = isTmrw ? p.tmrwPanelBorder : p.rule;
-  const label  = isTmrw ? p.tmrwBodyText : p.ink;
-  const time   = isTmrw ? p.tmrwGold : p.accent;
-  const text   = isTmrw ? p.tmrwBodyText : p.ink;
+  const bg     = isTmrw ? pal.tmrwPanel : pal.panel;
+  const border = isTmrw ? pal.tmrwPanelBorder : pal.rule;
+  const label  = isTmrw ? pal.tmrwBodyText : pal.ink;
+  const time   = isTmrw ? pal.tmrwGold : pal.accent;
+  const text   = isTmrw ? pal.tmrwBodyText : pal.ink;
 
   // Ticket modal: `ticket` is the current src (kept during the exit anim),
   // `ticketOpen` drives enter/exit so the close can animate before unmount.
@@ -589,6 +608,7 @@ function SchedulePanel({ events, isTmrw }) {
 // Almost-full-screen overlay that renders a booked ticket image. Closes on the
 // ✕ button, the backdrop, or Escape; locks body scroll and restores focus.
 function TicketModal({ open, src, onClose }) {
+  const pal = usePal();
   const present = usePresence(open, 240); // keep mounted through the exit anim
   const closeRef = useRef(null);
   const openerRef = useRef(null);
@@ -627,7 +647,7 @@ function TicketModal({ open, src, onClose }) {
       <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 8 }}>
         <button
           ref={closeRef} onClick={onClose} aria-label="Close ticket"
-          style={{ minWidth: 44, minHeight: 44, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 6, padding: '0 14px', borderRadius: 999, border: `1px solid ${p.docRule}`, backgroundColor: '#fff', color: p.docInk, ...mono, fontSize: 12, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', cursor: 'pointer' }}
+          style={{ minWidth: 44, minHeight: 44, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 6, padding: '0 14px', borderRadius: 999, border: `1px solid ${pal.docRule}`, backgroundColor: '#fff', color: pal.docInk, ...mono, fontSize: 12, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', cursor: 'pointer' }}
         >
           <X size={16} /> Close
         </button>
@@ -657,21 +677,21 @@ function TravelPanel({ travel }) {
   const isCar    = travel.isCar === true;
 
   const pal = usePal();
-  const bg         = isFlight ? p.acBlack : pal.panel;
-  const border     = isFlight ? p.acBlack : p.rule;
-  const icon       = isFlight ? p.acRed   : p.accent;
-  const headLabel  = isFlight ? '#fff'    : p.ink;
-  const fareColor  = isFlight ? p.acMuted : p.muted;
-  const costColor  = isFlight ? '#fff'    : p.ink;
-  const innerRule  = isFlight ? '#2a2a2a' : p.rule;
-  const chipBg     = isFlight ? p.acRed   : pal.raised;
-  const chipText   = isFlight ? '#fff'    : p.onDark;
-  const legFrom    = isFlight ? '#fff'    : p.ink;
-  const legTime    = isFlight ? p.acMuted : p.muted;
+  const bg         = isFlight ? pal.acBlack : pal.panel;
+  const border     = isFlight ? pal.acBlack : pal.rule;
+  const icon       = isFlight ? pal.acRed   : pal.accent;
+  const headLabel  = isFlight ? '#fff'    : pal.ink;
+  const fareColor  = isFlight ? pal.acMuted : pal.muted;
+  const costColor  = isFlight ? '#fff'    : pal.ink;
+  const innerRule  = isFlight ? '#2a2a2a' : pal.rule;
+  const chipBg     = isFlight ? pal.acRed   : pal.raised;
+  const chipText   = isFlight ? '#fff'    : pal.onDark;
+  const legFrom    = isFlight ? '#fff'    : pal.ink;
+  const legTime    = isFlight ? pal.acMuted : pal.muted;
   const tagBg      = travel.booked ? (isFlight ? '#fff' : pal.raised) : 'transparent';
-  const tagBorder  = travel.booked ? 'none' : `1px solid ${isFlight ? p.acRedText : p.accent}`;
-  const tagText    = travel.booked ? (isFlight ? p.acRed : p.onDark) : (isFlight ? p.acRedText : p.accent);
-  const checkColor = isFlight ? p.acRed : p.onDark;
+  const tagBorder  = travel.booked ? 'none' : `1px solid ${isFlight ? pal.acRedText : pal.accent}`;
+  const tagText    = travel.booked ? (isFlight ? pal.acRed : pal.onDark) : (isFlight ? pal.acRedText : pal.accent);
+  const checkColor = isFlight ? pal.acRed : pal.onDark;
 
   return (
     <div style={{ borderTop: `1px solid ${border}`, backgroundColor: bg, padding: '14px 16px', position: 'relative', overflow: 'hidden', zIndex: 1 }}>

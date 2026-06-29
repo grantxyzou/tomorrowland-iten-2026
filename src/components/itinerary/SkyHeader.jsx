@@ -10,10 +10,13 @@ import { display, mono } from '../lineup/theme.js';
 // No continuous animation: the gradient is recomputed per render (every 30s in
 // live mode, or on each scrub frame), so prefers-reduced-motion needs no special
 // case — there is nothing tweening.
-export default function SkyHeader({ minute, dayLabel, nextLabel }) {
-  const { top, bottom } = skyGradient(minute);
-  const body = celestial(minute);
-  const mode = skyMode(minute);
+export default function SkyHeader({ minute, dayLabel, nextLabel, outdoor = false }) {
+  // Outdoor mode (§6): fixed midday-blue sky for daylight legibility, regardless
+  // of the real time. The displayed clock still shows the actual/scrubbed minute.
+  const skyMin = outdoor ? 720 : minute;
+  const { top, bottom } = skyGradient(skyMin);
+  const body = celestial(skyMin);
+  const mode = skyMode(skyMin);
 
   // Map the arc's peak (0 horizon → 1 zenith) into the drawable band.
   const yPct = 92 - body.peak * 74;

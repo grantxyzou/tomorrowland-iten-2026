@@ -40,6 +40,15 @@ export default function App() {
     try { localStorage.setItem('tml_freezeSky', nv ? '1' : '0'); } catch {}
     return nv;
   });
+  // §6 Outdoor mode: persisted high-contrast LIGHT override for daylight legibility.
+  const [outdoor, setOutdoor] = useState(() => {
+    try { return localStorage.getItem('tml_outdoor') === '1'; } catch { return false; }
+  });
+  const toggleOutdoor = () => setOutdoor(v => {
+    const nv = !v;
+    try { localStorage.setItem('tml_outdoor', nv ? '1' : '0'); } catch {}
+    return nv;
+  });
   // Keep the sheet mounted through its slide-down exit (matches --dur-exit).
   const settingsPresent = usePresence(settingsOpen, 240);
   const { activeGroupId, groups, members, refetchGroups, setActiveGroupId, requestJoinFlow, requestCreateFlow } = useGroup();
@@ -136,9 +145,10 @@ export default function App() {
     'linear-gradient(178deg, #0d1430 0%, #0a0e22 55%, #070b1c 100%)';
 
   // Dark-theme chrome only on the Lineup tab.
-  // Both tabs are dark-themed now (the Itinerary tab joined the dark token ladder
-  // in the Sky Timeline work). §6 "outdoor mode" will later override this to light.
-  const dark = true;
+  // Both tabs are dark-themed; §6 outdoor mode flips the Itinerary tab (only) to a
+  // high-contrast light palette, so the App chrome follows suit on that tab. The
+  // Lineup tab is always dark.
+  const dark = !(outdoor && resolvedTab === 'itinerary');
   const lineupAccent = '#e9b949'; // gold active-tab indicator (Direction D spotlight)
   const activeIndex = visibleTabs.findIndex(t => t.id === resolvedTab);
 
@@ -239,7 +249,7 @@ export default function App() {
         <div key={resolvedTab} className="fx-fade" style={{ opacity: 1 }}>
           {/* Keyed by tab so switching tabs resets a crashed boundary. */}
           <ErrorBoundary key={resolvedTab}>
-            {resolvedTab === 'itinerary' && <ItineraryTab onOpenAccount={() => setSettingsOpen(true)} freezeSky={freezeSky} />}
+            {resolvedTab === 'itinerary' && <ItineraryTab onOpenAccount={() => setSettingsOpen(true)} freezeSky={freezeSky} outdoor={outdoor} />}
             {resolvedTab === 'lineup'    && <LineupTab    onOpenAccount={() => setSettingsOpen(true)} />}
           </ErrorBoundary>
         </div>
@@ -269,6 +279,8 @@ export default function App() {
           onExportPdf={() => { setSettingsOpen(false); setTimeout(() => window.print(), 150); }}
           freezeSky={freezeSky}
           onToggleFreezeSky={toggleFreezeSky}
+          outdoor={outdoor}
+          onToggleOutdoor={toggleOutdoor}
         />
       )}
 
@@ -328,7 +340,7 @@ function InstallBanner() {
 }
 
 // ── Settings sheet ────────────────────────────────────────────────────────
-function SettingsSheet({ open, dark, groups, activeGroupId, person, email, onSwitchGroup, onJoinAnother, onCreateAnother, onInvite, onRename, onClose, onLeave, onDelete, onSignOut, onExportPdf, freezeSky, onToggleFreezeSky }) {
+function SettingsSheet({ open, dark, groups, activeGroupId, person, email, onSwitchGroup, onJoinAnother, onCreateAnother, onInvite, onRename, onClose, onLeave, onDelete, onSignOut, onExportPdf, freezeSky, onToggleFreezeSky, outdoor, onToggleOutdoor }) {
   const [confirming, setConfirming] = useState(null); // null | 'leave' | 'delete' | 'invite' | 'rename'
   const [renameVal, setRenameVal] = useState('');
   const [renameErr, setRenameErr] = useState('');
@@ -581,6 +593,7 @@ function SettingsSheet({ open, dark, groups, activeGroupId, person, email, onSwi
             {activeGroup && rowBtn('Invite to this crew', ink2, openInvite)}
             {activeGroupId === G0_ID && rowBtn('Export itinerary as PDF', ink2, onExportPdf)}
             {activeGroupId === G0_ID && rowBtn(`Freeze sky · ${freezeSky ? 'On' : 'Off'}`, ink2, onToggleFreezeSky)}
+            {activeGroupId === G0_ID && rowBtn(`Outdoor mode · ${outdoor ? 'On' : 'Off'}`, ink2, onToggleOutdoor)}
             {activeGroup && <div style={{ borderTop: `1px solid ${rule2}` }} />}
             {rowBtn('Sign out', ink2, onSignOut)}
             <div style={{ borderTop: `1px solid ${rule2}` }} />
