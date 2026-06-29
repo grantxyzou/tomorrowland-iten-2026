@@ -15,28 +15,38 @@ import TimelineScrubber from './itinerary/TimelineScrubber.jsx';
 // Start minute of an event whose time is "HH:MM" or "HH:MM – HH:MM".
 const eventStartMin = (t) => timeToMin(String(t).slice(0, 5));
 
-// ── Palette ──────────────────────────────────────────────────
+// ── Palette — dark-first, aligned to the Lineup token ladder (theme.js) so the
+// whole tab sits on one dark surface with the sky header. Roles are explicit:
+// surfaces are dark, the text ramp is light, and a brightened red keeps the
+// Itinerary's identity as the spotlight accent. The festival (Tomorrowland) and
+// flight (Air Canada) day variants keep their own identity, retuned for dark.
 const p = {
-  accent:       '#a82a13',
-  accentLight:  '#ff6a4d',  // brighter red for small text on the dark date chip (AA on #1a1614)
-  gapAccent:    '#7a5814',
-  ink:          '#1a1614',
-  paper:        '#ede7d8',
-  muted:        '#5c544c',
-  subtle:       '#938b81',
-  rule:         '#cabda4',
-  ruleSubtle:   '#e1d6bf',
-  cardBg:       '#f5efde',
-  gapBg:        '#f0e6cf',
-  calloutBg:    '#ebe3cf',
-  // Air Canada
+  // Surfaces (value-only ladder, lighter = nearer)
+  canvas:  '#0a0e22',  // tab background
+  bar:     '#0c1228',  // bottom nav / sticky bars
+  card:    '#10162e',  // default day card
+  panel:   '#161d3a',  // inner panels (lodging / schedule / travel / refs)
+  raised:  '#1a2347',  // chips, date chip, leg-label pills
+  // Text ramp (light on dark)
+  ink:       '#eef1fb', // primary
+  bodyMuted: '#c2cae5', // secondary
+  muted:     '#9aa3c4', // tertiary — labels / captions
+  caption:   '#6f7aa6', // muted caption
+  // Accent — the Itinerary's red, brightened to read on dark; spotlight only.
+  accent:    '#ff6a4d',
+  accentInk: '#240a04', // dark ink on a bright accent / gold fill
+  onDark:    '#eef1fb', // light text on a dark fill
+  rule:      '#1c2342', // hairline divider
+  // Gap days — cool, de-emphasised, dashed.
+  gapBg:     '#0c1430',
+  gapAccent: '#8c93b8',
+  // Air Canada flight (identity unchanged).
   acBlack:      '#0a0a0a',
   acRed:        '#D82F2E',
   acRedText:    '#ff5747',
   acMuted:      '#b9b3ad',
   acWhite:      '#ffffff',
-  // Tomorrowland — "Consciencia" 2026: golden-hour desert (warm shadow + liquid
-  // gold), matched to the Lineup tab. Festival day cards (Jul 17–19).
+  // Tomorrowland festival (identity unchanged).
   tmrwBg:       '#241712',
   tmrwChipBg:   '#160d07',
   tmrwGold:     '#dcab43',
@@ -48,6 +58,8 @@ const p = {
   tmrwPanelBorder: 'rgba(220,171,67,0.18)',
   // Elemental dots
   tmlBlue:  '#4a7fc1', tmlRed: '#c94040', tmlGreen: '#4a9a4a', tmlYellow: '#e8b84b',
+  // Ticket viewer is an intentionally LIGHT document overlay — dark ink for it.
+  docInk: '#1a1614', docRule: '#cabda4',
 };
 const mono = { fontFamily: '"JetBrains Mono", ui-monospace, monospace' };
 
@@ -137,7 +149,7 @@ export default function ItineraryTab({ onOpenAccount }) {
       {/* Bottom nav — mirrors the Lineup TripBar (fixed, safe-area), in the
           Itinerary's light palette. Holds the account chip → shared menu. */}
       {onOpenAccount && (
-        <div style={{ position: 'fixed', left: 0, right: 0, bottom: 0, zIndex: 45, paddingBottom: 'env(safe-area-inset-bottom)', backgroundColor: p.cardBg, borderTop: `1px solid ${p.rule}`, boxShadow: '0 -2px 16px rgba(0,0,0,0.08)' }}>
+        <div style={{ position: 'fixed', left: 0, right: 0, bottom: 0, zIndex: 45, paddingBottom: 'env(safe-area-inset-bottom)', backgroundColor: p.bar, borderTop: `1px solid ${p.rule}`, boxShadow: '0 -2px 16px rgba(0,0,0,0.35)' }}>
           <div style={{ maxWidth: 680, margin: '0 auto', padding: '8px 16px' }}>
             <button
               onClick={onOpenAccount}
@@ -161,7 +173,7 @@ export default function ItineraryTab({ onOpenAccount }) {
 // ── Phase divider ────────────────────────────────────────────
 function PhaseDivider({ phase, idx }) {
   const color = phase.includes('OPEN') ? p.gapAccent
-              : phase === 'TOMORROWLAND' ? '#7a5d10' // dark gold — passes AA on light paper
+              : phase === 'TOMORROWLAND' ? p.tmrwGold // gold reads on the dark canvas
               : p.muted;
   return (
     <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 12, marginTop: idx === 0 ? 0 : 24 }}>
@@ -181,16 +193,16 @@ function DayCard({ d, isToday, dateStr }) {
   const isTmrw      = d.isTomorrowland === true;
   const isFlightDay = d.travel?.isFlight === true;
 
-  const cardBg    = isGap ? p.gapBg : isTmrw ? p.tmrwBg : isFlightDay ? p.acWhite : p.cardBg;
+  // Flight days are now ordinary dark cards; the Air Canada identity lives in the
+  // (black/red) travel panel + watermark, so the card itself joins the dark ladder.
+  const cardBg    = isGap ? p.gapBg : isTmrw ? p.tmrwBg : p.card;
   const cardBorder = isGap
     ? `1.5px dashed ${p.gapAccent}`
     : isTmrw
     ? `1px solid ${p.tmrwBorder}`
-    : isFlightDay
-    ? `1px solid ${p.acBlack}`
     : isToday
     ? `2px solid ${p.accent}`
-    : `1px solid ${p.ruleSubtle}`;
+    : `1px solid ${p.rule}`;
 
   return (
     <div style={{ borderRadius: 8, overflow: 'hidden', border: cardBorder, backgroundColor: cardBg, position: 'relative' }}>
@@ -212,7 +224,7 @@ function DayCard({ d, isToday, dateStr }) {
 
       {/* Today indicator */}
       {isToday && (
-        <div style={{ backgroundColor: p.accent, color: p.paper, textAlign: 'center', padding: '3px 0', fontSize: 10, letterSpacing: '0.2em', textTransform: 'uppercase', fontWeight: 700, ...mono }}>
+        <div style={{ backgroundColor: p.accent, color: p.accentInk, textAlign: 'center', padding: '3px 0', fontSize: 10, letterSpacing: '0.2em', textTransform: 'uppercase', fontWeight: 700, ...mono }}>
           Today
         </div>
       )}
@@ -250,12 +262,12 @@ function DayCard({ d, isToday, dateStr }) {
 
 // ── Date chip ────────────────────────────────────────────────
 function DateChip({ d, isTmrw, isGap }) {
-  const bg    = isGap ? p.gapAccent : isTmrw ? p.tmrwChipBg : p.ink;
-  const label = isGap ? '#fff5dc'  : isTmrw ? p.tmrwGold    : p.accentLight;
-  const month = isTmrw ? p.tmrwChipLabel : p.subtle;
+  const bg    = isGap ? p.raised : isTmrw ? p.tmrwChipBg : p.raised;
+  const label = isGap ? p.bodyMuted : isTmrw ? p.tmrwGold : p.accent;
+  const month = isTmrw ? p.tmrwChipLabel : p.muted;
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '16px 12px', backgroundColor: bg, color: p.paper, minWidth: 80, flexShrink: 0 }}>
+    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '16px 12px', backgroundColor: bg, color: p.onDark, minWidth: 80, flexShrink: 0 }}>
       <span style={{ ...mono, fontSize: 10, letterSpacing: '0.2em', textTransform: 'uppercase', color: month }}>{d.month}</span>
       <span style={{ fontSize: 36, fontWeight: 700, letterSpacing: '-0.02em', lineHeight: 1, marginTop: 2 }}>{d.dateNum}</span>
       <span style={{ ...mono, fontSize: 10, letterSpacing: '0.15em', textTransform: 'uppercase', fontWeight: 700, color: label, marginTop: 4 }}>{d.dayOfWeek.slice(0, 3)}</span>
@@ -316,8 +328,8 @@ function HeaderContent({ d, isTmrw, isGap, dateStr }) {
 
 // ── Weather pill ─────────────────────────────────────────────
 function WeatherPill({ weather, wmo, loading, isTmrw }) {
-  const bg   = isTmrw ? 'rgba(232,184,75,0.12)' : 'rgba(26,22,20,0.06)';
-  const text = isTmrw ? p.tmrwGold : p.muted;
+  const bg   = isTmrw ? 'rgba(232,184,75,0.12)' : 'rgba(255,255,255,0.06)';
+  const text = isTmrw ? p.tmrwGold : p.bodyMuted;
   // display:flex (not inline-flex) so each chip stretches to fill its grid
   // cell; the grid gives every chip an equal width regardless of content.
   const chip = { display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 4, backgroundColor: bg, borderRadius: 4, padding: '3px 7px', ...mono, fontSize: 10, color: text, fontWeight: 600, whiteSpace: 'nowrap' };
@@ -354,8 +366,8 @@ function WeatherPill({ weather, wmo, loading, isTmrw }) {
 function BookingRefs({ refs, isTmrw, isFlightDay }) {
   const [open, setOpen] = React.useState(false);
   const present = usePresence(open, 200);
-  const bg     = isFlightDay ? '#111' : isTmrw ? 'rgba(13,5,24,0.6)' : p.cardBg;
-  const border = isFlightDay ? '#222' : isTmrw ? p.tmrwPanelBorder : p.ruleSubtle;
+  const bg     = isFlightDay ? '#111' : isTmrw ? 'rgba(13,5,24,0.6)' : p.panel;
+  const border = isFlightDay ? '#222' : isTmrw ? p.tmrwPanelBorder : p.rule;
   const label  = isFlightDay ? p.acMuted : isTmrw ? p.tmrwBodyMuted : p.muted;
   const val    = isFlightDay ? '#fff' : isTmrw ? p.tmrwBodyText : p.ink;
 
@@ -390,15 +402,15 @@ function BookingRefs({ refs, isTmrw, isFlightDay }) {
 
 // ── Lodging panel ────────────────────────────────────────────
 function LodgingPanel({ lodging, isTmrw }) {
-  const bg     = isTmrw ? p.tmrwPanel : lodging.isGap ? '#e8dcbf' : p.calloutBg;
-  const border = isTmrw ? p.tmrwPanelBorder : p.ruleSubtle;
+  const bg     = isTmrw ? p.tmrwPanel : lodging.isGap ? p.gapBg : p.panel;
+  const border = isTmrw ? p.tmrwPanelBorder : p.rule;
   const icon   = lodging.isGap ? p.gapAccent : isTmrw ? p.tmrwGold : p.accent;
   const label  = isTmrw ? p.tmrwBodyText : p.ink;
   const sub    = isTmrw ? p.tmrwBodyMuted : p.muted;
-  const name   = lodging.isGap ? p.gapAccent : isTmrw ? p.tmrwBodyText : p.ink;
-  const badgeBg = lodging.booked ? (isTmrw ? p.tmrwGold : p.ink) : 'transparent';
+  const name   = lodging.isGap ? p.bodyMuted : isTmrw ? p.tmrwBodyText : p.ink;
+  const badgeBg = lodging.booked ? (isTmrw ? p.tmrwGold : p.raised) : 'transparent';
   const badgeBorder = lodging.booked ? 'none' : `1px solid ${lodging.isGap ? p.gapAccent : isTmrw ? p.tmrwGold : p.accent}`;
-  const badgeText = lodging.booked ? (isTmrw ? p.tmrwChipBg : p.paper) : (lodging.isGap ? p.gapAccent : isTmrw ? p.tmrwGold : p.accent);
+  const badgeText = lodging.booked ? (isTmrw ? p.tmrwChipBg : p.onDark) : (lodging.isGap ? p.gapAccent : isTmrw ? p.tmrwGold : p.accent);
 
   return (
     <div style={{ borderTop: `1px solid ${border}`, backgroundColor: bg, padding: '14px 16px', position: 'relative', zIndex: 1 }}>
@@ -430,8 +442,8 @@ function LodgingPanel({ lodging, isTmrw }) {
 
 // ── Schedule panel ───────────────────────────────────────────
 function SchedulePanel({ events, isTmrw }) {
-  const bg     = isTmrw ? p.tmrwPanel : p.calloutBg;
-  const border = isTmrw ? p.tmrwPanelBorder : p.ruleSubtle;
+  const bg     = isTmrw ? p.tmrwPanel : p.panel;
+  const border = isTmrw ? p.tmrwPanelBorder : p.rule;
   const label  = isTmrw ? p.tmrwBodyText : p.ink;
   const time   = isTmrw ? p.tmrwGold : p.accent;
   const text   = isTmrw ? p.tmrwBodyText : p.ink;
@@ -513,7 +525,7 @@ function TicketModal({ open, src, onClose }) {
       <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 8 }}>
         <button
           ref={closeRef} onClick={onClose} aria-label="Close ticket"
-          style={{ minWidth: 44, minHeight: 44, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 6, padding: '0 14px', borderRadius: 999, border: `1px solid ${p.rule}`, backgroundColor: '#fff', color: p.ink, ...mono, fontSize: 12, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', cursor: 'pointer' }}
+          style={{ minWidth: 44, minHeight: 44, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 6, padding: '0 14px', borderRadius: 999, border: `1px solid ${p.docRule}`, backgroundColor: '#fff', color: p.docInk, ...mono, fontSize: 12, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', cursor: 'pointer' }}
         >
           <X size={16} /> Close
         </button>
@@ -542,21 +554,21 @@ function TravelPanel({ travel }) {
   const isFlight = travel.isFlight === true;
   const isCar    = travel.isCar === true;
 
-  const bg         = isFlight ? p.acBlack : p.calloutBg;
-  const border     = isFlight ? p.acBlack : p.ruleSubtle;
+  const bg         = isFlight ? p.acBlack : p.panel;
+  const border     = isFlight ? p.acBlack : p.rule;
   const icon       = isFlight ? p.acRed   : p.accent;
   const headLabel  = isFlight ? '#fff'    : p.ink;
   const fareColor  = isFlight ? p.acMuted : p.muted;
   const costColor  = isFlight ? '#fff'    : p.ink;
-  const innerRule  = isFlight ? '#2a2a2a' : p.ruleSubtle;
-  const chipBg     = isFlight ? p.acRed   : p.ink;
-  const chipText   = '#fff';
+  const innerRule  = isFlight ? '#2a2a2a' : p.rule;
+  const chipBg     = isFlight ? p.acRed   : p.raised;
+  const chipText   = isFlight ? '#fff'    : p.onDark;
   const legFrom    = isFlight ? '#fff'    : p.ink;
   const legTime    = isFlight ? p.acMuted : p.muted;
-  const tagBg      = travel.booked ? (isFlight ? '#fff' : p.ink) : 'transparent';
+  const tagBg      = travel.booked ? (isFlight ? '#fff' : p.raised) : 'transparent';
   const tagBorder  = travel.booked ? 'none' : `1px solid ${isFlight ? p.acRedText : p.accent}`;
-  const tagText    = travel.booked ? (isFlight ? p.acRed : p.paper) : (isFlight ? p.acRedText : p.accent);
-  const checkColor = isFlight ? p.acRed : p.paper;
+  const tagText    = travel.booked ? (isFlight ? p.acRed : p.onDark) : (isFlight ? p.acRedText : p.accent);
+  const checkColor = isFlight ? p.acRed : p.onDark;
 
   return (
     <div style={{ borderTop: `1px solid ${border}`, backgroundColor: bg, padding: '14px 16px', position: 'relative', overflow: 'hidden', zIndex: 1 }}>

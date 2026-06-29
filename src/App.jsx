@@ -126,7 +126,9 @@ export default function App() {
     'linear-gradient(178deg, #0d1430 0%, #0a0e22 55%, #070b1c 100%)';
 
   // Dark-theme chrome only on the Lineup tab.
-  const dark = resolvedTab === 'lineup';
+  // Both tabs are dark-themed now (the Itinerary tab joined the dark token ladder
+  // in the Sky Timeline work). §6 "outdoor mode" will later override this to light.
+  const dark = true;
   const lineupAccent = '#e9b949'; // gold active-tab indicator (Direction D spotlight)
   const activeIndex = visibleTabs.findIndex(t => t.id === resolvedTab);
 
