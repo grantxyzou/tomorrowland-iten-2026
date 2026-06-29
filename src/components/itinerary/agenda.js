@@ -22,6 +22,12 @@ function explicitEnd(t) {
   return Number.isFinite(m) ? m : null;
 }
 
+// Clamp a day index into [0, len-1] (used by the day selector's prev/next).
+export function clampDay(idx, len) {
+  if (!len) return 0;
+  return Math.max(0, Math.min(len - 1, idx | 0));
+}
+
 export function agendaAt(day, minute) {
   const acts = dayActivities(day)
     .map((a) => ({ time: a.time, label: a.label, start: startMin(a.time), end: explicitEnd(a.time) }))

@@ -1,5 +1,16 @@
 import { describe, it, expect } from 'vitest';
-import { agendaAt } from './agenda.js';
+import { agendaAt, clampDay } from './agenda.js';
+
+describe('clampDay', () => {
+  it('clamps into [0, len-1]', () => {
+    expect(clampDay(-1, 5)).toBe(0);
+    expect(clampDay(9, 5)).toBe(4);
+    expect(clampDay(2, 5)).toBe(2);
+  });
+  it('returns 0 for an empty list', () => {
+    expect(clampDay(3, 0)).toBe(0);
+  });
+});
 
 describe('agendaAt', () => {
   it('puts an in-progress range event in `now` with remaining minutes', () => {

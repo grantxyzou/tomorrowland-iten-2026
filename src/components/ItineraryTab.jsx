@@ -12,7 +12,7 @@ import { timeToMin } from './lineup/time.js';
 import SkyHeader from './itinerary/SkyHeader.jsx';
 import TimelineScrubber from './itinerary/TimelineScrubber.jsx';
 import AgendaPanel from './itinerary/AgendaPanel.jsx';
-import { agendaAt } from './itinerary/agenda.js';
+import { agendaAt, clampDay } from './itinerary/agenda.js';
 import { tintAt, mixSurface } from './itinerary/tint.js';
 
 // Start minute of an event whose time is "HH:MM" or "HH:MM – HH:MM".
@@ -118,7 +118,10 @@ export default function ItineraryTab({ onOpenAccount, freezeSky = false }) {
   // Sky timeline — one value drives everything (spec §1). `liveMinute` ticks from
   // the device clock every 30s; `scrubMin` (null = live) holds a dragged minute.
   const [scrubMin, setScrubMin] = useState(null);
-  const [showFull, setShowFull] = useState(false); // in-trip: reveal full day list under the agenda
+  const [showFull, setShowFull] = useState(false); // reveal the full day-by-day list under the agenda
+  // Which day the agenda shows. Defaults to today during the trip, else Day 1, so
+  // the agenda is ALWAYS present and the scrubber always has something to drive.
+  const [viewDayIdx, setViewDayIdx] = useState(() => (todayIdx >= 0 ? todayIdx : 0));
   const [liveMinute, setLiveMinute] = useState(() => {
     const n = new Date(); return n.getHours() * 60 + n.getMinutes();
   });
@@ -136,10 +139,11 @@ export default function ItineraryTab({ onOpenAccount, freezeSky = false }) {
   const effectiveMinute = scrubMin ?? liveMinute;
   const pal = useMemo(() => tintedPalette(effectiveMinute), [effectiveMinute]);
 
-  // Header context derived from the existing day data (no new model this slice).
-  const today = todayIdx >= 0 ? days[todayIdx] : null;
-  const dayLabel = today ? `${today.month} ${today.dateNum}` : null;
-  const nextEvent = today?.events?.find(e => eventStartMin(e.time) >= effectiveMinute);
+  // The agenda + sky header reflect the selected day (the scrubber sets the time
+  // within it). dayLabel/nextLabel come from the viewed day, not just "today".
+  const viewDay = days[clampDay(viewDayIdx, days.length)];
+  const dayLabel = `${viewDay.month} ${viewDay.dateNum}`;
+  const nextEvent = viewDay.events?.find(e => eventStartMin(e.time) >= effectiveMinute);
   const nextLabel = nextEvent
     ? (nextEvent.label.length > 34 ? nextEvent.label.slice(0, 33) + '…' : nextEvent.label)
     : null;
@@ -172,24 +176,23 @@ export default function ItineraryTab({ onOpenAccount, freezeSky = false }) {
         />
       </div>
 
-      {/* During the trip the time-relative agenda is the primary view (spec §4);
-          the full day-by-day list tucks behind a toggle. Before/after the trip
-          (no "today") the full list shows as before, so the tab is never empty. */}
-      {today && (
-        <AgendaPanel agenda={agendaAt(today, effectiveMinute)} />
-      )}
-      {today && (
-        <button
-          onClick={() => setShowFull(f => !f)}
-          aria-expanded={showFull}
-          style={{ width: '100%', background: 'none', border: 'none', cursor: 'pointer', ...mono, fontSize: 10, letterSpacing: '0.16em', textTransform: 'uppercase', color: '#9aa3c4', padding: '10px 0 14px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}
-        >
-          Full itinerary
-          <ChevronDown size={12} style={{ transform: showFull ? 'rotate(180deg)' : 'none', transition: 'transform var(--dur-base) var(--ease-in-out)' }} />
-        </button>
-      )}
+      {/* Day selector + time-relative agenda are the primary view (spec §4). The
+          agenda is ALWAYS shown for the selected day, so scrubbing the time always
+          updates it; the full day-by-day list tucks behind a toggle. */}
+      <DaySelector idx={viewDayIdx} isToday={viewDayIdx === todayIdx} onChange={setViewDayIdx} />
 
-      {(!today || showFull) && (
+      <AgendaPanel agenda={agendaAt(viewDay, effectiveMinute)} />
+
+      <button
+        onClick={() => setShowFull(f => !f)}
+        aria-expanded={showFull}
+        style={{ width: '100%', background: 'none', border: 'none', cursor: 'pointer', ...mono, fontSize: 10, letterSpacing: '0.16em', textTransform: 'uppercase', color: p.muted, padding: '10px 0 14px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}
+      >
+        Full itinerary
+        <ChevronDown size={12} style={{ transform: showFull ? 'rotate(180deg)' : 'none', transition: 'transform var(--dur-base) var(--ease-in-out)' }} />
+      </button>
+
+      {showFull && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 16, paddingBottom: 28 }}>
           {days.map((d, idx) => (
             <div key={d.dateNum} ref={el => refs.current[idx] = el}
@@ -228,6 +231,39 @@ export default function ItineraryTab({ onOpenAccount, freezeSky = false }) {
         </div>
       )}
     </PalCtx.Provider>
+  );
+}
+
+// ── Day selector ─────────────────────────────────────────────
+// Picks which day the agenda shows; the scrubber sets the time within it. Lets
+// the whole trip be browsed (and makes the scrubber meaningful before the trip).
+function DaySelector({ idx, isToday, onChange }) {
+  const pal = usePal();
+  const d = days[clampDay(idx, days.length)];
+  const atStart = idx <= 0;
+  const atEnd = idx >= days.length - 1;
+  const arrow = (disabled) => ({
+    width: 40, height: 40, display: 'flex', alignItems: 'center', justifyContent: 'center',
+    background: 'none', border: 'none', cursor: disabled ? 'default' : 'pointer',
+    color: disabled ? pal.rule : pal.muted, opacity: disabled ? 0.5 : 1,
+  });
+  return (
+    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
+      <button aria-label="Previous day" disabled={atStart} onClick={() => onChange(clampDay(idx - 1, days.length))} style={arrow(atStart)}>
+        <ChevronDown size={18} style={{ transform: 'rotate(90deg)' }} />
+      </button>
+      <div style={{ textAlign: 'center' }}>
+        <div style={{ ...mono, fontSize: 9, letterSpacing: '0.18em', color: isToday ? p.accent : pal.muted }}>
+          {isToday ? 'TODAY' : 'DAY'}
+        </div>
+        <div style={{ ...mono, fontSize: 13, fontWeight: 700, color: pal.ink, letterSpacing: '0.04em' }}>
+          {d.dayOfWeek.slice(0, 3).toUpperCase()} · {d.month} {d.dateNum}
+        </div>
+      </div>
+      <button aria-label="Next day" disabled={atEnd} onClick={() => onChange(clampDay(idx + 1, days.length))} style={arrow(atEnd)}>
+        <ChevronDown size={18} style={{ transform: 'rotate(-90deg)' }} />
+      </button>
+    </div>
   );
 }
 
