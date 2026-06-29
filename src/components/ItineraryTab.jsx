@@ -11,6 +11,8 @@ import { useGroup } from '../groups/GroupContext.jsx';
 import { timeToMin } from './lineup/time.js';
 import SkyHeader from './itinerary/SkyHeader.jsx';
 import TimelineScrubber from './itinerary/TimelineScrubber.jsx';
+import AgendaPanel from './itinerary/AgendaPanel.jsx';
+import { agendaAt } from './itinerary/agenda.js';
 
 // Start minute of an event whose time is "HH:MM" or "HH:MM – HH:MM".
 const eventStartMin = (t) => timeToMin(String(t).slice(0, 5));
@@ -68,8 +70,16 @@ function dayToDateStr(day) {
   return `2026-07-${day.dateNum.padStart(2, '0')}`;
 }
 
-// Determine if a day is "today" or "upcoming next"
+// Determine if a day is "today" (−1 outside the trip window). `?previewDay=N`
+// forces a day index — lets you preview the today-only agenda before the trip.
 function getTodayIndex() {
+  try {
+    const preview = new URLSearchParams(window.location.search).get('previewDay');
+    if (preview != null) {
+      const n = parseInt(preview, 10);
+      if (Number.isInteger(n) && n >= 0 && n < days.length) return n;
+    }
+  } catch {}
   const now = new Date();
   const tripStart = new Date('2026-07-15');
   const tripEnd   = new Date('2026-07-27');
@@ -88,6 +98,7 @@ export default function ItineraryTab({ onOpenAccount }) {
   // Sky timeline — one value drives everything (spec §1). `liveMinute` ticks from
   // the device clock every 30s; `scrubMin` (null = live) holds a dragged minute.
   const [scrubMin, setScrubMin] = useState(null);
+  const [showFull, setShowFull] = useState(false); // in-trip: reveal full day list under the agenda
   const [liveMinute, setLiveMinute] = useState(() => {
     const n = new Date(); return n.getHours() * 60 + n.getMinutes();
   });
@@ -130,21 +141,40 @@ export default function ItineraryTab({ onOpenAccount }) {
         />
       </div>
 
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 16, paddingBottom: 28 }}>
-        {days.map((d, idx) => (
-          <div key={d.dateNum} ref={el => refs.current[idx] = el}
-            className="fx-enter" style={{ animationDelay: `${Math.min(idx, 8) * 45}ms` }}>
-            {d.phase && (
-              <PhaseDivider phase={d.phase} idx={idx} />
-            )}
-            <DayCard
-              d={d}
-              isToday={idx === todayIdx}
-              dateStr={dayToDateStr(d)}
-            />
-          </div>
-        ))}
-      </div>
+      {/* During the trip the time-relative agenda is the primary view (spec §4);
+          the full day-by-day list tucks behind a toggle. Before/after the trip
+          (no "today") the full list shows as before, so the tab is never empty. */}
+      {today && (
+        <AgendaPanel agenda={agendaAt(today, effectiveMinute)} />
+      )}
+      {today && (
+        <button
+          onClick={() => setShowFull(f => !f)}
+          aria-expanded={showFull}
+          style={{ width: '100%', background: 'none', border: 'none', cursor: 'pointer', ...mono, fontSize: 10, letterSpacing: '0.16em', textTransform: 'uppercase', color: '#9aa3c4', padding: '10px 0 14px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}
+        >
+          Full itinerary
+          <ChevronDown size={12} style={{ transform: showFull ? 'rotate(180deg)' : 'none', transition: 'transform var(--dur-base) var(--ease-in-out)' }} />
+        </button>
+      )}
+
+      {(!today || showFull) && (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 16, paddingBottom: 28 }}>
+          {days.map((d, idx) => (
+            <div key={d.dateNum} ref={el => refs.current[idx] = el}
+              className="fx-enter" style={{ animationDelay: `${Math.min(idx, 8) * 45}ms` }}>
+              {d.phase && (
+                <PhaseDivider phase={d.phase} idx={idx} />
+              )}
+              <DayCard
+                d={d}
+                isToday={idx === todayIdx}
+                dateStr={dayToDateStr(d)}
+              />
+            </div>
+          ))}
+        </div>
+      )}
 
       {/* Bottom nav — mirrors the Lineup TripBar (fixed, safe-area), in the
           Itinerary's light palette. Holds the account chip → shared menu. */}
