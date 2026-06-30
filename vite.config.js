@@ -7,6 +7,10 @@ import react from '@vitejs/plugin-react'
 export default defineConfig({
   plugins: [react()],
   server: {
+    // Pinned so the local OAuth redirect URI is stable — register
+    // http://localhost:5173/api/oauth in the Google OAuth client once.
+    port: 5173,
+    strictPort: true,
     proxy: {
       '/api': 'http://localhost:3210',
     },
