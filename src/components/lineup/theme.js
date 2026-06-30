@@ -66,6 +66,10 @@ export const rSheet  = 22;
 export const rPill   = 30;
 export const rDevice = 46;
 
+// Bottom-sheet width cap — keeps sheets at a phone width (centred) on desktop
+// instead of spanning a wide viewport. Shared by the account sheet + BottomSheet.
+export const sheetMaxW = 480;
+
 // Crew — avatar hue carried everywhere; drives the active UI accent.
 export const PERSON_COLORS = {
   Grant:   '#e9b949',  // gold

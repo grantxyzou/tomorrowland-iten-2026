@@ -1,6 +1,6 @@
 import React, { useContext, useEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { ArrowDown, Check, Plane, Car, Clock, Bed, ChevronDown, QrCode, X } from 'lucide-react';
+import { ArrowDown, Check, Plane, Car, Clock, Bed, ChevronDown, QrCode, X, FileDown } from 'lucide-react';
 import { days } from '../data/trip.js';
 import { usePresence } from '../hooks/usePresence.js';
 import { useWeather } from '../hooks/useWeather.js';
@@ -124,7 +124,7 @@ const PREFERS_REDUCED_MOTION =
     ? window.matchMedia('(prefers-reduced-motion: reduce)').matches
     : false;
 
-export default function ItineraryTab({ onOpenAccount, outdoor = false, kicker, crewName, departureDate, updated, tabBar = null }) {
+export default function ItineraryTab({ onOpenAccount, onExportPdf, outdoor = false, kicker, crewName, departureDate, updated, tabBar = null }) {
   const todayIdx = getTodayIndex();
   const refs = useRef([]);
   const { person } = useAuth();
@@ -296,7 +296,13 @@ export default function ItineraryTab({ onOpenAccount, outdoor = false, kicker, c
           the full trip. Today is tagged, the active day checked; the list scrolls
           since the trip spans 13 days. */}
       {daySheetOpen && (
-        <BottomSheet title="Which day?" accent={tmrwGold} onClose={() => setDaySheetOpen(false)}>
+        <BottomSheet title="Which day?" accent={tmrwGold} onClose={() => setDaySheetOpen(false)}
+          action={onExportPdf && (
+            <button type="button" onClick={() => { setDaySheetOpen(false); onExportPdf(); }}
+              style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '7px 12px', borderRadius: rPill, background: sheetChip, border: `1px solid ${sheetRaised}`, cursor: 'pointer', ...mono, fontSize: 10, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: tmrwGold }}>
+              <FileDown size={13} /> Export PDF
+            </button>
+          )}>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 8, maxHeight: '60vh', overflowY: 'auto', WebkitOverflowScrolling: 'touch' }}>
             {days.map((d, i) => {
               const active = i === viewDayIdx;
