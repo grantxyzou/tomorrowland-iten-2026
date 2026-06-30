@@ -13,7 +13,7 @@ const HOLD_MS = 450; // press-and-hold on the FAB to flip it to the other corner
 // Spotify · Where's everyone, plus Overlaps when there are clashes — and slides
 // out of the way while you scroll down. Party keeps its own button on the bar.
 export default function TripBar({
-  activePerson, activeDay, view, setView, party, crewCount, clashCount,
+  activePerson, activeDay, view, setView, crewCount, clashCount,
   onPerson, onDay, onParty, onResolve, onNudge, onSpotify, onWhere,
 }) {
   const { colorFor, inkFor } = useGroup();
@@ -75,17 +75,18 @@ export default function TripBar({
   };
   const fabUp = () => { clearTimeout(hold.current.timer); };
 
-  // Fan-out actions — always available (Nudge / Spotify / Where), with Overlaps
-  // surfacing only when there are clashes to resolve. Each runs then closes.
+  // Fan-out actions. Overlaps surfaces only when there are clashes to resolve;
+  // Party mode now lives here too (moved off the bar). Each runs then closes.
   const run = (fn) => () => { setMenuOpen(false); fn?.(); };
   const actions = [
     clashCount > 0 && {
-      key: 'overlaps', label: `${clashCount} overlap${clashCount === 1 ? '' : 's'}`,
+      key: 'overlaps', label: `Crew’s overlap${clashCount === 1 ? '' : 's'}`,
       icon: <Lightning size={17} weight="fill" />, accent: clashFab, fg: '#fff', onClick: run(onResolve),
     },
-    { key: 'where', label: 'Where’s everyone', icon: <NavigationArrow size={17} weight="fill" />, accent: myColor, fg: onAccent, onClick: run(onWhere) },
-    { key: 'spotify', label: 'Spotify playlist', icon: <MusicNotes size={17} weight="fill" />, accent: spotifyDot, fg: '#06210f', onClick: run(onSpotify) },
-    { key: 'nudge', label: 'Nudge squad', icon: <Sparkle size={17} weight="fill" />, accent: myColor, fg: onAccent, onClick: run(onNudge) },
+    { key: 'where', label: 'Find everyone', icon: <NavigationArrow size={17} weight="fill" />, accent: myColor, fg: onAccent, onClick: run(onWhere) },
+    { key: 'nudge', label: 'Send a message', icon: <Sparkle size={17} weight="fill" />, accent: myColor, fg: onAccent, onClick: run(onNudge) },
+    { key: 'spotify', label: 'Discover artists', icon: <MusicNotes size={17} weight="fill" />, accent: spotifyDot, fg: '#06210f', onClick: run(onSpotify) },
+    { key: 'party', label: 'Party mode', icon: <Moon size={17} weight="fill" />, accent: myColor, fg: onAccent, onClick: run(onParty) },
   ].filter(Boolean);
 
   const chipStyle = {
@@ -144,7 +145,7 @@ export default function TripBar({
       <div style={{ pointerEvents: 'auto', backgroundColor: bar, borderTop: '1px solid #20284a', borderTopLeftRadius: rPill, borderTopRightRadius: rPill, boxShadow: shBar, paddingBottom: 'env(safe-area-inset-bottom)' }}>
         <div style={{ maxWidth: 680, margin: '0 auto', padding: '12px 16px 14px', display: 'flex', flexDirection: 'column', gap: 10 }}>
 
-          {/* Row 1 — Person · Day · Party */}
+          {/* Row 1 — Person · Day (Party mode moved into the FAB speed-dial) */}
           <div style={{ display: 'flex', alignItems: 'center', gap: 9 }}>
             <button onClick={onPerson} aria-haspopup="dialog" aria-label={`Signed in as ${activePerson}. Tap for account.`} style={chipStyle}>
               <span aria-hidden="true" style={{ width: 22, height: 22, borderRadius: '50%', backgroundColor: myColor, color: onAccent, display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 800, fontSize: 12 }}>{activePerson[0]}</span>
@@ -154,10 +155,6 @@ export default function TripBar({
             <button onClick={onDay} aria-haspopup="dialog" aria-label={`Day: ${dayLabel}. Tap to switch.`} style={{ ...chipStyle, ...mono, fontSize: 13 }}>
               <span style={{ color: myColor, fontWeight: 700 }}>{dayLabel}</span>
               <CaretDown size={13} weight="bold" color={muted} />
-            </button>
-            <button onClick={onParty} aria-pressed={party} aria-label="Enter party mode"
-              style={{ marginLeft: 'auto', flexShrink: 0, width: 44, height: 44, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', border: party ? 'none' : '1px solid #243056', cursor: 'pointer', backgroundColor: party ? myColor : paper, color: party ? onAccent : myColor, boxShadow: party ? `0 0 0 4px ${myColor}40` : 'none' }}>
-              <Moon size={18} weight="fill" />
             </button>
           </div>
 
