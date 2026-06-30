@@ -426,9 +426,9 @@ function SettingsSheet({ open, dark, groups, activeGroupId, person, email, onSwi
   const rule = <div style={{ borderTop: `1px solid ${rule2}` }} />;
   // Fine-print footer link — same weight as the Privacy policy link, so the rarely
   // wanted destructive actions sit quietly at the bottom instead of as red rows.
-  const footerLink = (label, onClick) => (
+  const footerLink = (label, onClick, color = muted2) => (
     <button type="button" onClick={onClick}
-      style={{ display: 'block', textAlign: 'left', background: 'none', border: 'none', cursor: 'pointer', padding: '6px 0', ...sans2, fontSize: 13, color: muted2, textDecoration: 'underline' }}>
+      style={{ display: 'block', textAlign: 'left', background: 'none', border: 'none', cursor: 'pointer', padding: '6px 0', ...sans2, fontSize: 13, color, textDecoration: 'underline' }}>
       {label}
     </button>
   );
@@ -481,7 +481,21 @@ function SettingsSheet({ open, dark, groups, activeGroupId, person, email, onSwi
           </div>
         )}
 
-        {confirming === 'leave' ? (
+        {confirming === 'signout' ? (
+          <div>
+            <p style={{ ...sans2, fontSize: 14, color: ink2, marginBottom: 16, lineHeight: 1.5 }}>
+              Sign out of {person ? <strong>{person}</strong> : 'your account'}? You’ll need to sign back in to see your crews.
+            </p>
+            <button type="button" onClick={onSignOut}
+              style={{ display: 'block', width: '100%', padding: '14px 0', marginBottom: 8, borderRadius: 12, border: 'none', background: t.ink, color: t.bg, ...sans2, fontSize: 15, fontWeight: 700, cursor: 'pointer' }}>
+              Yes, sign out
+            </button>
+            <button type="button" onClick={() => setConfirming(null)}
+              style={{ display: 'block', width: '100%', padding: '12px 0', background: 'none', border: 'none', ...sans2, fontSize: 14, color: muted2, cursor: 'pointer' }}>
+              Cancel
+            </button>
+          </div>
+        ) : confirming === 'leave' ? (
           <div>
             <p style={{ ...sans2, fontSize: 14, color: ink2, marginBottom: 16, lineHeight: 1.5 }}>
               Leave this crew? Your picks and status will be removed from the crew.
@@ -600,7 +614,7 @@ function SettingsSheet({ open, dark, groups, activeGroupId, person, email, onSwi
                     onClick={() => { setRenameVal(person || ''); setRenameErr(''); setConfirming('rename'); }} style={pillBtn}>
                     <Pencil size={16} /> Change name
                   </button>
-                  <button type="button" aria-label="Sign out" onClick={onSignOut} style={pillBtn}>
+                  <button type="button" aria-label="Sign out" onClick={() => setConfirming('signout')} style={pillBtn}>
                     <LogOut size={16} /> Sign out
                   </button>
                 </div>
@@ -649,8 +663,8 @@ function SettingsSheet({ open, dark, groups, activeGroupId, person, email, onSwi
 
             {/* Fine print — destructive actions deprioritized to match the Privacy link */}
             <div style={{ borderTop: `1px solid ${rule2}`, marginTop: 22, paddingTop: 14, display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: 2 }}>
-              {footerLink('Leave this crew', () => setConfirming('leave'))}
-              {footerLink('Delete my account', () => setConfirming('delete'))}
+              {footerLink('Leave this crew', () => setConfirming('leave'), accent2)}
+              {footerLink('Delete my account', () => setConfirming('delete'), accent2)}
               <a href="/privacy" style={{ ...sans2, fontSize: 13, color: muted2, textDecoration: 'underline', padding: '6px 0' }}>Privacy policy</a>
             </div>
           </div>
