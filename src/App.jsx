@@ -9,6 +9,7 @@ import ErrorBoundary from './components/ErrorBoundary.jsx';
 import { useGroup } from './groups/GroupContext.jsx';
 import { useAuth } from './auth/AuthContext.jsx';
 import { apiFetch } from './lib/api.js';
+import { HERO_H } from './components/lineup/theme.js';
 
 const TABS = [
   { id: 'itinerary', label: 'Itinerary' },
@@ -49,6 +50,26 @@ export default function App() {
     try { localStorage.setItem('tml_outdoor', nv ? '1' : '0'); } catch {}
     return nv;
   });
+  // Collapsing header: once the hero banner has scrolled past, the sticky tab
+  // bar reveals a condensed crew name. rAF-throttled window-scroll read (same
+  // pattern as the TripBar FAB). Owned here so it persists across tab switches.
+  const [scrolled, setScrolled] = useState(false);
+  useEffect(() => {
+    const threshold = HERO_H - 56; // banner mostly gone, tab bar about to pin
+    let ticking = false;
+    const onScroll = () => {
+      if (ticking) return;
+      ticking = true;
+      requestAnimationFrame(() => {
+        setScrolled(window.scrollY > threshold);
+        ticking = false;
+      });
+    };
+    onScroll();
+    window.addEventListener('scroll', onScroll, { passive: true });
+    return () => window.removeEventListener('scroll', onScroll);
+  }, []);
+
   // Keep the sheet mounted through its slide-down exit (matches --dur-exit).
   const settingsPresent = usePresence(settingsOpen, 240);
   const { activeGroupId, groups, members, refetchGroups, setActiveGroupId, requestJoinFlow, requestCreateFlow } = useGroup();
@@ -149,40 +170,61 @@ export default function App() {
   // Lineup tab is always dark.
   const dark = !(outdoor && resolvedTab === 'itinerary');
 
-  // Tab switcher. `sticky` pins it below the masthead on the Lineup tab; on the
-  // Itinerary tab it's rendered (non-sticky) inside the sky banner instead.
-  const renderTabBar = (sticky) => (
-    <nav role="tablist" aria-label="Sections" style={{ backgroundColor: dark ? '#0c1228' : paper, borderBottom: `1px solid ${dark ? '#1c2342' : rule}`, ...(sticky ? { position: 'sticky', top: 53 } : { position: 'relative' }), zIndex: 40, transition: 'background-color var(--dur-theme) var(--ease-out), border-color var(--dur-theme) var(--ease-out)' }}>
-      <div style={{ position: 'relative', maxWidth: 680, margin: '0 auto', display: 'flex', overflowX: 'auto' }} className="no-scrollbar">
-        {visibleTabs.map(tab => {
-          const active = resolvedTab === tab.id;
-          return (
-            <button
-              key={tab.id}
-              role="tab"
-              id={`tab-${tab.id}`}
-              aria-selected={active}
-              aria-controls="tabpanel"
-              onClick={() => setActiveTab(tab.id)}
-              style={{
-                ...mono, flex: 1, padding: '12px 16px', minHeight: 44, fontSize: 11,
-                fontWeight: active ? 700 : 500, letterSpacing: '0.18em', textTransform: 'uppercase',
-                color: active ? (dark ? lineupAccent : accent) : (dark ? '#9aa3c4' : muted),
-                background: 'none', border: 'none', cursor: 'pointer', whiteSpace: 'nowrap',
-                transition: 'transform var(--dur-press) var(--ease-out), color var(--dur-base) var(--ease-out)',
-              }}
-            >
-              {tab.label}
-            </button>
-          );
-        })}
-        {/* Sliding active-tab indicator. */}
+  // Tab switcher — sticky at the top so it stays reachable while the hero banner
+  // scrolls away. Full-bleed (negative side margins escape <main>'s padding); it
+  // is rendered as a direct child of <main> (not inside the banner's overflow:hidden
+  // wrapper) so position:sticky actually works. Once scrolled past the banner, the
+  // safe-area top padding kicks in (fills the notch) and a condensed crew name reveals.
+  const renderTabBar = () => (
+    <nav role="tablist" aria-label="Sections" style={{
+      position: 'sticky', top: 0, zIndex: 40, margin: '0 -16px 16px',
+      backgroundColor: dark ? '#0c1228' : paper,
+      borderBottom: `1px solid ${dark ? '#1c2342' : rule}`,
+      paddingTop: scrolled ? 'env(safe-area-inset-top)' : '0px',
+      transition: 'background-color var(--dur-theme) var(--ease-out), border-color var(--dur-theme) var(--ease-out), padding-top var(--dur-base) var(--ease-out)',
+    }}>
+      <div style={{ position: 'relative', maxWidth: 680, margin: '0 auto', display: 'flex', alignItems: 'stretch' }}>
+        {/* Condensed crew name — collapses to 0 width until the hero scrolls away. */}
         <span aria-hidden="true" style={{
-          position: 'absolute', bottom: 0, left: 0, height: 2, borderRadius: 2,
-          width: `${100 / visibleTabs.length}%`, transform: `translateX(${activeIndex * 100}%)`,
-          backgroundColor: dark ? lineupAccent : accent,
-          transition: 'transform var(--dur-base) var(--ease-drawer), background-color var(--dur-theme) var(--ease-out)',
-        }} />
+          ...mono, display: 'inline-flex', alignItems: 'center', whiteSpace: 'nowrap', overflow: 'hidden',
+          fontSize: 12, fontWeight: 700, letterSpacing: '0.02em', color: dark ? '#eef1fb' : ink,
+          maxWidth: scrolled ? 200 : 0, opacity: scrolled ? 1 : 0, paddingLeft: scrolled ? 16 : 0,
+          transition: 'max-width var(--dur-base) var(--ease-out), opacity var(--dur-base) var(--ease-out), padding-left var(--dur-base) var(--ease-out)',
+        }}>{activeGroup?.name || ''}</span>
+
+        {/* Tabs in their own relative box so the sliding indicator tracks the tabs,
+            not the row (which also holds the condensed title when scrolled). */}
+        <div style={{ position: 'relative', flex: 1, display: 'flex', overflowX: 'auto' }} className="no-scrollbar">
+          {visibleTabs.map(tab => {
+            const active = resolvedTab === tab.id;
+            return (
+              <button
+                key={tab.id}
+                role="tab"
+                id={`tab-${tab.id}`}
+                aria-selected={active}
+                aria-controls="tabpanel"
+                onClick={() => setActiveTab(tab.id)}
+                style={{
+                  ...mono, flex: 1, padding: '12px 16px', minHeight: 44, fontSize: 11,
+                  fontWeight: active ? 700 : 500, letterSpacing: '0.18em', textTransform: 'uppercase',
+                  color: active ? (dark ? lineupAccent : accent) : (dark ? '#9aa3c4' : muted),
+                  background: 'none', border: 'none', cursor: 'pointer', whiteSpace: 'nowrap',
+                  transition: 'transform var(--dur-press) var(--ease-out), color var(--dur-base) var(--ease-out)',
+                }}
+              >
+                {tab.label}
+              </button>
+            );
+          })}
+          {/* Sliding active-tab indicator (relative to the tabs box). */}
+          <span aria-hidden="true" style={{
+            position: 'absolute', bottom: 0, left: 0, height: 2, borderRadius: 2,
+            width: `${100 / visibleTabs.length}%`, transform: `translateX(${activeIndex * 100}%)`,
+            backgroundColor: dark ? lineupAccent : accent,
+            transition: 'transform var(--dur-base) var(--ease-drawer), background-color var(--dur-theme) var(--ease-out)',
+          }} />
+        </div>
       </div>
     </nav>
   );
@@ -222,8 +264,8 @@ export default function App() {
         <div key={resolvedTab}>
           {/* Keyed by tab so switching tabs resets a crashed boundary. */}
           <ErrorBoundary key={resolvedTab}>
-            {resolvedTab === 'itinerary' && <ItineraryTab onOpenAccount={() => setSettingsOpen(true)} freezeSky={freezeSky} outdoor={outdoor} kicker={activeGroup?.kicker || DEFAULT_KICKER} crewName={activeGroup?.name} departureDate={activeGroup?.departureDate || DEFAULT_DEPARTURE} updated={formatUpdated(LAST_UPDATED)} tabBar={renderTabBar(false)} />}
-            {resolvedTab === 'lineup'    && <LineupTab    onOpenAccount={() => setSettingsOpen(true)} kicker={activeGroup?.kicker || DEFAULT_KICKER} crewName={activeGroup?.name} departureDate={activeGroup?.departureDate || DEFAULT_DEPARTURE} updated={formatUpdated(LAST_UPDATED)} tabBar={renderTabBar(false)} />}
+            {resolvedTab === 'itinerary' && <ItineraryTab onOpenAccount={() => setSettingsOpen(true)} freezeSky={freezeSky} outdoor={outdoor} kicker={activeGroup?.kicker || DEFAULT_KICKER} crewName={activeGroup?.name} departureDate={activeGroup?.departureDate || DEFAULT_DEPARTURE} updated={formatUpdated(LAST_UPDATED)} tabBar={renderTabBar()} />}
+            {resolvedTab === 'lineup'    && <LineupTab    onOpenAccount={() => setSettingsOpen(true)} kicker={activeGroup?.kicker || DEFAULT_KICKER} crewName={activeGroup?.name} departureDate={activeGroup?.departureDate || DEFAULT_DEPARTURE} updated={formatUpdated(LAST_UPDATED)} tabBar={renderTabBar()} />}
           </ErrorBoundary>
         </div>
       </main>
