@@ -4,7 +4,12 @@ Vite + React 18 SPA. Vercel serverless functions (`api/*.js`, auto-routed).
 Upstash Redis for all shared state. Google OAuth (auth-code redirect at `/api/oauth`).
 
 ## Commands
-- `npm run dev` — local dev (Vite; service worker does NOT register in dev)
+- `npm run dev` — local dev (Vite on :5173; service worker does NOT register in dev).
+  For sign-in to work locally you also need the API running: in a second terminal run
+  `vercel dev --listen 3210` (Vite proxies `/api/*` to it), `vercel env pull` once for
+  secrets, and register `http://localhost:5173/api/oauth` as an Authorized redirect URI
+  on the Google OAuth client. Use Chrome/Firefox locally — Safari drops `Secure` cookies
+  on http://localhost.
 - `npm run build` — `vite build` + `node scripts/stamp-sw.mjs` (stamps the SW
   with the deploy's git SHA so the PWA detects updates — don't drop the stamp step)
 - `npm test` — `vitest run` (tests are `api/**/*.test.js`, node env)
@@ -38,4 +43,5 @@ Upstash Redis for all shared state. Google OAuth (auth-code redirect at `/api/oa
 - `vercel logs` needs `--since` for historical (positional deploy arg only streams).
 - Required env: GOOGLE_CLIENT_ID/SECRET, SESSION_SECRET, UPSTASH_REDIS_REST_URL/TOKEN,
   NUNU_EMAILS. Never commit secrets.
-- Known: local-dev sign-in is currently broken (prod OAuth works).
+- Local-dev sign-in works via `vercel dev` + the localhost redirect URI (see Commands).
+  `api/oauth.js` `redirectUri()` uses http for localhost, https everywhere else.

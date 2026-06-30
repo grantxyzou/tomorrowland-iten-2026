@@ -33,8 +33,13 @@ const STATE_COOKIE = 'tml_oauth_state';
 // client EXACTLY. Derive it from the incoming request so prod "just works"
 // (preview hosts are dynamic and won't be registered — same as GIS today).
 function redirectUri(req) {
-  const proto = req.headers['x-forwarded-proto'] || 'https';
-  const host = req.headers['x-forwarded-host'] || req.headers.host;
+  const host = req.headers['x-forwarded-host'] || req.headers.host || '';
+  // Local dev (`vercel dev`) serves http and sends no x-forwarded-proto; prod
+  // always sends x-forwarded-proto:https. Default to http ONLY for literal
+  // localhost so the redirect URI matches the http URL the browser actually
+  // uses — otherwise we'd build https://localhost/... and the round-trip fails.
+  const isLocal = /^(localhost|127\.0\.0\.1)(:\d+)?$/.test(host);
+  const proto = req.headers['x-forwarded-proto'] || (isLocal ? 'http' : 'https');
   return `${proto}://${host}/api/oauth`;
 }
 
