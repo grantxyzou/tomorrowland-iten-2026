@@ -10,7 +10,7 @@ import ErrorBoundary from './components/ErrorBoundary.jsx';
 import { useGroup } from './groups/GroupContext.jsx';
 import { useAuth } from './auth/AuthContext.jsx';
 import { apiFetch } from './lib/api.js';
-import { HERO_H } from './components/lineup/theme.js';
+import { HERO_H, sheetMaxW } from './components/lineup/theme.js';
 
 const TABS = [
   { id: 'itinerary', label: 'Itinerary' },
@@ -464,7 +464,7 @@ function SettingsSheet({ open, dark, groups, activeGroupId, person, email, onSwi
           // wide desktop viewport (margin:auto centres it without touching the
           // translateY slide-up in .fx-sheet).
           position: 'fixed', bottom: 0, left: 0, right: 0, zIndex: 61,
-          maxWidth: 480, margin: '0 auto',
+          maxWidth: sheetMaxW, margin: '0 auto',
           background: t.bg, borderRadius: '20px 20px 0 0',
           padding: '20px 24px calc(32px + env(safe-area-inset-bottom))',
           boxShadow: dark ? '0 -12px 40px rgba(0,0,0,0.55)' : '0 -4px 40px rgba(0,0,0,0.18)',
