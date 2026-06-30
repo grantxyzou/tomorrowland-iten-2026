@@ -16,11 +16,17 @@ export default function TabHeader({ kicker, crewName, departureDate, updated, ta
     // Bleed out of <main>'s padding (24px top / 16px sides) so the banner runs
     // edge-to-edge; round only the bottom so the tab strip tucks in cleanly.
     <div style={{ margin: '-24px -16px 16px', overflow: 'hidden', borderBottomLeftRadius: 14, borderBottomRightRadius: 14 }}>
-      <div style={{ position: 'relative', height: HERO_H, overflow: 'hidden' }}>
-        {/* Tab-specific body fills the banner */}
-        {children}
+      <div style={{ position: 'relative', height: HERO_H, overflow: 'hidden', backgroundColor: '#0a0e22' }}>
+        {/* Tab-specific body fills the banner. It (and only it) cross-fades on
+            tab switch — over the steady dark base — while the overlaid identity
+            strip and the tab bar below stay put, so the shared shell reads as
+            motionless. */}
+        <div className="fx-fade" style={{ position: 'absolute', inset: 0 }}>
+          {children}
+        </div>
 
-        {/* Shared identity strip — overlaid on the top of the body */}
+        {/* Shared identity strip — overlaid on the top of the body (NOT faded:
+            identical on both tabs, so it must not move/flicker on switch) */}
         <div style={{ position: 'absolute', top: 0, left: 0, right: 0, padding: '11px 18px', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
           <div style={{ minWidth: 0 }}>
             {kicker && (
