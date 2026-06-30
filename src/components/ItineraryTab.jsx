@@ -10,6 +10,7 @@ import { useAuth } from '../auth/AuthContext.jsx';
 import { useGroup } from '../groups/GroupContext.jsx';
 import { timeToMin } from './lineup/time.js';
 import SkyHeader from './itinerary/SkyHeader.jsx';
+import TabHeader from './TabHeader.jsx';
 import TimelineScrubber from './itinerary/TimelineScrubber.jsx';
 import AgendaPanel from './itinerary/AgendaPanel.jsx';
 import { agendaAt, clampDay } from './itinerary/agenda.js';
@@ -121,7 +122,7 @@ const PREFERS_REDUCED_MOTION =
     ? window.matchMedia('(prefers-reduced-motion: reduce)').matches
     : false;
 
-export default function ItineraryTab({ onOpenAccount, freezeSky = false, outdoor = false, kicker, crewName, departureDate, tabBar = null }) {
+export default function ItineraryTab({ onOpenAccount, freezeSky = false, outdoor = false, kicker, crewName, departureDate, updated, tabBar = null }) {
   const todayIdx = getTodayIndex();
   const refs = useRef([]);
   const { person } = useAuth();
@@ -179,23 +180,17 @@ export default function ItineraryTab({ onOpenAccount, freezeSky = false, outdoor
           is a no-op. Sits over the App's static dark layer, behind all content. */}
       <div aria-hidden="true" style={{ position: 'fixed', inset: 0, zIndex: -1, backgroundColor: pal.canvas, transition: PREFERS_REDUCED_MOTION ? 'none' : 'background-color 1.2s linear' }} />
 
-      {/* Sky header IS the page header now — it carries the kicker, crew name and
-          countdown (overlaid on the gradient). Bleeds out of the tab panel's
-          24px/16px padding so it runs flush under the tab bar and to the edges.
-          The scrubber lives in a fixed transport bar at the bottom (see below). */}
-      <div style={{ margin: '-24px -16px 16px', overflow: 'hidden', borderBottomLeftRadius: 14, borderBottomRightRadius: 14 }}>
+      {/* Shared header shell (identical on both tabs): the sky body fills the
+          banner, with the identity strip overlaid and the tab switcher as the
+          bottom strip. The scrubber lives in a fixed transport bar at the bottom. */}
+      <TabHeader kicker={kicker} crewName={crewName} departureDate={departureDate} updated={updated} tabBar={tabBar}>
         <SkyHeader
           minute={effectiveMinute}
           dayLabel={dayLabel}
           nextLabel={nextLabel}
           outdoor={outdoor}
-          kicker={kicker}
-          crewName={crewName}
-          departureDate={departureDate}
         />
-        {/* Itinerary | Lineup switcher — the bottom strip of the sky banner. */}
-        {tabBar}
-      </div>
+      </TabHeader>
 
       {/* Day selector + time-relative agenda are the primary view (spec §4). The
           agenda is ALWAYS shown for the selected day, so scrubbing the time always

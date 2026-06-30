@@ -8,9 +8,10 @@ import { useLineupOverrides } from '../hooks/useLineupOverrides.js';
 import { useCrewStatus } from '../hooks/useCrewStatus.js';
 import { useGeoShare } from '../hooks/useGeoShare.js';
 import { useHeading } from '../hooks/useHeading.js';
-import { TomorrowlandMark } from './BrandMarks.jsx';
+import TabHeader from './TabHeader.jsx';
+import ConscienciaHeader from './lineup/ConscienciaHeader.jsx';
 import {
-  mono, sans, display, bar, chip, raised, ink, muted, tmrwGold, goldLit, live, clashRed, spotifyDot,
+  mono, sans, bar, chip, raised, ink, muted, tmrwGold, live, clashRed, spotifyDot,
   DAYS, STAGE_ORDER,
 } from './lineup/theme.js';
 import { hasTime, sortKey, timesOverlap, stageOrder, conflictClusters, applyOverrides } from './lineup/time.js';
@@ -25,7 +26,7 @@ import TimeView from './lineup/views/TimeView.jsx';
 import CrewView, { PRESETS } from './lineup/views/CrewView.jsx';
 import { useGroup } from '../groups/GroupContext.jsx';
 
-export default function LineupTab({ onOpenAccount }) {
+export default function LineupTab({ onOpenAccount, kicker, crewName, departureDate, updated, tabBar = null }) {
   const [activeDay, setActiveDay]       = useState('fri');
   // Identity comes from the signed-in session — you are always yourself.
   const { person: activePerson } = useAuth();
@@ -220,25 +221,16 @@ export default function LineupTab({ onOpenAccount }) {
 
   return (
     <div style={{ ...sans }}>
+      {/* Shared header shell (identical on both tabs): the Consciencia wordmark
+          fills the banner, the identity strip is overlaid, and the tab switcher
+          is the bottom strip. */}
+      <TabHeader kicker={kicker} crewName={crewName} departureDate={departureDate} updated={updated} tabBar={tabBar}>
+        <ConscienciaHeader />
+      </TabHeader>
+
       {/* Content scrolls on the App's midnight atmosphere; the Trip Bar is pinned
           to the bottom (the thumb never travels). Bottom padding clears it. */}
       <div style={{ padding: '14px 4px 172px' }}>
-
-        {/* Consciencia masthead */}
-        <div className="fx-enter" style={{
-          position: 'relative', height: 124, marginBottom: 12, borderRadius: 16, overflow: 'hidden',
-          background: 'linear-gradient(180deg, #070b1c 0%, #0c1228 55%, #10162e 100%)',
-        }}>
-          <div aria-hidden="true" style={{ position: 'absolute', top: 6,  left: '8%',  width: 150, height: 38, borderRadius: '50%', background: 'radial-gradient(closest-side, rgba(120,150,230,0.5), rgba(120,150,230,0))', filter: 'blur(12px)' }} />
-          <div aria-hidden="true" style={{ position: 'absolute', top: 30, left: '60%', width: 170, height: 42, borderRadius: '50%', background: 'radial-gradient(closest-side, rgba(150,120,210,0.45), rgba(150,120,210,0))', filter: 'blur(14px)' }} />
-          <div aria-hidden="true" style={{ position: 'absolute', inset: 0, background: 'radial-gradient(closest-side at 50% 100%, rgba(240,210,120,0.55), rgba(240,210,120,0) 62%)' }} />
-          <div aria-hidden="true" style={{ position: 'absolute', inset: 0, background: 'radial-gradient(ellipse 58% 54% at 50% 45%, rgba(6,9,24,0.45), rgba(6,9,24,0) 72%)' }} />
-          <div style={{ position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', textAlign: 'center' }}>
-            <TomorrowlandMark color={goldLit} style={{ width: 30, height: 30, marginBottom: 6, filter: 'drop-shadow(0 1px 6px rgba(6,9,24,0.8))' }} />
-            <h2 style={{ ...display, fontSize: 'clamp(34px, 11vw, 42px)', fontWeight: 700, letterSpacing: '0.01em', lineHeight: 1, color: goldLit, textShadow: '0 1px 12px rgba(6,9,24,0.85)', fontVariationSettings: '"SOFT" 30, "opsz" 144', margin: 0, whiteSpace: 'nowrap' }}>Consciencia</h2>
-            <div style={{ ...mono, fontSize: 10, fontWeight: 700, letterSpacing: '0.3em', color: 'rgba(242,236,220,0.92)', marginTop: 7, textShadow: '0 1px 6px rgba(6,9,24,0.7)' }}>TOMORROWLAND · BELGIUM 2026</div>
-          </div>
-        </div>
 
         {/* Live-sync status — small, right-aligned under the masthead */}
         <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 14 }}>

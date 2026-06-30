@@ -98,3 +98,16 @@ export const VIEWS = [
 ];
 
 export const STAGE_ORDER = Object.keys(STAGES);
+
+// ── Shared header shell (Itinerary + Lineup read identical) ──────────────────
+// One body height for both tab headers so switching tabs never jumps, and one
+// set of type roles for the overlaid identity strip so casing/size can't drift.
+export const HERO_H = 150;            // px — both header bodies + the banner
+
+// Identity-strip type roles (white-on-gradient; callers add textShadow). Spread
+// these instead of hand-setting fontSize/letterSpacing at each header.
+export const hdrEyebrow    = { ...mono, fontSize: 9,  letterSpacing: '0.2em',  textTransform: 'uppercase', fontWeight: 700 };
+export const hdrName       = { ...display, fontSize: 15, fontWeight: 700 };
+export const hdrCountLabel = { ...mono, fontSize: 8,  letterSpacing: '0.16em', textTransform: 'uppercase' };
+export const hdrCountValue = { ...mono, fontSize: 13, fontWeight: 700 };
+export const hdrSubline    = { ...mono, fontSize: 8,  letterSpacing: '0.12em', textTransform: 'uppercase' };
