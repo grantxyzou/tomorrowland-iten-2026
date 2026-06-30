@@ -64,7 +64,6 @@ export default function App() {
   const muted    = '#5c544c';
   const rule     = '#cabda4';
   const accent   = '#a82a13';
-  const cardBg   = '#f5efde';
 
   // Returns { ok } on success, { denied, deniedBy } if Nunu blocks it, else { ok:false }.
   const handleLeave = useCallback(async () => {
@@ -149,10 +148,6 @@ export default function App() {
   // high-contrast light palette, so the App chrome follows suit on that tab. The
   // Lineup tab is always dark.
   const dark = !(outdoor && resolvedTab === 'itinerary');
-  // On the Itinerary tab the sky gradient IS the header (it carries the kicker,
-  // crew name and countdown), so the dark masthead + updated banner are hidden
-  // and the tab bar sits at the very top.
-  const isItin = resolvedTab === 'itinerary';
 
   // Tab switcher. `sticky` pins it below the masthead on the Lineup tab; on the
   // Itinerary tab it's rendered (non-sticky) inside the sky banner instead.
@@ -208,53 +203,24 @@ export default function App() {
       <div aria-hidden="true" style={{ position: 'fixed', inset: 0, zIndex: -1, backgroundColor: paper, opacity: dark ? 0 : 1, transition: 'opacity var(--dur-theme) var(--ease-out)' }} />
       <div aria-hidden="true" style={{ position: 'fixed', inset: 0, zIndex: -1, backgroundColor: '#0a0e22', backgroundImage: lineupAtmosphere, opacity: dark ? 1 : 0, transition: 'opacity var(--dur-theme) var(--ease-out)' }} />
 
-      {/* ── Top bar ─── (hidden on Itinerary: the sky gradient is the header) ── */}
-      {!isItin && (
-        <header style={{ backgroundColor: ink, color: paper, padding: '12px 16px', paddingTop: 'calc(12px + env(safe-area-inset-top))', position: 'sticky', top: 0, zIndex: 50 }}>
-          <div style={{ maxWidth: 680, margin: '0 auto', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-            <div>
-              <div style={{ ...mono, fontSize: 10, letterSpacing: '0.2em', textTransform: 'uppercase', color: '#938b81' }}>
-                {activeGroup?.kicker || DEFAULT_KICKER}
-              </div>
-              <div style={{ fontSize: 14, fontWeight: 600, letterSpacing: '-0.01em', marginTop: 2 }}>
-                {activeGroup?.name || 'Tomorrowland 2026'}
-              </div>
-            </div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
-              <Countdown target={activeGroup?.departureDate || DEFAULT_DEPARTURE} />
-            </div>
-          </div>
-        </header>
-      )}
-
-      {/* ── Last updated banner ─── (hidden on Itinerary) ── */}
-      {!isItin && (
-        <div style={{ backgroundColor: dark ? '#0c1228' : cardBg, borderBottom: `1px solid ${dark ? '#1c2342' : rule}`, padding: '6px 16px', transition: 'background-color var(--dur-theme) var(--ease-out), border-color var(--dur-theme) var(--ease-out)' }}>
-          <div style={{ maxWidth: 680, margin: '0 auto', display: 'flex', alignItems: 'center', gap: 8 }}>
-            <span style={{ ...mono, fontSize: 10, color: dark ? '#9aa3c4' : muted, letterSpacing: '0.12em', textTransform: 'uppercase', transition: 'color var(--dur-theme) var(--ease-out)' }}>
-              Updated {formatUpdated(LAST_UPDATED)}
-            </span>
-          </div>
-        </div>
-      )}
-
-      {/* ── Tab bar ─── On Lineup it lives here (below the masthead). On Itinerary
-          it's moved into the sky banner (rendered inside ItineraryTab, before the
-          day selector), so the sky gradient is the very top of the page. ── */}
-      {!isItin && renderTabBar(true)}
+      {/* Header is now per-tab and IDENTICAL via the shared TabHeader: each tab
+          renders the gradient banner + overlaid identity strip (kicker · crew ·
+          DEPARTURE IN · countdown) + the tab switcher as its bottom strip, all
+          inside <main>. App no longer renders a separate top bar / updated banner
+          / sticky tab bar — that asymmetry was the headers' core misalignment. */}
 
       {/* ── Tab content ─────────────────────────────────────── */}
       <main
         id="tabpanel"
         role="tabpanel"
         aria-labelledby={`tab-${resolvedTab}`}
-        style={{ maxWidth: 680, margin: '0 auto', padding: `${isItin ? 'calc(24px + env(safe-area-inset-top))' : '24px'} max(16px, env(safe-area-inset-right)) calc(64px + env(safe-area-inset-bottom)) max(16px, env(safe-area-inset-left))` }}
+        style={{ maxWidth: 680, margin: '0 auto', padding: `calc(24px + env(safe-area-inset-top)) max(16px, env(safe-area-inset-right)) calc(64px + env(safe-area-inset-bottom)) max(16px, env(safe-area-inset-left))` }}
       >
         <div key={resolvedTab} className="fx-fade" style={{ opacity: 1 }}>
           {/* Keyed by tab so switching tabs resets a crashed boundary. */}
           <ErrorBoundary key={resolvedTab}>
-            {resolvedTab === 'itinerary' && <ItineraryTab onOpenAccount={() => setSettingsOpen(true)} freezeSky={freezeSky} outdoor={outdoor} kicker={activeGroup?.kicker || DEFAULT_KICKER} crewName={activeGroup?.name} departureDate={activeGroup?.departureDate || DEFAULT_DEPARTURE} tabBar={renderTabBar(false)} />}
-            {resolvedTab === 'lineup'    && <LineupTab    onOpenAccount={() => setSettingsOpen(true)} />}
+            {resolvedTab === 'itinerary' && <ItineraryTab onOpenAccount={() => setSettingsOpen(true)} freezeSky={freezeSky} outdoor={outdoor} kicker={activeGroup?.kicker || DEFAULT_KICKER} crewName={activeGroup?.name} departureDate={activeGroup?.departureDate || DEFAULT_DEPARTURE} updated={formatUpdated(LAST_UPDATED)} tabBar={renderTabBar(false)} />}
+            {resolvedTab === 'lineup'    && <LineupTab    onOpenAccount={() => setSettingsOpen(true)} kicker={activeGroup?.kicker || DEFAULT_KICKER} crewName={activeGroup?.name} departureDate={activeGroup?.departureDate || DEFAULT_DEPARTURE} updated={formatUpdated(LAST_UPDATED)} tabBar={renderTabBar(false)} />}
           </ErrorBoundary>
         </div>
       </main>
@@ -610,33 +576,5 @@ function SettingsSheet({ open, dark, groups, activeGroupId, person, email, onSwi
         )}
       </div>
     </>
-  );
-}
-
-// Days until departure countdown
-function Countdown({ target }) {
-  const mono2 = { fontFamily: '"JetBrains Mono", ui-monospace, monospace' };
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
-  const dep = new Date(target);
-  dep.setHours(0, 0, 0, 0);
-  const diff = Math.ceil((dep - today) / 86_400_000);
-
-  if (diff < 0) return (
-    <div style={{ textAlign: 'right' }}>
-      <div style={{ ...mono2, fontSize: 10, color: '#938b81', letterSpacing: '0.15em', textTransform: 'uppercase' }}>Trip</div>
-      <div style={{ ...mono2, fontSize: 13, color: '#e8b84b', fontWeight: 700 }}>Underway ✈</div>
-    </div>
-  );
-  if (diff === 0) return (
-    <div style={{ textAlign: 'right' }}>
-      <div style={{ ...mono2, fontSize: 13, color: '#e8b84b', fontWeight: 700 }}>Today! ✈</div>
-    </div>
-  );
-  return (
-    <div style={{ textAlign: 'right' }}>
-      <div style={{ ...mono2, fontSize: 10, color: '#938b81', letterSpacing: '0.15em', textTransform: 'uppercase' }}>Departure in</div>
-      <div style={{ ...mono2, fontSize: 18, color: '#e8b84b', fontWeight: 700, lineHeight: 1 }}>{diff} days</div>
-    </div>
   );
 }
