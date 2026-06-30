@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
+import { Pencil, LogOut } from 'lucide-react';
 import { Analytics } from '@vercel/analytics/react';
 import { usePresence } from './hooks/usePresence.js';
 import { LAST_UPDATED, DEFAULT_KICKER, DEFAULT_DEPARTURE, days } from './data/trip.js';
@@ -31,16 +32,6 @@ const G0_ID = 'ldg';
 export default function App() {
   const [activeTab, setActiveTab] = useState('itinerary');
   const [settingsOpen, setSettingsOpen] = useState(false);
-  // a11y (§8): persisted "Freeze sky" flag — pins the Itinerary sky/tint so it
-  // doesn't auto-advance (predictability for photosensitive/anxious users).
-  const [freezeSky, setFreezeSky] = useState(() => {
-    try { return localStorage.getItem('tml_freezeSky') === '1'; } catch { return false; }
-  });
-  const toggleFreezeSky = () => setFreezeSky(v => {
-    const nv = !v;
-    try { localStorage.setItem('tml_freezeSky', nv ? '1' : '0'); } catch {}
-    return nv;
-  });
   // §6 Outdoor mode: persisted high-contrast LIGHT override for daylight legibility.
   const [outdoor, setOutdoor] = useState(() => {
     try { return localStorage.getItem('tml_outdoor') === '1'; } catch { return false; }
@@ -264,7 +255,7 @@ export default function App() {
         <div key={resolvedTab}>
           {/* Keyed by tab so switching tabs resets a crashed boundary. */}
           <ErrorBoundary key={resolvedTab}>
-            {resolvedTab === 'itinerary' && <ItineraryTab onOpenAccount={() => setSettingsOpen(true)} freezeSky={freezeSky} outdoor={outdoor} kicker={activeGroup?.kicker || DEFAULT_KICKER} crewName={activeGroup?.name} departureDate={activeGroup?.departureDate || DEFAULT_DEPARTURE} updated={formatUpdated(LAST_UPDATED)} tabBar={renderTabBar()} />}
+            {resolvedTab === 'itinerary' && <ItineraryTab onOpenAccount={() => setSettingsOpen(true)} outdoor={outdoor} kicker={activeGroup?.kicker || DEFAULT_KICKER} crewName={activeGroup?.name} departureDate={activeGroup?.departureDate || DEFAULT_DEPARTURE} updated={formatUpdated(LAST_UPDATED)} tabBar={renderTabBar()} />}
             {resolvedTab === 'lineup'    && <LineupTab    onOpenAccount={() => setSettingsOpen(true)} kicker={activeGroup?.kicker || DEFAULT_KICKER} crewName={activeGroup?.name} departureDate={activeGroup?.departureDate || DEFAULT_DEPARTURE} updated={formatUpdated(LAST_UPDATED)} tabBar={renderTabBar()} />}
           </ErrorBoundary>
         </div>
@@ -292,8 +283,6 @@ export default function App() {
           onDelete={handleDelete}
           onSignOut={() => { logout(); setSettingsOpen(false); }}
           onExportPdf={() => { setSettingsOpen(false); setTimeout(() => window.print(), 150); }}
-          freezeSky={freezeSky}
-          onToggleFreezeSky={toggleFreezeSky}
           outdoor={outdoor}
           onToggleOutdoor={toggleOutdoor}
         />
@@ -355,7 +344,7 @@ function InstallBanner() {
 }
 
 // ── Settings sheet ────────────────────────────────────────────────────────
-function SettingsSheet({ open, dark, groups, activeGroupId, person, email, onSwitchGroup, onJoinAnother, onCreateAnother, onInvite, onRename, onClose, onLeave, onDelete, onSignOut, onExportPdf, freezeSky, onToggleFreezeSky, outdoor, onToggleOutdoor }) {
+function SettingsSheet({ open, dark, groups, activeGroupId, person, email, onSwitchGroup, onJoinAnother, onCreateAnother, onInvite, onRename, onClose, onLeave, onDelete, onSignOut, onExportPdf, outdoor, onToggleOutdoor }) {
   const [confirming, setConfirming] = useState(null); // null | 'leave' | 'delete' | 'invite' | 'rename'
   const [renameVal, setRenameVal] = useState('');
   const [renameErr, setRenameErr] = useState('');
@@ -434,6 +423,12 @@ function SettingsSheet({ open, dark, groups, activeGroupId, person, email, onSwi
       {label}
     </button>
   );
+  // Compact round control for the identity row (rename / sign out live here now).
+  const iconBtn = {
+    flexShrink: 0, width: 38, height: 38, borderRadius: '50%',
+    display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+    background: t.field, border: `1px solid ${rule2}`, color: ink2, cursor: 'pointer',
+  };
 
   return (
     <>
@@ -572,27 +567,29 @@ function SettingsSheet({ open, dark, groups, activeGroupId, person, email, onSwi
           </div>
         ) : (
           <div>
-            {/* Signed-in identity — who you are (carried over from the old name menu) */}
+            {/* Signed-in identity — name + email, with rename + sign-out folded in
+                as inline icon controls (replaces the old Account rows). */}
             {person && (
-              <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '4px 0 16px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '4px 0 22px' }}>
                 <span aria-hidden="true" style={{ width: 36, height: 36, borderRadius: '50%', backgroundColor: activeGroup?.color || '#888', color: avatarInk(activeGroup?.color || '#888888'), display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 800, fontSize: 16, flexShrink: 0 }}>
                   {person[0]?.toUpperCase()}
                 </span>
-                <span style={{ minWidth: 0 }}>
+                <span style={{ minWidth: 0, flex: 1 }}>
                   <span style={{ display: 'block', ...sans2, fontSize: 16, fontWeight: 700, color: ink2 }}>{person}</span>
                   {email && <span style={{ display: 'block', ...sans2, fontSize: 12, color: muted2, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{email}</span>}
                 </span>
+                <button type="button" aria-label="Change my name" title="Change my name"
+                  onClick={() => { setRenameVal(person || ''); setRenameErr(''); setConfirming('rename'); }} style={iconBtn}>
+                  <Pencil size={17} />
+                </button>
+                <button type="button" aria-label="Sign out" title="Sign out" onClick={onSignOut} style={iconBtn}>
+                  <LogOut size={17} />
+                </button>
               </div>
             )}
 
-            {/* ACCOUNT — who you are */}
-            {sectionLabel('Account')}
-            {rowBtn('Change my name', ink2, () => { setRenameVal(person || ''); setRenameErr(''); setConfirming('rename'); })}
-            {rule}
-            {rowBtn('Sign out', ink2, onSignOut)}
-
             {/* CREWS — the crew switcher (when in >1) + crew actions */}
-            <div style={{ marginTop: 22 }}>{sectionLabel('Crews')}</div>
+            {sectionLabel('Crews')}
             {groups.length > 1 && (
               <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginBottom: 14 }}>
                 {groups.map(g => (
@@ -626,8 +623,6 @@ function SettingsSheet({ open, dark, groups, activeGroupId, person, email, onSwi
               <>
                 <div style={{ marginTop: 22 }}>{sectionLabel('Itinerary')}</div>
                 {rowBtn('Export itinerary as PDF', ink2, onExportPdf)}
-                {rule}
-                {rowBtn(`Freeze sky · ${freezeSky ? 'On' : 'Off'}`, ink2, onToggleFreezeSky)}
                 {rule}
                 {rowBtn(`Outdoor mode · ${outdoor ? 'On' : 'Off'}`, ink2, onToggleOutdoor)}
               </>

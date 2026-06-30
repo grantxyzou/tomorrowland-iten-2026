@@ -124,7 +124,7 @@ const PREFERS_REDUCED_MOTION =
     ? window.matchMedia('(prefers-reduced-motion: reduce)').matches
     : false;
 
-export default function ItineraryTab({ onOpenAccount, freezeSky = false, outdoor = false, kicker, crewName, departureDate, updated, tabBar = null }) {
+export default function ItineraryTab({ onOpenAccount, outdoor = false, kicker, crewName, departureDate, updated, tabBar = null }) {
   const todayIdx = getTodayIndex();
   const refs = useRef([]);
   const { person } = useAuth();
@@ -142,17 +142,14 @@ export default function ItineraryTab({ onOpenAccount, freezeSky = false, outdoor
   const [liveMinute, setLiveMinute] = useState(() => {
     const n = new Date(); return n.getHours() * 60 + n.getMinutes();
   });
-  // a11y (§8): "Freeze sky" pins the palette — pause the auto-advance so the sky
-  // and tint never change on their own (predictable for photosensitive users).
-  // Scrubbing still works on demand. Reduced-motion is handled separately (the
-  // 30s tick is already discrete, with no continuous animation).
+  // The sky/tint auto-advances from the device clock (discrete 30s tick — no
+  // continuous animation). Scrubbing overrides it on demand via `scrubMin`.
   useEffect(() => {
-    if (freezeSky) return;
     const id = setInterval(() => {
       const n = new Date(); setLiveMinute(n.getHours() * 60 + n.getMinutes());
     }, 30000);
     return () => clearInterval(id);
-  }, [freezeSky]);
+  }, []);
   const effectiveMinute = scrubMin ?? liveMinute;
   // Outdoor mode = fixed light palette (no tint). Otherwise the dark palette with
   // the ambient dawn/dusk tint applied to surfaces.
