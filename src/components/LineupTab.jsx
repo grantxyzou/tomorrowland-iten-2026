@@ -30,7 +30,7 @@ export default function LineupTab({ onOpenAccount, kicker, crewName, departureDa
   const [activeDay, setActiveDay]       = useState('fri');
   // Identity comes from the signed-in session — you are always yourself.
   const { person: activePerson } = useAuth();
-  const { members, colorFor, inkFor } = useGroup();
+  const { members, colorFor, inkFor, activeGroupId } = useGroup();
   const crewNames = useMemo(() => members.map(m => m.displayName), [members]);
   const [view, setView]                 = useState('stage');
   const [search, setSearch]             = useState('');
@@ -153,6 +153,76 @@ export default function LineupTab({ onOpenAccount, kicker, crewName, departureDa
   const clashSetIds = useMemo(() => new Set(clashes.flatMap(c => [c.a.id, c.b.id])), [clashes]);
   // Regroup pairwise clashes into time-window clusters for the Overlaps view.
   const clusters = useMemo(() => conflictClusters(clashes), [clashes]);
+
+  // ── FAB "new activity" notification ──────────────────────────────────
+  // Three live signals (overlaps / messages / location) diffed against a
+  // per-crew baseline we re-stamp whenever the FAB is opened. Drives the
+  // coloured dots on the closed FAB (TripBar). All exclude `activePerson`, so
+  // your own actions never badge you.
+  // Trip-wide clash pair-keys (the `clashes` memo above only covers activeDay).
+  const tripClashKeys = useMemo(() => {
+    const byDay = {};
+    for (const s of effectiveSets) { if (hasTime(s)) (byDay[s.day] ||= []).push(s); }
+    const keys = new Set();
+    for (const day in byDay) {
+      const ds = byDay[day];
+      for (let i = 0; i < ds.length; i++) {
+        for (let j = i + 1; j < ds.length; j++) {
+          const a = ds[i], b = ds[j];
+          if (a.stage === b.stage || !timesOverlap(a, b)) continue;
+          if (crewNames.some(p => picks[a.id]?.[p] && picks[b.id]?.[p])) keys.add([a.id, b.id].sort().join('|'));
+        }
+      }
+    }
+    return keys;
+  }, [effectiveSets, picks, crewNames]);
+  // People currently sharing location (presence of the pin == sharing).
+  const sharers = useMemo(
+    () => Object.keys(crewStatus.locations || {}).filter(p => p !== activePerson),
+    [crewStatus.locations, activePerson]
+  );
+  // Newest status/nudge post by anyone but me (server ts).
+  const latestOtherStatusTs = useMemo(() => {
+    const s = crewStatus.statuses || {};
+    let max = 0;
+    for (const p in s) { if (p !== activePerson && s[p]?.ts > max) max = s[p].ts; }
+    return max;
+  }, [crewStatus.statuses, activePerson]);
+
+  // Baseline of what's already been seen, persisted per crew.
+  const fabSeenKey = activeGroupId ? `tml2026_fab_seen_${activeGroupId}` : null;
+  const [fabSeen, setFabSeen] = useState(null);
+  // (Re)load the baseline when the crew changes.
+  useEffect(() => {
+    if (!fabSeenKey) return;
+    try { setFabSeen(JSON.parse(localStorage.getItem(fabSeenKey) || 'null')); } catch { setFabSeen(null); }
+  }, [fabSeenKey]);
+  // Silently baseline a crew we've never stamped, so a fresh device never badges
+  // on first load (only genuinely-new events after this do).
+  useEffect(() => {
+    if (!fabSeenKey || fabSeen) return;
+    const snap = { seenAt: Date.now(), clashKeys: [...tripClashKeys], sharers };
+    try { localStorage.setItem(fabSeenKey, JSON.stringify(snap)); } catch {}
+    setFabSeen(snap);
+  }, [fabSeenKey, fabSeen, tripClashKeys, sharers]);
+
+  const newActivity = useMemo(() => {
+    if (!fabSeen) return { overlap: false, message: false, location: false };
+    const seenClash = new Set(fabSeen.clashKeys || []);
+    const seenShare = new Set(fabSeen.sharers || []);
+    return {
+      overlap: [...tripClashKeys].some(k => !seenClash.has(k)),
+      message: latestOtherStatusTs > (fabSeen.seenAt || 0),
+      location: sharers.some(p => !seenShare.has(p)),
+    };
+  }, [fabSeen, tripClashKeys, latestOtherStatusTs, sharers]);
+
+  const markFabSeen = useCallback(() => {
+    if (!fabSeenKey) return;
+    const snap = { seenAt: Date.now(), clashKeys: [...tripClashKeys], sharers };
+    try { localStorage.setItem(fabSeenKey, JSON.stringify(snap)); } catch {}
+    setFabSeen(snap);
+  }, [fabSeenKey, tripClashKeys, sharers]);
 
   // Crew consensus for the active day.
   const crew = useMemo(() => {
@@ -301,6 +371,7 @@ export default function LineupTab({ onOpenAccount, kicker, crewName, departureDa
       <TripBar
         activePerson={activePerson} activeDay={activeDay} view={view} setView={setView}
         party={party} crewCount={crewCount} clashCount={clashes.length}
+        newActivity={newActivity} onOpen={markFabSeen}
         onPerson={onOpenAccount} onDay={() => setSheet('day')} onParty={() => setParty(true)}
         onResolve={() => setSheet('overlaps')} onNudge={() => setSheet('nudge')}
         onSpotify={() => setSheet('spotify')} onWhere={() => setSheet('where')}

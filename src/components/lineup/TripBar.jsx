@@ -1,10 +1,13 @@
 import { useState, useEffect, useRef } from 'react';
-import { Moon, Lightning, Sparkle, CaretDown, Plus, X, MusicNotes, NavigationArrow } from '@phosphor-icons/react';
-import { bar, paper, chip, well, ink, muted, mono, sans, clashFab, spotifyDot, DAYS, VIEWS, shRow, shBar, rSeg, rTrack, rSheet, rPill, rBadge } from './theme.js';
+import { Moon, Lightning, Sparkle, CaretDown, Plus, MusicNotes, NavigationArrow } from '@phosphor-icons/react';
+import { bar, paper, chip, well, ink, muted, mono, sans, clashFab, spotifyDot, DAYS, VIEWS, shRow, shBar, rSeg, rTrack, rSheet, rPill } from './theme.js';
 import { useGroup } from '../../groups/GroupContext.jsx';
 
 const FAB_SIDE_KEY = 'tml2026_fab_side';
 const HOLD_MS = 450; // press-and-hold on the FAB to flip it to the other corner
+// Closed-FAB notification dot palette — one colour per activity kind so the dot
+// tells you *what* is new at a glance (overlap matches the overlaps fan item).
+const NOTIF = { overlap: clashFab, message: '#5b8cff', location: '#36c79b' };
 
 // The Trip Bar — persistent bottom control bar (Trip Bar spec). Person · Day ·
 // View live in the thumb zone and never move; only the content above swaps. The
@@ -13,13 +16,15 @@ const HOLD_MS = 450; // press-and-hold on the FAB to flip it to the other corner
 // Spotify · Where's everyone, plus Overlaps when there are clashes — and slides
 // out of the way while you scroll down. Party keeps its own button on the bar.
 export default function TripBar({
-  activePerson, activeDay, view, setView, crewCount, clashCount,
-  onPerson, onDay, onParty, onResolve, onNudge, onSpotify, onWhere,
+  activePerson, activeDay, view, setView, crewCount, clashCount, newActivity = {},
+  onPerson, onDay, onParty, onResolve, onNudge, onSpotify, onWhere, onOpen,
 }) {
   const { colorFor, inkFor } = useGroup();
   const myColor = colorFor(activePerson);
   const onAccent = inkFor(activePerson); // legible ink on the person's fill
   const dayLabel = DAYS.find(d => d.id === activeDay)?.label || '';
+  // Closed-FAB notification dots — one colour per activity kind.
+  const anyNew = !!(newActivity.overlap || newActivity.message || newActivity.location);
 
   // Which bottom corner the FAB docks to (remembered), whether it's hidden
   // because the user is scrolling down, and whether the fan-out is open.
@@ -126,17 +131,25 @@ export default function TripBar({
 
         {/* Main FAB — tap fans out, press-and-hold flips corner */}
         <button
-          onClick={() => { if (hold.current.flipped) { hold.current.flipped = false; return; } setMenuOpen(o => !o); }}
+          onClick={() => { if (hold.current.flipped) { hold.current.flipped = false; return; } setMenuOpen(o => { const next = !o; if (next) onOpen?.(); return next; }); }}
           onPointerDown={fabDown} onPointerUp={fabUp} onPointerLeave={fabUp} onPointerCancel={fabUp}
-          aria-haspopup="true" aria-expanded={menuOpen} aria-label={menuOpen ? 'Close actions' : 'Open actions'}
+          aria-haspopup="true" aria-expanded={menuOpen}
+          aria-label={menuOpen ? 'Close actions' : (anyNew ? 'Open actions — new activity' : 'Open actions')}
           title="Press and hold to move to the other corner"
           style={{ position: 'relative', pointerEvents: hidden ? 'none' : 'auto', touchAction: 'none', width: 56, height: 56, borderRadius: '50%', border: 'none', backgroundColor: myColor, color: onAccent, cursor: 'pointer', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', boxShadow: `0 10px 24px ${myColor}59` }}>
-          <span style={{ display: 'inline-flex', transform: menuOpen ? 'rotate(135deg)' : 'none', transition: 'transform var(--dur-base) var(--ease-out)' }}>
-            {menuOpen ? <X size={22} weight="bold" /> : <Plus size={24} weight="bold" />}
+          {/* One Plus that rotates 45° into an X when open (rendering an X *and*
+              rotating would land back on a +). */}
+          <span style={{ display: 'inline-flex', transform: menuOpen ? 'rotate(45deg)' : 'none', transition: 'transform var(--dur-base) var(--ease-out)' }}>
+            <Plus size={24} weight="bold" />
           </span>
-          {/* Overlaps badge — surfaces clashes even while collapsed */}
-          {!menuOpen && clashCount > 0 && (
-            <span aria-hidden="true" style={{ position: 'absolute', top: -2, right: -2, minWidth: 20, height: 20, padding: '0 5px', borderRadius: rBadge, backgroundColor: clashFab, color: '#fff', ...mono, fontSize: 11, fontWeight: 700, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', boxShadow: `0 0 0 2px ${bar}` }}>{clashCount}</span>
+          {/* New-activity dots — one per alerting category, coloured to match it
+              (overlap / message / location). Only while collapsed. */}
+          {!menuOpen && anyNew && (
+            <span aria-hidden="true" style={{ position: 'absolute', top: -3, right: -3, display: 'inline-flex', gap: 3, padding: 3, borderRadius: 999, backgroundColor: bar, boxShadow: `0 0 0 2px ${bar}` }}>
+              {newActivity.overlap  && <span style={{ width: 8, height: 8, borderRadius: '50%', backgroundColor: NOTIF.overlap }} />}
+              {newActivity.message  && <span style={{ width: 8, height: 8, borderRadius: '50%', backgroundColor: NOTIF.message }} />}
+              {newActivity.location && <span style={{ width: 8, height: 8, borderRadius: '50%', backgroundColor: NOTIF.location }} />}
+            </span>
           )}
         </button>
       </div>
