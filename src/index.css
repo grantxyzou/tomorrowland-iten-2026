@@ -24,10 +24,13 @@
   --dur-theme: 520ms;  /* slow theme dissolve (Itinerary ↔ Lineup background) */
 }
 
-html { font-size: 16px; -webkit-text-size-adjust: 100%; scroll-behavior: smooth; }
+/* Default to the dark theme base (the app opens on the dark Itinerary). Keeping
+   html+body dark stops the cream paper showing through the iOS dynamic-viewport
+   bottom on startup; App.jsx flips it to paper when outdoor/light mode is on. */
+html { font-size: 16px; -webkit-text-size-adjust: 100%; scroll-behavior: smooth; background: #0a0e22; }
 
 body {
-  background: var(--paper);
+  background: #0a0e22;
   color: var(--ink);
   font-family: 'Space Grotesk', -apple-system, system-ui, sans-serif;
   min-height: 100dvh;
