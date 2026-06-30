@@ -216,7 +216,10 @@ export default function App() {
         aria-labelledby={`tab-${resolvedTab}`}
         style={{ maxWidth: 680, margin: '0 auto', padding: `calc(24px + env(safe-area-inset-top)) max(16px, env(safe-area-inset-right)) calc(64px + env(safe-area-inset-bottom)) max(16px, env(safe-area-inset-left))` }}
       >
-        <div key={resolvedTab} className="fx-fade" style={{ opacity: 1 }}>
+        {/* No panel-level fade: the shared header (identity strip + tab bar) must
+            stay motionless across tab switches. Only the banner body (in
+            TabHeader) and views that opt into fx-enter animate. */}
+        <div key={resolvedTab}>
           {/* Keyed by tab so switching tabs resets a crashed boundary. */}
           <ErrorBoundary key={resolvedTab}>
             {resolvedTab === 'itinerary' && <ItineraryTab onOpenAccount={() => setSettingsOpen(true)} freezeSky={freezeSky} outdoor={outdoor} kicker={activeGroup?.kicker || DEFAULT_KICKER} crewName={activeGroup?.name} departureDate={activeGroup?.departureDate || DEFAULT_DEPARTURE} updated={formatUpdated(LAST_UPDATED)} tabBar={renderTabBar(false)} />}
