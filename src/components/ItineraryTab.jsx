@@ -13,6 +13,8 @@ import SkyHeader from './itinerary/SkyHeader.jsx';
 import TabHeader from './TabHeader.jsx';
 import TimelineScrubber from './itinerary/TimelineScrubber.jsx';
 import AgendaPanel from './itinerary/AgendaPanel.jsx';
+import BottomSheet from './lineup/BottomSheet.jsx';
+import { sans, rPill, tmrwGold, raised as sheetRaised, chip as sheetChip, muted as sheetMuted, ink as sheetInk } from './lineup/theme.js';
 import { agendaAt, clampDay } from './itinerary/agenda.js';
 import { tintAt, mixSurface } from './itinerary/tint.js';
 
@@ -133,6 +135,7 @@ export default function ItineraryTab({ onOpenAccount, freezeSky = false, outdoor
   // the device clock every 30s; `scrubMin` (null = live) holds a dragged minute.
   const [scrubMin, setScrubMin] = useState(null);
   const [showFull, setShowFull] = useState(false); // reveal the full day-by-day list under the agenda
+  const [daySheetOpen, setDaySheetOpen] = useState(false); // day picker (matches the Lineup day sheet)
   // Which day the agenda shows. Defaults to today during the trip, else Day 1, so
   // the agenda is ALWAYS present and the scrubber always has something to drive.
   const [viewDayIdx, setViewDayIdx] = useState(() => (todayIdx >= 0 ? todayIdx : 0));
@@ -164,6 +167,18 @@ export default function ItineraryTab({ onOpenAccount, freezeSky = false, outdoor
     ? (nextEvent.label.length > 34 ? nextEvent.label.slice(0, 33) + '…' : nextEvent.label)
     : null;
 
+  // Bottom-bar controls — built to MATCH the Lineup TripBar (same chip geometry,
+  // font and corner radius) so the account + day pills line up across tabs. The
+  // surfaces stay palette-driven (pal.*) so they keep tinting at dawn/dusk and
+  // flip correctly in outdoor mode — only the geometry is borrowed from Lineup.
+  const dayPillLabel = `${viewDay.dayOfWeek.slice(0, 3)} ${viewDay.dateNum}`;
+  const dayLabelColor = outdoor ? pal.accent : myColor; // gold is illegible on the light outdoor bar
+  const chipStyle = {
+    display: 'inline-flex', alignItems: 'center', gap: 8, minHeight: 44, padding: '0 13px',
+    borderRadius: rPill, backgroundColor: pal.card, border: `1px solid ${pal.rule}`, color: pal.ink,
+    ...sans, fontSize: 14, fontWeight: 700, cursor: 'pointer',
+  };
+
   // Auto-scroll to today's card on mount
   useEffect(() => {
     if (todayIdx >= 0 && refs.current[todayIdx]) {
@@ -192,11 +207,10 @@ export default function ItineraryTab({ onOpenAccount, freezeSky = false, outdoor
         />
       </TabHeader>
 
-      {/* Day selector + time-relative agenda are the primary view (spec §4). The
-          agenda is ALWAYS shown for the selected day, so scrubbing the time always
-          updates it; the full day-by-day list tucks behind a toggle. */}
-      <DaySelector idx={viewDayIdx} isToday={viewDayIdx === todayIdx} onChange={setViewDayIdx} />
-
+      {/* Time-relative agenda is the primary view (spec §4): always shown for the
+          selected day, so scrubbing the time always updates it. The day is now
+          chosen from the bottom-bar day pill (matching the Lineup day picker); the
+          full day-by-day list still tucks behind the toggle below. */}
       <AgendaPanel agenda={agendaAt(viewDay, effectiveMinute)} outdoor={outdoor} />
 
       <button
@@ -227,15 +241,49 @@ export default function ItineraryTab({ onOpenAccount, freezeSky = false, outdoor
       )}
 
       {/* Spacer so scrollable content clears the fixed bottom transport bar. */}
-      <div aria-hidden="true" style={{ height: 176 }} />
+      <div aria-hidden="true" style={{ height: 208 }} />
 
-      {/* Fixed bottom transport bar — the scrubber + account chip in one rounded,
-          contained bar that matches the Lineup tab's bottom bar (TripBar): same
-          surface, rounded top, shadow, and 680-wide centred column. The scrubber
-          drives the sky header (top) + agenda (middle) like a media transport. */}
+      {/* Fixed bottom transport bar — mirrors the Lineup TripBar so the two tabs
+          read as one chrome: same surface, corner radius (rPill), 680-wide centred
+          column and padding. Row 1 is the shared identity strip ([account][day]),
+          positioned exactly where the Lineup bar puts them; row 2 is the tab's own
+          control — here the timeline scrubber, where Lineup has its view tabs. */}
       <div style={{ position: 'fixed', left: 0, right: 0, bottom: 0, zIndex: 45 }}>
-        <div style={{ backgroundColor: pal.bar, borderTop: `1px solid ${pal.rule}`, borderTopLeftRadius: 22, borderTopRightRadius: 22, boxShadow: '0 -12px 30px rgba(0,0,0,0.45)', paddingBottom: 'env(safe-area-inset-bottom)' }}>
-          <div style={{ maxWidth: 680, margin: '0 auto', padding: '6px 16px 12px' }}>
+        <div style={{ backgroundColor: pal.bar, borderTop: `1px solid ${pal.rule}`, borderTopLeftRadius: rPill, borderTopRightRadius: rPill, boxShadow: '0 -12px 30px rgba(0,0,0,0.45)', paddingBottom: 'env(safe-area-inset-bottom)' }}>
+          <div style={{ maxWidth: 680, margin: '0 auto', padding: '12px 16px 14px', display: 'flex', flexDirection: 'column', gap: 10 }}>
+
+            {/* Row 1 — Account · Day (same chips/positions as the Lineup bar) */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: 9 }}>
+              {onOpenAccount && (
+                <button
+                  onClick={onOpenAccount}
+                  aria-haspopup="dialog"
+                  aria-label={`Signed in as ${person}. Tap for account and crews.`}
+                  style={chipStyle}
+                >
+                  <span aria-hidden="true" style={{ width: 22, height: 22, borderRadius: '50%', backgroundColor: myColor, color: inkFor(person), display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 800, fontSize: 12 }}>
+                    {person?.[0]?.toUpperCase()}
+                  </span>
+                  <span style={{ maxWidth: 120, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{person}</span>
+                  <ChevronDown size={13} color={pal.muted} />
+                </button>
+              )}
+              <button
+                onClick={() => setDaySheetOpen(true)}
+                aria-haspopup="dialog"
+                aria-label={`Day: ${dayPillLabel}${viewDayIdx === todayIdx ? ' (today)' : ''}. Tap to switch.`}
+                style={{ ...chipStyle, ...mono, fontSize: 13 }}
+              >
+                {viewDayIdx === todayIdx && (
+                  <span aria-hidden="true" style={{ width: 6, height: 6, borderRadius: '50%', backgroundColor: dayLabelColor, flexShrink: 0 }} />
+                )}
+                <span style={{ color: dayLabelColor, fontWeight: 700 }}>{dayPillLabel}</span>
+                <ChevronDown size={13} color={pal.muted} />
+              </button>
+            </div>
+
+            {/* Row 2 — the Itinerary's transport: the day timeline scrubber. It
+                drives the sky header (top) + agenda (middle) like a media scrubber. */}
             <TimelineScrubber
               minute={effectiveMinute}
               isLive={scrubMin === null}
@@ -243,57 +291,37 @@ export default function ItineraryTab({ onOpenAccount, freezeSky = false, outdoor
               onSync={() => setScrubMin(null)}
               outdoor={outdoor}
             />
-            {onOpenAccount && (
-              <button
-                onClick={onOpenAccount}
-                aria-haspopup="dialog"
-                aria-label={`Signed in as ${person}. Tap for account and crews.`}
-                style={{ marginTop: 8, display: 'inline-flex', alignItems: 'center', gap: 8, minHeight: 40, padding: '0 12px', borderRadius: 999, backgroundColor: pal.raised, border: `1px solid ${pal.rule}`, color: pal.ink, fontFamily: '"Inter", system-ui, sans-serif', fontSize: 14, fontWeight: 700, cursor: 'pointer' }}
-              >
-                <span aria-hidden="true" style={{ width: 22, height: 22, borderRadius: '50%', backgroundColor: myColor, color: inkFor(person), display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 800, fontSize: 12 }}>
-                  {person?.[0]?.toUpperCase()}
-                </span>
-                <span style={{ maxWidth: 160, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{person}</span>
-                <ChevronDown size={13} color={pal.muted} />
-              </button>
-            )}
           </div>
         </div>
       </div>
-    </PalCtx.Provider>
-  );
-}
 
-// ── Day selector ─────────────────────────────────────────────
-// Picks which day the agenda shows; the scrubber sets the time within it. Lets
-// the whole trip be browsed (and makes the scrubber meaningful before the trip).
-function DaySelector({ idx, isToday, onChange }) {
-  const pal = usePal();
-  const d = days[clampDay(idx, days.length)];
-  const atStart = idx <= 0;
-  const atEnd = idx >= days.length - 1;
-  const arrow = (disabled) => ({
-    width: 40, height: 40, display: 'flex', alignItems: 'center', justifyContent: 'center',
-    background: 'none', border: 'none', cursor: disabled ? 'default' : 'pointer',
-    color: disabled ? pal.rule : pal.muted, opacity: disabled ? 0.5 : 1,
-  });
-  return (
-    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
-      <button aria-label="Previous day" disabled={atStart} onClick={() => onChange(clampDay(idx - 1, days.length))} style={arrow(atStart)}>
-        <ChevronDown size={18} style={{ transform: 'rotate(90deg)' }} />
-      </button>
-      <div style={{ textAlign: 'center' }}>
-        <div style={{ ...mono, fontSize: 9, letterSpacing: '0.18em', color: isToday ? pal.accent : pal.muted }}>
-          {isToday ? 'TODAY' : 'DAY'}
-        </div>
-        <div style={{ ...mono, fontSize: 13, fontWeight: 700, color: pal.ink, letterSpacing: '0.04em' }}>
-          {d.dayOfWeek.slice(0, 3).toUpperCase()} · {d.month} {d.dateNum}
-        </div>
-      </div>
-      <button aria-label="Next day" disabled={atEnd} onClick={() => onChange(clampDay(idx + 1, days.length))} style={arrow(atEnd)}>
-        <ChevronDown size={18} style={{ transform: 'rotate(-90deg)' }} />
-      </button>
-    </div>
+      {/* Day picker — same bottom sheet pattern as the Lineup day chip, listing
+          the full trip. Today is tagged, the active day checked; the list scrolls
+          since the trip spans 13 days. */}
+      {daySheetOpen && (
+        <BottomSheet title="Which day?" accent={tmrwGold} onClose={() => setDaySheetOpen(false)}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 8, maxHeight: '60vh', overflowY: 'auto', WebkitOverflowScrolling: 'touch' }}>
+            {days.map((d, i) => {
+              const active = i === viewDayIdx;
+              const isToday = i === todayIdx;
+              return (
+                <button key={d.dateNum} onClick={() => { setViewDayIdx(i); setDaySheetOpen(false); }} aria-pressed={active}
+                  style={{ display: 'flex', alignItems: 'center', gap: 12, minHeight: 56, padding: '0 14px', borderRadius: 14, border: 'none', cursor: 'pointer', textAlign: 'left', backgroundColor: active ? sheetRaised : sheetChip }}>
+                  <span style={{ ...mono, fontSize: 10, fontWeight: 700, letterSpacing: '0.12em', color: isToday ? myColor : sheetMuted, width: 52, flexShrink: 0 }}>
+                    {isToday ? 'TODAY' : `DAY ${i + 1}`}
+                  </span>
+                  <span style={{ flex: 1, minWidth: 0, ...mono, fontSize: 16, fontWeight: 700, color: active ? myColor : sheetInk }}>
+                    {d.dayOfWeek.slice(0, 3)} {d.month} {d.dateNum}
+                  </span>
+                  <span style={{ ...mono, fontSize: 11, color: sheetMuted, maxWidth: 110, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flexShrink: 0 }}>{d.city}</span>
+                  {active && <Check size={16} strokeWidth={3} color={myColor} style={{ flexShrink: 0 }} />}
+                </button>
+              );
+            })}
+          </div>
+        </BottomSheet>
+      )}
+    </PalCtx.Provider>
   );
 }
 
