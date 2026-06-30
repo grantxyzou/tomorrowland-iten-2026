@@ -420,6 +420,21 @@ function SettingsSheet({ open, dark, groups, activeGroupId, person, email, onSwi
     >{label}</button>
   );
 
+  // Quiet uppercase section label (reuses the long-standing "Your crews" idiom).
+  const sectionLabel = (text) => (
+    <div style={{ ...mono2, fontSize: 10, letterSpacing: '0.18em', textTransform: 'uppercase', color: muted2, marginBottom: 10 }}>{text}</div>
+  );
+  // A row hairline between siblings within a section.
+  const rule = <div style={{ borderTop: `1px solid ${rule2}` }} />;
+  // Fine-print footer link — same weight as the Privacy policy link, so the rarely
+  // wanted destructive actions sit quietly at the bottom instead of as red rows.
+  const footerLink = (label, onClick) => (
+    <button type="button" onClick={onClick}
+      style={{ display: 'block', textAlign: 'left', background: 'none', border: 'none', cursor: 'pointer', padding: '6px 0', ...sans2, fontSize: 13, color: muted2, textDecoration: 'underline' }}>
+      {label}
+    </button>
+  );
+
   return (
     <>
       {/* Backdrop */}
@@ -570,53 +585,60 @@ function SettingsSheet({ open, dark, groups, activeGroupId, person, email, onSwi
               </div>
             )}
 
+            {/* ACCOUNT — who you are */}
+            {sectionLabel('Account')}
             {rowBtn('Change my name', ink2, () => { setRenameVal(person || ''); setRenameErr(''); setConfirming('rename'); })}
-            <div style={{ borderTop: `1px solid ${rule2}`, marginBottom: 4 }} />
+            {rule}
+            {rowBtn('Sign out', ink2, onSignOut)}
 
-            {/* Group switcher — shown when user belongs to more than one crew */}
+            {/* CREWS — the crew switcher (when in >1) + crew actions */}
+            <div style={{ marginTop: 22 }}>{sectionLabel('Crews')}</div>
             {groups.length > 1 && (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginBottom: 14 }}>
+                {groups.map(g => (
+                  <button
+                    key={g.id}
+                    type="button"
+                    onClick={() => onSwitchGroup(g.id)}
+                    style={{
+                      display: 'flex', alignItems: 'center', gap: 10,
+                      padding: '10px 12px', borderRadius: 10, border: 'none', cursor: 'pointer',
+                      background: g.id === activeGroupId ? t.activeRow : 'transparent',
+                      ...sans2, fontSize: 14, fontWeight: g.id === activeGroupId ? 700 : 400, color: ink2,
+                      textAlign: 'left',
+                    }}
+                  >
+                    <span style={{ width: 10, height: 10, borderRadius: '50%', backgroundColor: g.color, flexShrink: 0, display: 'inline-block' }} />
+                    {g.name}
+                    {g.id === activeGroupId && <span style={{ marginLeft: 'auto', ...mono2, fontSize: 10, color: muted2 }}>active</span>}
+                  </button>
+                ))}
+              </div>
+            )}
+            {rowBtn('Create a new crew', ink2, onCreateAnother)}
+            {rule}
+            {rowBtn('Join another crew', ink2, onJoinAnother)}
+            {activeGroup && rule}
+            {activeGroup && rowBtn('Invite to this crew', ink2, openInvite)}
+
+            {/* ITINERARY — original crew only (sky view + PDF export) */}
+            {activeGroupId === G0_ID && (
               <>
-                <div style={{ ...mono2, fontSize: 10, letterSpacing: '0.18em', textTransform: 'uppercase', color: muted2, marginBottom: 10 }}>Your crews</div>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginBottom: 16 }}>
-                  {groups.map(g => (
-                    <button
-                      key={g.id}
-                      type="button"
-                      onClick={() => onSwitchGroup(g.id)}
-                      style={{
-                        display: 'flex', alignItems: 'center', gap: 10,
-                        padding: '10px 12px', borderRadius: 10, border: 'none', cursor: 'pointer',
-                        background: g.id === activeGroupId ? t.activeRow : 'transparent',
-                        ...sans2, fontSize: 14, fontWeight: g.id === activeGroupId ? 700 : 400, color: ink2,
-                        textAlign: 'left',
-                      }}
-                    >
-                      <span style={{ width: 10, height: 10, borderRadius: '50%', backgroundColor: g.color, flexShrink: 0, display: 'inline-block' }} />
-                      {g.name}
-                      {g.id === activeGroupId && <span style={{ marginLeft: 'auto', ...mono2, fontSize: 10, color: muted2 }}>active</span>}
-                    </button>
-                  ))}
-                </div>
-                <div style={{ borderTop: `1px solid ${rule2}`, marginBottom: 4 }} />
+                <div style={{ marginTop: 22 }}>{sectionLabel('Itinerary')}</div>
+                {rowBtn('Export itinerary as PDF', ink2, onExportPdf)}
+                {rule}
+                {rowBtn(`Freeze sky · ${freezeSky ? 'On' : 'Off'}`, ink2, onToggleFreezeSky)}
+                {rule}
+                {rowBtn(`Outdoor mode · ${outdoor ? 'On' : 'Off'}`, ink2, onToggleOutdoor)}
               </>
             )}
 
-            {rowBtn('Create a new crew', ink2, onCreateAnother)}
-            <div style={{ borderTop: `1px solid ${rule2}` }} />
-            {rowBtn('Join another crew', ink2, onJoinAnother)}
-            <div style={{ borderTop: `1px solid ${rule2}` }} />
-            {activeGroup && rowBtn('Invite to this crew', ink2, openInvite)}
-            {activeGroupId === G0_ID && rowBtn('Export itinerary as PDF', ink2, onExportPdf)}
-            {activeGroupId === G0_ID && rowBtn(`Freeze sky · ${freezeSky ? 'On' : 'Off'}`, ink2, onToggleFreezeSky)}
-            {activeGroupId === G0_ID && rowBtn(`Outdoor mode · ${outdoor ? 'On' : 'Off'}`, ink2, onToggleOutdoor)}
-            {activeGroup && <div style={{ borderTop: `1px solid ${rule2}` }} />}
-            {rowBtn('Sign out', ink2, onSignOut)}
-            <div style={{ borderTop: `1px solid ${rule2}` }} />
-            {rowBtn('Leave this crew', accent2, () => setConfirming('leave'))}
-            <div style={{ borderTop: `1px solid ${rule2}` }} />
-            {rowBtn('Delete my account', accent2, () => setConfirming('delete'))}
-            <div style={{ borderTop: `1px solid ${rule2}`, marginBottom: 8 }} />
-            <a href="/privacy" style={{ ...sans2, fontSize: 13, color: muted2, textDecoration: 'underline' }}>Privacy policy</a>
+            {/* Fine print — destructive actions deprioritized to match the Privacy link */}
+            <div style={{ borderTop: `1px solid ${rule2}`, marginTop: 22, paddingTop: 14, display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: 2 }}>
+              {footerLink('Leave this crew', () => setConfirming('leave'))}
+              {footerLink('Delete my account', () => setConfirming('delete'))}
+              <a href="/privacy" style={{ ...sans2, fontSize: 13, color: muted2, textDecoration: 'underline', padding: '6px 0' }}>Privacy policy</a>
+            </div>
           </div>
         )}
       </div>
