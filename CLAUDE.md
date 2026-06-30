@@ -30,6 +30,28 @@ Upstash Redis for all shared state. Google OAuth (auth-code redirect at `/api/oa
 - "Nunu" gate (server-enforced): non-Nunu members of `ldg` are blocked from
   leave/delete. Nunu = `NUNU_EMAILS` env (default grantxyzou@gmail.com).
 
+## Tab headers (shared shell — the thing that bites you)
+- Both tabs render ONE shared shell, `src/components/TabHeader.jsx`: a full-bleed
+  gradient banner (height `HERO_H`, theme.js) with the identity strip (kicker ·
+  crew · DEPARTURE IN · countdown) overlaid, + the tab switcher. Bodies are
+  tab-specific: `itinerary/SkyHeader.jsx` (sky+clock) / `lineup/ConscienciaHeader.jsx`
+  (wordmark). Keep them aligned by editing the shell, not per-tab.
+- Countdown is ONE helper — `src/lib/countdown.js` `countdownLabel()` (uppercase
+  `14 DAYS`). Don't reintroduce a second per-tab copy (that caused the old casing drift).
+- Header type/size/height come from theme.js tokens (`HERO_H`, `hdr*`) — reference
+  them, don't hand-set fontSize/height in the headers.
+- Tab switch motion: only the banner BODY cross-fades (`fx-fade` on the body in
+  TabHeader); the identity strip + tab bar must NOT fade (App's panel has no
+  `fx-fade`). Opacity cascades, so anything that must stay still cannot be under a
+  fading ancestor.
+- Collapsing/sticky scroll: the tab bar is a SIBLING of the banner (direct child of
+  `<main>`), `position: sticky; top:0`, full-bleed (`-16px`). It must NOT be nested
+  in the banner's `overflow:hidden` bleed wrapper or any `transform` ancestor —
+  sticky dies there. App owns the rAF `scrolled` state (threshold ~`HERO_H`) which
+  drives the safe-area top padding (fills the notch when pinned) + the condensed
+  crew-name reveal in `renderTabBar`. The indicator lives in its own tabs-only box
+  so its `%` math stays right when the condensed title takes row space.
+
 ## PWA / freshness
 - `public/sw.js` is network-first for navigation/`/api/picks`, SWR for hashed
   assets; `skipWaiting` + `clients.claim`. VERSION is `__BUILD_ID__`, stamped per
