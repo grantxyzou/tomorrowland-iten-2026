@@ -3,7 +3,7 @@ import { paper, muted, mono, sheetMaxW } from './theme.js';
 
 // Reusable bottom action sheet (Trip Bar spec): a scrim + a slide-up panel with
 // a 30px top radius. Escape or a scrim tap closes it. Sits above the Trip Bar.
-export default function BottomSheet({ title, accent, onClose, children }) {
+export default function BottomSheet({ title, accent, action, onClose, children }) {
   useEffect(() => {
     const onKey = (e) => { if (e.key === 'Escape') onClose(); };
     document.addEventListener('keydown', onKey);
@@ -33,8 +33,11 @@ export default function BottomSheet({ title, accent, onClose, children }) {
         <div>
           {/* grab handle */}
           <div aria-hidden="true" style={{ width: 38, height: 4, borderRadius: 2, backgroundColor: '#243056', margin: '0 auto 14px' }} />
-          {title && (
-            <div style={{ ...mono, fontSize: 10, letterSpacing: '0.18em', textTransform: 'uppercase', color: accent || muted, marginBottom: 14 }}>{title}</div>
+          {(title || action) && (
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, marginBottom: 14 }}>
+              {title && <div style={{ ...mono, fontSize: 10, letterSpacing: '0.18em', textTransform: 'uppercase', color: accent || muted }}>{title}</div>}
+              {action}
+            </div>
           )}
           {children}
         </div>

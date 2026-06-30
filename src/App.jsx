@@ -264,7 +264,7 @@ export default function App() {
         <div key={resolvedTab}>
           {/* Keyed by tab so switching tabs resets a crashed boundary. */}
           <ErrorBoundary key={resolvedTab}>
-            {resolvedTab === 'itinerary' && <ItineraryTab onOpenAccount={() => setSettingsOpen(true)} outdoor={outdoor} kicker={activeGroup?.kicker || DEFAULT_KICKER} crewName={activeGroup?.name} departureDate={activeGroup?.departureDate || DEFAULT_DEPARTURE} updated={formatUpdated(LAST_UPDATED)} tabBar={renderTabBar()} />}
+            {resolvedTab === 'itinerary' && <ItineraryTab onOpenAccount={() => setSettingsOpen(true)} onExportPdf={() => setTimeout(() => window.print(), 150)} outdoor={outdoor} kicker={activeGroup?.kicker || DEFAULT_KICKER} crewName={activeGroup?.name} departureDate={activeGroup?.departureDate || DEFAULT_DEPARTURE} updated={formatUpdated(LAST_UPDATED)} tabBar={renderTabBar()} />}
             {resolvedTab === 'lineup'    && <LineupTab    onOpenAccount={() => setSettingsOpen(true)} kicker={activeGroup?.kicker || DEFAULT_KICKER} crewName={activeGroup?.name} departureDate={activeGroup?.departureDate || DEFAULT_DEPARTURE} updated={formatUpdated(LAST_UPDATED)} tabBar={renderTabBar()} />}
           </ErrorBoundary>
         </div>
@@ -291,7 +291,6 @@ export default function App() {
           onLeave={handleLeave}
           onDelete={handleDelete}
           onSignOut={() => { logout(); setSettingsOpen(false); }}
-          onExportPdf={() => { setSettingsOpen(false); setTimeout(() => window.print(), 150); }}
           outdoor={outdoor}
           onToggleOutdoor={toggleOutdoor}
         />
@@ -353,7 +352,7 @@ function InstallBanner() {
 }
 
 // ── Settings sheet ────────────────────────────────────────────────────────
-function SettingsSheet({ open, dark, groups, activeGroupId, person, email, onSwitchGroup, onJoinAnother, onCreateAnother, onInvite, onRename, onClose, onLeave, onDelete, onSignOut, onExportPdf, outdoor, onToggleOutdoor }) {
+function SettingsSheet({ open, dark, groups, activeGroupId, person, email, onSwitchGroup, onJoinAnother, onCreateAnother, onInvite, onRename, onClose, onLeave, onDelete, onSignOut, outdoor, onToggleOutdoor }) {
   const [confirming, setConfirming] = useState(null); // null | 'leave' | 'delete' | 'invite' | 'rename'
   const [renameVal, setRenameVal] = useState('');
   const [renameErr, setRenameErr] = useState('');
@@ -651,12 +650,11 @@ function SettingsSheet({ open, dark, groups, activeGroupId, person, email, onSwi
             {activeGroup && rule}
             {activeGroup && rowBtn('Invite to this crew', ink2, openInvite)}
 
-            {/* ITINERARY — original crew only (sky view + PDF export) */}
+            {/* SETTINGS — original crew only (Itinerary sky view options; PDF
+                export now lives on the day picker). */}
             {activeGroupId === G0_ID && (
               <>
-                <div style={{ marginTop: 22 }}>{sectionLabel('Itinerary')}</div>
-                {rowBtn('Export itinerary as PDF', ink2, onExportPdf)}
-                {rule}
+                <div style={{ marginTop: 22 }}>{sectionLabel('Settings')}</div>
                 {rowBtn(`Outdoor mode · ${outdoor ? 'On' : 'Off'}`, ink2, onToggleOutdoor)}
               </>
             )}
