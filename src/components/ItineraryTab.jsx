@@ -303,14 +303,18 @@ export default function ItineraryTab({ onOpenAccount, outdoor = false, kicker, c
               const isToday = i === todayIdx;
               return (
                 <button key={d.dateNum} onClick={() => { setViewDayIdx(i); setDaySheetOpen(false); }} aria-pressed={active}
-                  style={{ display: 'flex', alignItems: 'center', gap: 12, minHeight: 56, padding: '0 14px', borderRadius: 14, border: 'none', cursor: 'pointer', textAlign: 'left', backgroundColor: active ? sheetRaised : sheetChip }}>
+                  style={{ display: 'flex', alignItems: 'center', gap: 12, minHeight: 56, padding: '10px 14px', borderRadius: 14, border: 'none', cursor: 'pointer', textAlign: 'left', backgroundColor: active ? sheetRaised : sheetChip }}>
                   <span style={{ ...mono, fontSize: 10, fontWeight: 700, letterSpacing: '0.12em', color: isToday ? myColor : sheetMuted, width: 52, flexShrink: 0 }}>
                     {isToday ? 'TODAY' : `DAY ${i + 1}`}
                   </span>
-                  <span style={{ flex: 1, minWidth: 0, ...mono, fontSize: 16, fontWeight: 700, color: active ? myColor : sheetInk }}>
-                    {d.dayOfWeek.slice(0, 3)} {d.month} {d.dateNum}
+                  {/* Day name + city stacked, so the full city shows (some run long,
+                      e.g. "Boom · Tomorrowland Day 1") instead of being truncated. */}
+                  <span style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', gap: 2 }}>
+                    <span style={{ ...mono, fontSize: 16, fontWeight: 700, color: active ? myColor : sheetInk }}>
+                      {d.dayOfWeek.slice(0, 3)} {d.month} {d.dateNum}
+                    </span>
+                    <span style={{ ...mono, fontSize: 11, color: sheetMuted }}>{d.city}</span>
                   </span>
-                  <span style={{ ...mono, fontSize: 11, color: sheetMuted, maxWidth: 110, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flexShrink: 0 }}>{d.city}</span>
                   {active && <Check size={16} strokeWidth={3} color={myColor} style={{ flexShrink: 0 }} />}
                 </button>
               );

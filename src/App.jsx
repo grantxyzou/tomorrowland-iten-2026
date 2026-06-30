@@ -161,6 +161,15 @@ export default function App() {
   // Lineup tab is always dark.
   const dark = !(outdoor && resolvedTab === 'itinerary');
 
+  // Keep <html>/<body> behind the app matching the active theme, so the iOS
+  // dynamic-viewport bottom (and overscroll) never flashes the wrong colour
+  // through. The fixed crossfade layers sit on top; this is just the backstop.
+  useEffect(() => {
+    const base = dark ? '#0a0e22' : paper;
+    document.documentElement.style.backgroundColor = base;
+    document.body.style.backgroundColor = base;
+  }, [dark, paper]);
+
   // Tab switcher — sticky at the top so it stays reachable while the hero banner
   // scrolls away. Full-bleed (negative side margins escape <main>'s padding); it
   // is rendered as a direct child of <main> (not inside the banner's overflow:hidden
@@ -417,17 +426,19 @@ function SettingsSheet({ open, dark, groups, activeGroupId, person, email, onSwi
   const rule = <div style={{ borderTop: `1px solid ${rule2}` }} />;
   // Fine-print footer link — same weight as the Privacy policy link, so the rarely
   // wanted destructive actions sit quietly at the bottom instead of as red rows.
-  const footerLink = (label, onClick) => (
+  const footerLink = (label, onClick, color = muted2) => (
     <button type="button" onClick={onClick}
-      style={{ display: 'block', textAlign: 'left', background: 'none', border: 'none', cursor: 'pointer', padding: '6px 0', ...sans2, fontSize: 13, color: muted2, textDecoration: 'underline' }}>
+      style={{ display: 'block', textAlign: 'left', background: 'none', border: 'none', cursor: 'pointer', padding: '6px 0', ...sans2, fontSize: 13, color, textDecoration: 'underline' }}>
       {label}
     </button>
   );
-  // Compact round control for the identity row (rename / sign out live here now).
-  const iconBtn = {
-    flexShrink: 0, width: 38, height: 38, borderRadius: '50%',
-    display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
-    background: t.field, border: `1px solid ${rule2}`, color: ink2, cursor: 'pointer',
+  // Labeled pill control under the identity (rename / sign out live here now —
+  // icon + word so the action is never a bare, ambiguous glyph).
+  const pillBtn = {
+    flex: 1, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 8,
+    minHeight: 42, padding: '0 14px', borderRadius: 999,
+    background: t.field, border: `1px solid ${rule2}`, color: ink2,
+    ...sans2, fontSize: 14, fontWeight: 600, cursor: 'pointer',
   };
 
   return (
@@ -470,7 +481,21 @@ function SettingsSheet({ open, dark, groups, activeGroupId, person, email, onSwi
           </div>
         )}
 
-        {confirming === 'leave' ? (
+        {confirming === 'signout' ? (
+          <div>
+            <p style={{ ...sans2, fontSize: 14, color: ink2, marginBottom: 16, lineHeight: 1.5 }}>
+              Sign out of {person ? <strong>{person}</strong> : 'your account'}? You’ll need to sign back in to see your crews.
+            </p>
+            <button type="button" onClick={onSignOut}
+              style={{ display: 'block', width: '100%', padding: '14px 0', marginBottom: 8, borderRadius: 12, border: 'none', background: t.ink, color: t.bg, ...sans2, fontSize: 15, fontWeight: 700, cursor: 'pointer' }}>
+              Yes, sign out
+            </button>
+            <button type="button" onClick={() => setConfirming(null)}
+              style={{ display: 'block', width: '100%', padding: '12px 0', background: 'none', border: 'none', ...sans2, fontSize: 14, color: muted2, cursor: 'pointer' }}>
+              Cancel
+            </button>
+          </div>
+        ) : confirming === 'leave' ? (
           <div>
             <p style={{ ...sans2, fontSize: 14, color: ink2, marginBottom: 16, lineHeight: 1.5 }}>
               Leave this crew? Your picks and status will be removed from the crew.
@@ -571,24 +596,28 @@ function SettingsSheet({ open, dark, groups, activeGroupId, person, email, onSwi
           </div>
         ) : (
           <div>
-            {/* Signed-in identity — name + email, with rename + sign-out folded in
-                as inline icon controls (replaces the old Account rows). */}
+            {/* Signed-in identity — name + email, then labeled rename / sign-out
+                pills (folded in from the old Account rows). */}
             {person && (
-              <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '4px 0 22px' }}>
-                <span aria-hidden="true" style={{ width: 36, height: 36, borderRadius: '50%', backgroundColor: activeGroup?.color || '#888', color: avatarInk(activeGroup?.color || '#888888'), display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 800, fontSize: 16, flexShrink: 0 }}>
-                  {person[0]?.toUpperCase()}
-                </span>
-                <span style={{ minWidth: 0, flex: 1 }}>
-                  <span style={{ display: 'block', ...sans2, fontSize: 16, fontWeight: 700, color: ink2 }}>{person}</span>
-                  {email && <span style={{ display: 'block', ...sans2, fontSize: 12, color: muted2, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{email}</span>}
-                </span>
-                <button type="button" aria-label="Change my name" title="Change my name"
-                  onClick={() => { setRenameVal(person || ''); setRenameErr(''); setConfirming('rename'); }} style={iconBtn}>
-                  <Pencil size={17} />
-                </button>
-                <button type="button" aria-label="Sign out" title="Sign out" onClick={onSignOut} style={iconBtn}>
-                  <LogOut size={17} />
-                </button>
+              <div style={{ padding: '4px 0 22px' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 14 }}>
+                  <span aria-hidden="true" style={{ width: 36, height: 36, borderRadius: '50%', backgroundColor: activeGroup?.color || '#888', color: avatarInk(activeGroup?.color || '#888888'), display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 800, fontSize: 16, flexShrink: 0 }}>
+                    {person[0]?.toUpperCase()}
+                  </span>
+                  <span style={{ minWidth: 0, flex: 1 }}>
+                    <span style={{ display: 'block', ...sans2, fontSize: 16, fontWeight: 700, color: ink2 }}>{person}</span>
+                    {email && <span style={{ display: 'block', ...sans2, fontSize: 12, color: muted2, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{email}</span>}
+                  </span>
+                </div>
+                <div style={{ display: 'flex', gap: 10 }}>
+                  <button type="button" aria-label="Change my name"
+                    onClick={() => { setRenameVal(person || ''); setRenameErr(''); setConfirming('rename'); }} style={pillBtn}>
+                    <Pencil size={16} /> Change name
+                  </button>
+                  <button type="button" aria-label="Sign out" onClick={() => setConfirming('signout')} style={pillBtn}>
+                    <LogOut size={16} /> Sign out
+                  </button>
+                </div>
               </div>
             )}
 
@@ -634,8 +663,8 @@ function SettingsSheet({ open, dark, groups, activeGroupId, person, email, onSwi
 
             {/* Fine print — destructive actions deprioritized to match the Privacy link */}
             <div style={{ borderTop: `1px solid ${rule2}`, marginTop: 22, paddingTop: 14, display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: 2 }}>
-              {footerLink('Leave this crew', () => setConfirming('leave'))}
-              {footerLink('Delete my account', () => setConfirming('delete'))}
+              {footerLink('Leave this crew', () => setConfirming('leave'), accent2)}
+              {footerLink('Delete my account', () => setConfirming('delete'), accent2)}
               <a href="/privacy" style={{ ...sans2, fontSize: 13, color: muted2, textDecoration: 'underline', padding: '6px 0' }}>Privacy policy</a>
             </div>
           </div>
