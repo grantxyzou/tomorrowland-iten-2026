@@ -146,7 +146,9 @@ export default function TimeView({
       <span style={{ ...mono, fontSize: 10, color: muted, letterSpacing: '0.18em', textTransform: 'uppercase' }}>
         {editTimes ? `Edit set times · ${dayLabel}` : `${activePerson}'s plan · ${timeline.length} pick${timeline.length === 1 ? '' : 's'}`}
       </span>
-      {toggle}
+      {/* Entry point moved to the account sheet (Settings → Edit set times); the
+          toggle stays only as the in-editor "Cancel". */}
+      {editTimes && toggle}
     </div>
   );
 
