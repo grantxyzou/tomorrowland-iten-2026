@@ -28,7 +28,7 @@ export default function TabHeader({ kicker, crewName, departureDate, statusChip,
               {crewName && (
                 <div style={{ ...hdrName, color: '#fff', textShadow: '0 1px 6px rgba(0,0,0,0.55)', marginTop: 1 }}>{crewName}</div>
               )}
-              {statusChip && <div style={{ marginTop: 6 }}>{statusChip}</div>}
+              {statusChip && <div style={{ marginTop: 2 }}>{statusChip}</div>}
             </div>
             {countdown && (
               <div style={{ textAlign: 'right', flexShrink: 0 }}>
