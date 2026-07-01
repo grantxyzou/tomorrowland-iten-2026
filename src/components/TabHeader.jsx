@@ -6,7 +6,7 @@ import { countdownLabel } from '../lib/countdown.js';
 // scrolls away with the page. The tab switcher now lives in the bottom bar
 // (TabPills), so the banner is the whole shell. Identity strip is white-on-
 // gradient with shadows for legibility.
-export default function TabHeader({ kicker, crewName, departureDate, updated, children }) {
+export default function TabHeader({ kicker, crewName, departureDate, updated, statusChip, children }) {
   const countdown = countdownLabel(departureDate);
   return (
     <>
@@ -31,6 +31,7 @@ export default function TabHeader({ kicker, crewName, departureDate, updated, ch
               {updated && (
                 <div style={{ ...hdrSubline, color: 'rgba(255,255,255,0.6)', textShadow: '0 1px 4px rgba(0,0,0,0.7)', marginTop: 3 }}>UPDATED {updated}</div>
               )}
+              {statusChip && <div style={{ marginTop: 6 }}>{statusChip}</div>}
             </div>
             {countdown && (
               <div style={{ textAlign: 'right', flexShrink: 0 }}>
