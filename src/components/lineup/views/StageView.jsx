@@ -20,12 +20,12 @@ export default function StageView({
           {browseLiveCount}{browseLiveCount !== dayCount ? ` / ${dayCount}` : ''} artists · {groups.length} stage{groups.length === 1 ? '' : 's'}
         </span>
         <button onClick={() => setSearchOpen(o => !o)} aria-expanded={searchOpen} aria-label="Search artists"
-          style={{ marginLeft: 'auto', minWidth: 44, minHeight: 44, display: 'flex', alignItems: 'center', justifyContent: 'center', border: 'none', background: 'none', color: searchOpen ? ink : muted, cursor: 'pointer' }}>
+          style={{ minWidth: 44, minHeight: 44, display: 'flex', alignItems: 'center', justifyContent: 'center', border: 'none', background: 'none', color: searchOpen ? ink : muted, cursor: 'pointer' }}>
           <MagnifyingGlass size={18} weight="bold" />
         </button>
         {!forceOpen && (
           <button onClick={() => setOpenStages(openStages.size >= groups.length ? new Set() : new Set(STAGE_ORDER))}
-            style={{ minHeight: 44, padding: '0 4px', border: 'none', background: 'none', color: myColor, ...mono, fontSize: 10, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', cursor: 'pointer', transition: 'color var(--dur-base) var(--ease-out)' }}>
+            style={{ marginLeft: 'auto', minHeight: 44, padding: '0 4px', border: 'none', background: 'none', color: myColor, ...mono, fontSize: 10, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', cursor: 'pointer', transition: 'color var(--dur-base) var(--ease-out)' }}>
             {openStages.size >= groups.length ? 'Collapse all' : 'Expand all'}
           </button>
         )}
