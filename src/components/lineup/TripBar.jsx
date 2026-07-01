@@ -166,18 +166,17 @@ export default function TripBar({
       <div style={{ pointerEvents: 'auto', backgroundColor: bar, borderTop: '1px solid #20284a', borderTopLeftRadius: rPill, borderTopRightRadius: rPill, boxShadow: shBar, paddingBottom: 'env(safe-area-inset-bottom)' }}>
         <div style={{ maxWidth: 680, margin: '0 auto', padding: '12px 16px 14px', display: 'flex', flexDirection: 'column', gap: 10 }}>
 
-          {/* Tab switcher (Itinerary/Lineup) — only when both tabs exist */}
-          <TabPills tabs={tabs} activeTab={activeTab} onSelectTab={onSelectTab}
-            activeBg={myColor} activeInk={onAccent} chipBg={paper} chipBorder="#243056" chipInk={ink} />
-
-          {/* Row 1 — Person · Day (Party mode moved into the FAB speed-dial) */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: 9 }}>
-            <button onClick={onPerson} aria-haspopup="dialog" aria-label={`Signed in as ${activePerson}. Tap for account.`} style={chipStyle}>
+          {/* Row 1 — Tabs · Person · Day, all on one line (scrolls if too narrow
+              so the bar height never grows). */}
+          <div className="no-scrollbar" style={{ display: 'flex', alignItems: 'center', gap: 9, flexWrap: 'nowrap', overflowX: 'auto' }}>
+            <TabPills tabs={tabs} activeTab={activeTab} onSelectTab={onSelectTab}
+              activeBg={myColor} activeInk={onAccent} chipBg={paper} chipBorder="#243056" chipInk={ink} />
+            <button onClick={onPerson} aria-haspopup="dialog" aria-label={`Signed in as ${activePerson}. Tap for account.`} style={{ ...chipStyle, flexShrink: 0 }}>
               <span aria-hidden="true" style={{ width: 22, height: 22, borderRadius: '50%', backgroundColor: myColor, color: onAccent, display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 800, fontSize: 12 }}>{activePerson[0]}</span>
               <span style={{ maxWidth: 120, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{activePerson}</span>
               <CaretDown size={13} weight="bold" color={muted} />
             </button>
-            <button onClick={onDay} aria-haspopup="dialog" aria-label={`Day: ${dayLabel}. Tap to switch.`} style={{ ...chipStyle, ...mono, fontSize: 13 }}>
+            <button onClick={onDay} aria-haspopup="dialog" aria-label={`Day: ${dayLabel}. Tap to switch.`} style={{ ...chipStyle, ...mono, fontSize: 13, flexShrink: 0 }}>
               <span style={{ color: myColor, fontWeight: 700 }}>{dayLabel}</span>
               <CaretDown size={13} weight="bold" color={muted} />
             </button>

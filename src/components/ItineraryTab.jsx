@@ -239,7 +239,7 @@ export default function ItineraryTab({ onOpenAccount, onExportPdf, outdoor = fal
       )}
 
       {/* Spacer so scrollable content clears the fixed bottom transport bar. */}
-      <div aria-hidden="true" style={{ height: 262 }} />
+      <div aria-hidden="true" style={{ height: 208 }} />
 
       {/* Fixed bottom transport bar — mirrors the Lineup TripBar so the two tabs
           read as one chrome: same surface, corner radius (rPill), 680-wide centred
@@ -250,18 +250,17 @@ export default function ItineraryTab({ onOpenAccount, onExportPdf, outdoor = fal
         <div style={{ backgroundColor: pal.bar, borderTop: `1px solid ${pal.rule}`, borderTopLeftRadius: rPill, borderTopRightRadius: rPill, boxShadow: '0 -12px 30px rgba(0,0,0,0.45)', paddingBottom: 'env(safe-area-inset-bottom)' }}>
           <div style={{ maxWidth: 680, margin: '0 auto', padding: '12px 16px 14px', display: 'flex', flexDirection: 'column', gap: 10 }}>
 
-            {/* Tab switcher (Itinerary/Lineup) — only when both tabs exist */}
-            <TabPills tabs={tabs} activeTab={activeTab} onSelectTab={onSelectTab}
-              activeBg={myColor} activeInk={inkFor(person)} chipBg={pal.card} chipBorder={pal.rule} chipInk={pal.ink} />
-
-            {/* Row 1 — Account · Day (same chips/positions as the Lineup bar) */}
-            <div style={{ display: 'flex', alignItems: 'center', gap: 9 }}>
+            {/* Row 1 — Tabs · Account · Day, all on one line (scrolls if too
+                narrow so the bar height never grows). Mirrors the Lineup bar. */}
+            <div className="no-scrollbar" style={{ display: 'flex', alignItems: 'center', gap: 9, flexWrap: 'nowrap', overflowX: 'auto' }}>
+              <TabPills tabs={tabs} activeTab={activeTab} onSelectTab={onSelectTab}
+                activeBg={myColor} activeInk={inkFor(person)} chipBg={pal.card} chipBorder={pal.rule} chipInk={pal.ink} />
               {onOpenAccount && (
                 <button
                   onClick={onOpenAccount}
                   aria-haspopup="dialog"
                   aria-label={`Signed in as ${person}. Tap for account and crews.`}
-                  style={chipStyle}
+                  style={{ ...chipStyle, flexShrink: 0 }}
                 >
                   <span aria-hidden="true" style={{ width: 22, height: 22, borderRadius: '50%', backgroundColor: myColor, color: inkFor(person), display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 800, fontSize: 12 }}>
                     {person?.[0]?.toUpperCase()}
@@ -274,7 +273,7 @@ export default function ItineraryTab({ onOpenAccount, onExportPdf, outdoor = fal
                 onClick={() => setDaySheetOpen(true)}
                 aria-haspopup="dialog"
                 aria-label={`Day: ${dayPillLabel}${viewDayIdx === todayIdx ? ' (today)' : ''}. Tap to switch.`}
-                style={{ ...chipStyle, ...mono, fontSize: 13 }}
+                style={{ ...chipStyle, ...mono, fontSize: 13, flexShrink: 0 }}
               >
                 {viewDayIdx === todayIdx && (
                   <span aria-hidden="true" style={{ width: 6, height: 6, borderRadius: '50%', backgroundColor: dayLabelColor, flexShrink: 0 }} />
