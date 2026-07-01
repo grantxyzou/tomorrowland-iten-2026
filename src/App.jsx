@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { Pencil, LogOut } from 'lucide-react';
 import { Analytics } from '@vercel/analytics/react';
 import { usePresence } from './hooks/usePresence.js';
-import { LAST_UPDATED, DEFAULT_KICKER, DEFAULT_DEPARTURE, days } from './data/trip.js';
+import { DEFAULT_KICKER, DEFAULT_DEPARTURE, days } from './data/trip.js';
 import ItineraryPrintDoc from './components/itinerary/ItineraryPrintDoc.jsx';
 import ItineraryTab from './components/ItineraryTab.jsx';
 import LineupTab from './components/LineupTab.jsx';
@@ -16,14 +16,6 @@ const TABS = [
   { id: 'itinerary', label: 'Itinerary' },
   { id: 'lineup',    label: 'Lineup'    },
 ];
-
-// Format the last-updated timestamp for display
-function formatUpdated(iso) {
-  const d = new Date(iso);
-  return d.toLocaleDateString('en-CA', {
-    month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit', hour12: false,
-  });
-}
 
 const G0_ID = 'ldg';
 
@@ -187,8 +179,8 @@ export default function App() {
         <div key={resolvedTab}>
           {/* Keyed by tab so switching tabs resets a crashed boundary. */}
           <ErrorBoundary key={resolvedTab}>
-            {resolvedTab === 'itinerary' && <ItineraryTab onOpenAccount={() => setSettingsOpen(true)} onExportPdf={() => setTimeout(() => window.print(), 150)} outdoor={outdoor} kicker={activeGroup?.kicker || DEFAULT_KICKER} crewName={activeGroup?.name} departureDate={activeGroup?.departureDate || DEFAULT_DEPARTURE} updated={formatUpdated(LAST_UPDATED)} {...tabProps} />}
-            {resolvedTab === 'lineup'    && <LineupTab    onOpenAccount={() => setSettingsOpen(true)} kicker={activeGroup?.kicker || DEFAULT_KICKER} crewName={activeGroup?.name} departureDate={activeGroup?.departureDate || DEFAULT_DEPARTURE} updated={formatUpdated(LAST_UPDATED)} pendingEditTimes={pendingEditTimes} onConsumeEditTimes={() => setPendingEditTimes(false)} {...tabProps} />}
+            {resolvedTab === 'itinerary' && <ItineraryTab onOpenAccount={() => setSettingsOpen(true)} onExportPdf={() => setTimeout(() => window.print(), 150)} outdoor={outdoor} kicker={activeGroup?.kicker || DEFAULT_KICKER} crewName={activeGroup?.name} departureDate={activeGroup?.departureDate || DEFAULT_DEPARTURE} {...tabProps} />}
+            {resolvedTab === 'lineup'    && <LineupTab    onOpenAccount={() => setSettingsOpen(true)} kicker={activeGroup?.kicker || DEFAULT_KICKER} crewName={activeGroup?.name} departureDate={activeGroup?.departureDate || DEFAULT_DEPARTURE} pendingEditTimes={pendingEditTimes} onConsumeEditTimes={() => setPendingEditTimes(false)} {...tabProps} />}
           </ErrorBoundary>
         </div>
       </main>

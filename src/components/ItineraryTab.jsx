@@ -125,7 +125,7 @@ const PREFERS_REDUCED_MOTION =
     ? window.matchMedia('(prefers-reduced-motion: reduce)').matches
     : false;
 
-export default function ItineraryTab({ onOpenAccount, onExportPdf, outdoor = false, kicker, crewName, departureDate, updated, tabs, activeTab, onSelectTab }) {
+export default function ItineraryTab({ onOpenAccount, onExportPdf, outdoor = false, kicker, crewName, departureDate, tabs, activeTab, onSelectTab }) {
   const todayIdx = getTodayIndex();
   const refs = useRef([]);
   const { person } = useAuth();
@@ -206,7 +206,7 @@ export default function ItineraryTab({ onOpenAccount, onExportPdf, outdoor = fal
       {/* Shared header shell (identical on both tabs): the sky body fills the
           banner, with the identity strip overlaid and the tab switcher as the
           bottom strip. The scrubber lives in a fixed transport bar at the bottom. */}
-      <TabHeader kicker={kicker} crewName={crewName} departureDate={departureDate} updated={updated} statusChip={liveChip}>
+      <TabHeader kicker={kicker} crewName={crewName} departureDate={departureDate} statusChip={liveChip}>
         <SkyHeader
           minute={effectiveMinute}
           dayLabel={dayLabel}
