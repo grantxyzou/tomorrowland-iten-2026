@@ -26,7 +26,7 @@ import TimeView from './lineup/views/TimeView.jsx';
 import CrewView, { PRESETS } from './lineup/views/CrewView.jsx';
 import { useGroup } from '../groups/GroupContext.jsx';
 
-export default function LineupTab({ onOpenAccount, kicker, crewName, departureDate, updated, tabBar = null }) {
+export default function LineupTab({ onOpenAccount, kicker, crewName, departureDate, updated, tabs, activeTab, onSelectTab }) {
   const [activeDay, setActiveDay]       = useState('fri');
   // Identity comes from the signed-in session — you are always yourself.
   const { person: activePerson } = useAuth();
@@ -297,7 +297,7 @@ export default function LineupTab({ onOpenAccount, kicker, crewName, departureDa
       {/* Shared header shell (identical on both tabs): the Consciencia wordmark
           fills the banner, the identity strip is overlaid, and the tab switcher
           is the bottom strip. */}
-      <TabHeader kicker={kicker} crewName={crewName} departureDate={departureDate} updated={updated} tabBar={tabBar}>
+      <TabHeader kicker={kicker} crewName={crewName} departureDate={departureDate} updated={updated}>
         <ConscienciaHeader />
       </TabHeader>
 
@@ -374,6 +374,7 @@ export default function LineupTab({ onOpenAccount, kicker, crewName, departureDa
       <TripBar
         activePerson={activePerson} activeDay={activeDay} view={view} setView={setView}
         party={party} crewCount={crewCount} clashCount={clashes.length}
+        tabs={tabs} activeTab={activeTab} onSelectTab={onSelectTab}
         newActivity={newActivity} onOpen={markFabSeen}
         onPerson={onOpenAccount} onDay={() => setSheet('day')} onParty={() => setParty(true)}
         onResolve={() => setSheet('overlaps')} onNudge={() => setSheet('nudge')}

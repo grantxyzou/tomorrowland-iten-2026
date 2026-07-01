@@ -1,14 +1,12 @@
 import { HERO_H, hdrEyebrow, hdrName, hdrCountLabel, hdrCountValue, hdrSubline } from './lineup/theme.js';
 import { countdownLabel } from '../lib/countdown.js';
 
-// Shared header shell used by BOTH tabs. Two siblings:
-//   1) the hero banner (tab-specific gradient body + overlaid identity strip),
-//      which bleeds full-width and SCROLLS AWAY, and
-//   2) the tab switcher, rendered as a direct child of <main> (NOT nested in the
-//      banner's overflow:hidden wrapper) so it can position:sticky and pin to the
-//      top on scroll. Keeping them siblings is what makes the collapsing header
-//      work. The identity strip is white-on-gradient with shadows for legibility.
-export default function TabHeader({ kicker, crewName, departureDate, updated, tabBar, children }) {
+// Shared header shell used by BOTH tabs: the hero banner (tab-specific gradient
+// body via {children} + an overlaid identity strip), which bleeds full-width and
+// scrolls away with the page. The tab switcher now lives in the bottom bar
+// (TabPills), so the banner is the whole shell. Identity strip is white-on-
+// gradient with shadows for legibility.
+export default function TabHeader({ kicker, crewName, departureDate, updated, children }) {
   const countdown = countdownLabel(departureDate);
   return (
     <>
@@ -43,10 +41,6 @@ export default function TabHeader({ kicker, crewName, departureDate, updated, ta
           </div>
         </div>
       </div>
-
-      {/* Sticky tab switcher — sibling of the banner (direct child of <main>) so
-          position:sticky pins it to the top while the banner scrolls away. */}
-      {tabBar}
     </>
   );
 }

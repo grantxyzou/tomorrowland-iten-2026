@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import { Moon, Lightning, Sparkle, CaretDown, Plus, MusicNotes, NavigationArrow } from '@phosphor-icons/react';
 import { bar, paper, chip, well, ink, muted, mono, sans, clashFab, spotifyDot, DAYS, VIEWS, shRow, shBar, rSeg, rTrack, rSheet, rPill } from './theme.js';
 import { useGroup } from '../../groups/GroupContext.jsx';
+import TabPills from './TabPills.jsx';
 
 const FAB_SIDE_KEY = 'tml2026_fab_side';
 const HOLD_MS = 450; // press-and-hold on the FAB to flip it to the other corner
@@ -17,6 +18,7 @@ const NOTIF = { overlap: clashFab, message: '#5b8cff' };
 // out of the way while you scroll down. Party keeps its own button on the bar.
 export default function TripBar({
   activePerson, activeDay, view, setView, crewCount, clashCount, newActivity = {},
+  tabs, activeTab, onSelectTab,
   onPerson, onDay, onParty, onResolve, onNudge, onSpotify, onWhere, onOpen,
 }) {
   const { colorFor, inkFor } = useGroup();
@@ -163,6 +165,10 @@ export default function TripBar({
       {/* The bar */}
       <div style={{ pointerEvents: 'auto', backgroundColor: bar, borderTop: '1px solid #20284a', borderTopLeftRadius: rPill, borderTopRightRadius: rPill, boxShadow: shBar, paddingBottom: 'env(safe-area-inset-bottom)' }}>
         <div style={{ maxWidth: 680, margin: '0 auto', padding: '12px 16px 14px', display: 'flex', flexDirection: 'column', gap: 10 }}>
+
+          {/* Tab switcher (Itinerary/Lineup) — only when both tabs exist */}
+          <TabPills tabs={tabs} activeTab={activeTab} onSelectTab={onSelectTab}
+            activeBg={myColor} activeInk={onAccent} chipBg={paper} chipBorder="#243056" chipInk={ink} />
 
           {/* Row 1 — Person · Day (Party mode moved into the FAB speed-dial) */}
           <div style={{ display: 'flex', alignItems: 'center', gap: 9 }}>
