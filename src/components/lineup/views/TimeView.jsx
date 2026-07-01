@@ -275,7 +275,7 @@ export default function TimeView({
         {header}
         <div style={{ textAlign: 'center', padding: '40px 16px', color: muted }}>
           <Headphones size={30} weight="regular" style={{ marginBottom: 8 }} />
-          <div style={{ fontSize: 14 }}>{activePerson} hasn't picked anyone for {dayLabel} yet.<br />Add some from the Stage tab.</div>
+          <div style={{ fontSize: 14 }}>You haven’t picked any DJs yet.<br />Add some from the Stage tab.</div>
         </div>
       </div>
     );

@@ -142,7 +142,7 @@ export default function CrewView({ crew, clashes, clusters, picks, dayHasTimes, 
         <div style={{ ...mono, fontSize: 10, color: muted, letterSpacing: '0.18em', textTransform: 'uppercase', marginBottom: 8, display: 'inline-flex', alignItems: 'center', gap: 5 }}><Lightning size={13} weight="bold" /> Overlaps</div>
         {!dayHasTimes ? (
           <div style={{ ...mono, fontSize: 11, color: muted, padding: '10px 12px', border: `1px solid ${rule}`, borderRadius: 8 }}>
-            No overlaps to flag yet — set times aren’t announced. Shared picks that land at the same time show up here once times drop.
+            Your overlapping set times will show up here.
           </div>
         ) : clashes.length === 0 ? (
           <div style={{ ...mono, fontSize: 11, color: muted, padding: '10px 12px', border: `1px solid ${rule}`, borderRadius: 8 }}>
