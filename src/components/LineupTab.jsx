@@ -283,7 +283,7 @@ export default function LineupTab({ onOpenAccount, kicker, crewName, departureDa
 
   const crewCount = crew.all3.length + crew.two.length;
 
-  // Compact live-sync chip (relocated under the masthead).
+  // Live-sync chip — lives in the banner identity strip (passed to TabHeader).
   const queued = pendingCount > 0;
   const offline = !online || status === 'error';
   const syncColor = queued ? tmrwGold : offline ? clashRed : status === 'ready' ? live : muted;
@@ -291,28 +291,26 @@ export default function LineupTab({ onOpenAccount, kicker, crewName, departureDa
     : offline ? 'Offline' : status === 'ready' ? 'Live' : 'Syncing';
   const syncAria = queued ? `${pendingCount} change${pendingCount === 1 ? '' : 's'} waiting to sync — they'll send when you're back online`
     : offline ? 'Offline — showing last synced picks' : status === 'ready' ? 'Live — synced with the crew' : 'Syncing';
+  const statusChip = (
+    <span role="status" aria-label={syncAria}
+      style={{ ...mono, fontSize: 10, fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', display: 'inline-flex', alignItems: 'center', gap: 5, color: syncColor, textShadow: '0 1px 4px rgba(0,0,0,0.7)', transition: 'color var(--dur-fast) var(--ease-out)' }}>
+      <span aria-hidden="true" style={{ width: 7, height: 7, borderRadius: '50%', backgroundColor: syncColor, boxShadow: `0 0 6px ${syncColor}`, display: 'inline-block', transition: 'background-color var(--dur-fast) var(--ease-out)' }} />
+      {syncLabel}
+    </span>
+  );
 
   return (
     <div style={{ ...sans }}>
       {/* Shared header shell (identical on both tabs): the Consciencia wordmark
           fills the banner, the identity strip is overlaid, and the tab switcher
           is the bottom strip. */}
-      <TabHeader kicker={kicker} crewName={crewName} departureDate={departureDate} updated={updated}>
+      <TabHeader kicker={kicker} crewName={crewName} departureDate={departureDate} updated={updated} statusChip={statusChip}>
         <ConscienciaHeader />
       </TabHeader>
 
       {/* Content scrolls on the App's midnight atmosphere; the Trip Bar is pinned
           to the bottom (the thumb never travels). Bottom padding clears it. */}
       <div style={{ padding: '14px 4px 172px' }}>
-
-        {/* Live-sync status — small, right-aligned under the masthead */}
-        <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 14 }}>
-          <span role="status" aria-label={syncAria}
-            style={{ ...mono, fontSize: 11, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', display: 'inline-flex', alignItems: 'center', gap: 5, color: syncColor, transition: 'color var(--dur-fast) var(--ease-out)' }}>
-            <span aria-hidden="true" style={{ width: 7, height: 7, borderRadius: '50%', backgroundColor: syncColor, display: 'inline-block', transition: 'background-color var(--dur-fast) var(--ease-out)' }} />
-            {syncLabel}
-          </span>
-        </div>
 
         {/* One-time tip — slim and dismissible */}
         {LINEUP_STATUS !== 'official' && !tipDismissed && (
