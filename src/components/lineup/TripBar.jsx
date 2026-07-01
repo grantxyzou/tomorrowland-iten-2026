@@ -164,7 +164,10 @@ export default function TripBar({
 
       {/* The bar */}
       <div style={{ pointerEvents: 'auto', backgroundColor: bar, borderTop: '1px solid #20284a', borderTopLeftRadius: rPill, borderTopRightRadius: rPill, boxShadow: shBar, paddingBottom: 'env(safe-area-inset-bottom)' }}>
-        <div style={{ maxWidth: 680, margin: '0 auto', padding: '12px 16px 14px', display: 'flex', flexDirection: 'column', gap: 10 }}>
+        {/* minHeight 157 matches the Itinerary bar (its taller scrubber row) so
+            both bottom bars are the same height; space-between anchors the view
+            switch to the bottom while Row 1 stays aligned with the Itinerary bar. */}
+        <div style={{ maxWidth: 680, margin: '0 auto', padding: '12px 16px 14px', minHeight: 157, display: 'flex', flexDirection: 'column', justifyContent: 'space-between', gap: 10 }}>
 
           {/* Row 1 — Person · Day · Tabs, all on one line (scrolls if too narrow
               so the bar height never grows). */}
