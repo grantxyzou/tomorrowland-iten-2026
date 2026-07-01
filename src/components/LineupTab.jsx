@@ -318,7 +318,7 @@ export default function LineupTab({ onOpenAccount, kicker, crewName, departureDa
 
       {/* Content scrolls on the App's midnight atmosphere; the Trip Bar is pinned
           to the bottom (the thumb never travels). Bottom padding clears it. */}
-      <div style={{ padding: '14px 4px 172px' }}>
+      <div style={{ padding: '14px 4px 195px' }}>
 
         {/* One-time tip — slim and dismissible */}
         {LINEUP_STATUS !== 'official' && !tipDismissed && (
