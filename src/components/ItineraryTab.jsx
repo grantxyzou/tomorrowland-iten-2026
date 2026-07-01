@@ -260,9 +260,23 @@ export default function ItineraryTab({ onOpenAccount, onExportPdf, outdoor = fal
         <div style={{ backgroundColor: pal.bar, borderTop: `1px solid ${pal.rule}`, borderTopLeftRadius: rPill, borderTopRightRadius: rPill, boxShadow: '0 -12px 30px rgba(0,0,0,0.45)', paddingBottom: 'env(safe-area-inset-bottom)' }}>
           <div style={{ maxWidth: 680, margin: '0 auto', padding: '12px 16px 14px', display: 'flex', flexDirection: 'column', gap: 10 }}>
 
-            {/* Row 1 — Account · Day · Tabs, all on one line (scrolls if too
+            {/* Row 1 — Tabs · Day · Account, all on one line (scrolls if too
                 narrow so the bar height never grows). Mirrors the Lineup bar. */}
             <div className="no-scrollbar" style={{ display: 'flex', alignItems: 'center', gap: 9, flexWrap: 'nowrap', overflowX: 'auto' }}>
+              <TabPills tabs={tabs} activeTab={activeTab} onSelectTab={onSelectTab}
+                activeBg={myColor} activeInk={inkFor(person)} chipBg={pal.card} chipBorder={pal.rule} chipInk={pal.ink} />
+              <button
+                onClick={() => setDaySheetOpen(true)}
+                aria-haspopup="dialog"
+                aria-label={`Day: ${dayPillLabel}${viewDayIdx === todayIdx ? ' (today)' : ''}. Tap to switch.`}
+                style={{ ...chipStyle, ...mono, fontSize: 13, flexShrink: 0 }}
+              >
+                {viewDayIdx === todayIdx && (
+                  <span aria-hidden="true" style={{ width: 6, height: 6, borderRadius: '50%', backgroundColor: dayLabelColor, flexShrink: 0 }} />
+                )}
+                <span style={{ color: dayLabelColor, fontWeight: 700 }}>{dayPillLabel}</span>
+                <ChevronDown size={13} color={pal.muted} />
+              </button>
               {onOpenAccount && (
                 <button
                   onClick={onOpenAccount}
@@ -277,20 +291,6 @@ export default function ItineraryTab({ onOpenAccount, onExportPdf, outdoor = fal
                   <ChevronDown size={13} color={pal.muted} />
                 </button>
               )}
-              <button
-                onClick={() => setDaySheetOpen(true)}
-                aria-haspopup="dialog"
-                aria-label={`Day: ${dayPillLabel}${viewDayIdx === todayIdx ? ' (today)' : ''}. Tap to switch.`}
-                style={{ ...chipStyle, ...mono, fontSize: 13, flexShrink: 0 }}
-              >
-                {viewDayIdx === todayIdx && (
-                  <span aria-hidden="true" style={{ width: 6, height: 6, borderRadius: '50%', backgroundColor: dayLabelColor, flexShrink: 0 }} />
-                )}
-                <span style={{ color: dayLabelColor, fontWeight: 700 }}>{dayPillLabel}</span>
-                <ChevronDown size={13} color={pal.muted} />
-              </button>
-              <TabPills tabs={tabs} activeTab={activeTab} onSelectTab={onSelectTab}
-                activeBg={myColor} activeInk={inkFor(person)} chipBg={pal.card} chipBorder={pal.rule} chipInk={pal.ink} />
             </div>
 
             {/* Row 2 — the Itinerary's transport: the day timeline scrubber. It
