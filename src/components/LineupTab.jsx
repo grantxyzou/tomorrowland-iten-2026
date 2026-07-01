@@ -207,15 +207,18 @@ export default function LineupTab({ onOpenAccount, kicker, crewName, departureDa
   }, [fabSeenKey, fabSeen, tripClashKeys, sharers]);
 
   const newActivity = useMemo(() => {
-    if (!fabSeen) return { overlap: false, message: false, location: false };
+    if (!fabSeen) return { overlap: false, message: false, location: [] };
     const seenClash = new Set(fabSeen.clashKeys || []);
     const seenShare = new Set(fabSeen.sharers || []);
+    // Newly-sharing people → their crew colours (deduped), so the location dot
+    // is tinted by whoever just turned location on.
+    const newLocColors = [...new Set(sharers.filter(p => !seenShare.has(p)).map(p => colorFor(p)))];
     return {
       overlap: [...tripClashKeys].some(k => !seenClash.has(k)),
       message: latestOtherStatusTs > (fabSeen.seenAt || 0),
-      location: sharers.some(p => !seenShare.has(p)),
+      location: newLocColors,
     };
-  }, [fabSeen, tripClashKeys, latestOtherStatusTs, sharers]);
+  }, [fabSeen, tripClashKeys, latestOtherStatusTs, sharers, colorFor]);
 
   const markFabSeen = useCallback(() => {
     if (!fabSeenKey) return;
