@@ -26,7 +26,7 @@ import TimeView from './lineup/views/TimeView.jsx';
 import CrewView, { PRESETS } from './lineup/views/CrewView.jsx';
 import { useGroup } from '../groups/GroupContext.jsx';
 
-export default function LineupTab({ onOpenAccount, kicker, crewName, departureDate, updated, tabs, activeTab, onSelectTab }) {
+export default function LineupTab({ onOpenAccount, kicker, crewName, departureDate, updated, tabs, activeTab, onSelectTab, pendingEditTimes, onConsumeEditTimes }) {
   const [activeDay, setActiveDay]       = useState('fri');
   // Identity comes from the signed-in session — you are always yourself.
   const { person: activePerson } = useAuth();
@@ -54,6 +54,14 @@ export default function LineupTab({ onOpenAccount, kicker, crewName, departureDa
   const effectiveSets = useMemo(() => applyOverrides(sets, overrides), [overrides]);
   // In-app set-time editor (Time view).
   const [editTimes, setEditTimes] = useState(false);
+  // Entry point lives in the account sheet now: consume the one-shot signal from
+  // App (Settings → Edit set times) to jump into the Time view in edit mode.
+  useEffect(() => {
+    if (!pendingEditTimes) return;
+    setView('time');
+    setEditTimes(true);
+    onConsumeEditTimes?.();
+  }, [pendingEditTimes, onConsumeEditTimes]);
   // Lightweight crew status board (where are you / what are you doing).
   const crewStatus = useCrewStatus();
   // Opt-in, battery-conscious GPS sharing — samples only while the map sheet is

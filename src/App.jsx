@@ -30,6 +30,11 @@ const G0_ID = 'ldg';
 export default function App() {
   const [activeTab, setActiveTab] = useState('itinerary');
   const [settingsOpen, setSettingsOpen] = useState(false);
+  // One-shot signal: "Edit set times" in the account sheet → open the Lineup
+  // Time view in edit mode. LineupTab consumes it and clears it (so a normal tab
+  // switch / remount never re-triggers the editor).
+  const [pendingEditTimes, setPendingEditTimes] = useState(false);
+  const requestEditTimes = () => { setActiveTab('lineup'); setPendingEditTimes(true); setSettingsOpen(false); };
   // §6 Outdoor mode: persisted high-contrast LIGHT override for daylight legibility.
   const [outdoor, setOutdoor] = useState(() => {
     try { return localStorage.getItem('tml_outdoor') === '1'; } catch { return false; }
@@ -183,7 +188,7 @@ export default function App() {
           {/* Keyed by tab so switching tabs resets a crashed boundary. */}
           <ErrorBoundary key={resolvedTab}>
             {resolvedTab === 'itinerary' && <ItineraryTab onOpenAccount={() => setSettingsOpen(true)} onExportPdf={() => setTimeout(() => window.print(), 150)} outdoor={outdoor} kicker={activeGroup?.kicker || DEFAULT_KICKER} crewName={activeGroup?.name} departureDate={activeGroup?.departureDate || DEFAULT_DEPARTURE} updated={formatUpdated(LAST_UPDATED)} {...tabProps} />}
-            {resolvedTab === 'lineup'    && <LineupTab    onOpenAccount={() => setSettingsOpen(true)} kicker={activeGroup?.kicker || DEFAULT_KICKER} crewName={activeGroup?.name} departureDate={activeGroup?.departureDate || DEFAULT_DEPARTURE} updated={formatUpdated(LAST_UPDATED)} {...tabProps} />}
+            {resolvedTab === 'lineup'    && <LineupTab    onOpenAccount={() => setSettingsOpen(true)} kicker={activeGroup?.kicker || DEFAULT_KICKER} crewName={activeGroup?.name} departureDate={activeGroup?.departureDate || DEFAULT_DEPARTURE} updated={formatUpdated(LAST_UPDATED)} pendingEditTimes={pendingEditTimes} onConsumeEditTimes={() => setPendingEditTimes(false)} {...tabProps} />}
           </ErrorBoundary>
         </div>
       </main>
@@ -209,6 +214,7 @@ export default function App() {
           onLeave={handleLeave}
           onDelete={handleDelete}
           onSignOut={() => { logout(); setSettingsOpen(false); }}
+          onEditTimes={requestEditTimes}
           outdoor={outdoor}
           onToggleOutdoor={toggleOutdoor}
         />
@@ -270,7 +276,7 @@ function InstallBanner() {
 }
 
 // ── Settings sheet ────────────────────────────────────────────────────────
-function SettingsSheet({ open, dark, groups, activeGroupId, person, email, onSwitchGroup, onJoinAnother, onCreateAnother, onInvite, onRename, onClose, onLeave, onDelete, onSignOut, outdoor, onToggleOutdoor }) {
+function SettingsSheet({ open, dark, groups, activeGroupId, person, email, onSwitchGroup, onJoinAnother, onCreateAnother, onInvite, onRename, onClose, onLeave, onDelete, onSignOut, onEditTimes, outdoor, onToggleOutdoor }) {
   const [confirming, setConfirming] = useState(null); // null | 'leave' | 'delete' | 'invite' | 'rename'
   const [renameVal, setRenameVal] = useState('');
   const [renameErr, setRenameErr] = useState('');
@@ -568,14 +574,12 @@ function SettingsSheet({ open, dark, groups, activeGroupId, person, email, onSwi
             {activeGroup && rule}
             {activeGroup && rowBtn('Invite to this crew', ink2, openInvite)}
 
-            {/* SETTINGS — original crew only (Itinerary sky view options; PDF
-                export now lives on the day picker). */}
-            {activeGroupId === G0_ID && (
-              <>
-                <div style={{ marginTop: 22 }}>{sectionLabel('Settings')}</div>
-                {rowBtn(`Outdoor mode · ${outdoor ? 'On' : 'Off'}`, ink2, onToggleOutdoor)}
-              </>
-            )}
+            {/* SETTINGS — Edit set times (Lineup, all crews); Outdoor mode is
+                Itinerary-only so it's gated to the original crew. */}
+            <div style={{ marginTop: 22 }}>{sectionLabel('Settings')}</div>
+            {onEditTimes && rowBtn('Edit set times', ink2, onEditTimes)}
+            {onEditTimes && activeGroupId === G0_ID && rule}
+            {activeGroupId === G0_ID && rowBtn(`Outdoor mode · ${outdoor ? 'On' : 'Off'}`, ink2, onToggleOutdoor)}
 
             {/* Fine print — destructive actions deprioritized to match the Privacy link */}
             <div style={{ borderTop: `1px solid ${rule2}`, marginTop: 22, paddingTop: 14, display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: 2 }}>
