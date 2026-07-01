@@ -130,22 +130,13 @@ function CrewSection({ title, accent, items, emptyText, showWho }) {
 
 // CREW view — live crew status, per-person totals, the Overlaps section, and
 // consensus lists.
-export default function CrewView({ crew, totalPicks, clashes, clusters, picks, dayHasTimes, activePerson, myColor, crewStatus, notify }) {
-  const { members, colorFor, inkFor } = useGroup();
+export default function CrewView({ crew, clashes, clusters, picks, dayHasTimes, activePerson, myColor, crewStatus, notify }) {
+  const { members } = useGroup();
   const crewNames = members.map(m => m.displayName);
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
       {/* Live crew status — where is everyone, what's happening */}
       {crewStatus && <CrewStatusBoard crewStatus={crewStatus} activePerson={activePerson} notify={notify} />}
-      {/* Per-person totals — colour-filled tags, one per crew member */}
-      <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-        {crewNames.map(person => (
-          <div key={person} style={{ flex: 1, minWidth: 90, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, padding: '8px 12px', borderRadius: 8, backgroundColor: colorFor(person) }}>
-            <span style={{ ...sans, fontSize: 12, fontWeight: 700, color: inkFor(person) }}>{person}</span>
-            <span style={{ ...mono, fontSize: 14, fontWeight: 700, color: inkFor(person) }}>{totalPicks[person]}</span>
-          </div>
-        ))}
-      </div>
       {/* Overlaps — shared picks that land at the same time */}
       <div>
         <div style={{ ...mono, fontSize: 10, color: muted, letterSpacing: '0.18em', textTransform: 'uppercase', marginBottom: 8, display: 'inline-flex', alignItems: 'center', gap: 5 }}><Lightning size={13} weight="bold" /> Overlaps</div>

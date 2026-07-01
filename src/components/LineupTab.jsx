@@ -247,11 +247,6 @@ export default function LineupTab({ onOpenAccount, kicker, crewName, departureDa
     return { all3, two };
   }, [activeDay, picks, effectiveSets, crewNames]);
 
-  const totalPicks = useMemo(() =>
-    crewNames.reduce((acc, p) => { acc[p] = effectiveSets.filter(s => picks[s.id]?.[p]).length; return acc; }, {}),
-    [picks, effectiveSets, crewNames]
-  );
-
   // The active person's full selection across all three days — feeds Spotify.
   const mySets = useMemo(() => effectiveSets.filter(s => picks[s.id]?.[activePerson]), [picks, activePerson, effectiveSets]);
   // Whether there's anything playable to export (excludes TBA / deleted) — so
@@ -355,7 +350,7 @@ export default function LineupTab({ onOpenAccount, kicker, crewName, departureDa
           )}
 
           {view === 'crew' && (
-            <CrewView crew={crew} totalPicks={totalPicks} clashes={clashes} clusters={clusters}
+            <CrewView crew={crew} clashes={clashes} clusters={clusters}
               picks={picks} dayHasTimes={dayHasTimes} activePerson={activePerson} myColor={myColor}
               crewStatus={crewStatus} notify={notify} />
           )}
