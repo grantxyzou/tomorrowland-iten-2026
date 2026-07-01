@@ -5,6 +5,7 @@ import { AuthProvider } from './auth/AuthContext.jsx'
 import AuthGate from './auth/AuthGate.jsx'
 import { GroupProvider } from './groups/GroupContext.jsx'
 import GroupGate from './components/GroupGate.jsx'
+import OnboardingGate from './components/OnboardingGate.jsx'
 import PrivacyPage from './pages/PrivacyPage.jsx'
 import './index.css'
 
@@ -19,9 +20,11 @@ ReactDOM.createRoot(document.getElementById('root')).render(
       <AuthProvider>
         <AuthGate>
           <GroupProvider>
-            <GroupGate>
-              <App />
-            </GroupGate>
+            <OnboardingGate>
+              <GroupGate>
+                <App />
+              </GroupGate>
+            </OnboardingGate>
           </GroupProvider>
         </AuthGate>
       </AuthProvider>
