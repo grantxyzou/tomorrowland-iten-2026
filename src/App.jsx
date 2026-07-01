@@ -396,7 +396,24 @@ function SettingsSheet({ open, dark, groups, activeGroupId, person, email, onSwi
           </div>
         )}
 
-        {confirming === 'signout' ? (
+        {confirming === 'edittimes' ? (
+          <div>
+            <div style={{ display: 'flex', alignItems: 'flex-start', gap: 8, padding: '12px 14px', marginBottom: 16, borderRadius: 12, border: `1px solid ${accent2}`, background: dark ? 'rgba(255,122,107,0.10)' : 'rgba(168,42,19,0.08)' }}>
+              <span aria-hidden="true" style={{ ...sans2, fontSize: 16, lineHeight: 1.2 }}>⚠️</span>
+              <p style={{ ...sans2, fontSize: 14, color: ink2, margin: 0, lineHeight: 1.5 }}>
+                Heads up — set times are <strong>shared with the whole crew</strong>. Anything you publish changes them for everyone.
+              </p>
+            </div>
+            <button type="button" onClick={() => { setConfirming(null); onEditTimes?.(); }}
+              style={{ display: 'block', width: '100%', padding: '14px 0', marginBottom: 8, borderRadius: 12, border: 'none', background: t.ink, color: t.bg, ...sans2, fontSize: 15, fontWeight: 700, cursor: 'pointer' }}>
+              Continue to edit set times
+            </button>
+            <button type="button" onClick={() => setConfirming(null)}
+              style={{ display: 'block', width: '100%', padding: '12px 0', background: 'none', border: 'none', ...sans2, fontSize: 14, color: muted2, cursor: 'pointer' }}>
+              Cancel
+            </button>
+          </div>
+        ) : confirming === 'signout' ? (
           <div>
             <p style={{ ...sans2, fontSize: 14, color: ink2, marginBottom: 16, lineHeight: 1.5 }}>
               Sign out of {person ? <strong>{person}</strong> : 'your account'}? You’ll need to sign back in to see your crews.
@@ -566,12 +583,16 @@ function SettingsSheet({ open, dark, groups, activeGroupId, person, email, onSwi
             {activeGroup && rule}
             {activeGroup && rowBtn('Invite to this crew', ink2, openInvite)}
 
-            {/* SETTINGS — Edit set times (Lineup, all crews); Outdoor mode is
-                Itinerary-only so it's gated to the original crew. */}
-            <div style={{ marginTop: 22 }}>{sectionLabel('Settings')}</div>
-            {onEditTimes && rowBtn('Edit set times', ink2, onEditTimes)}
-            {onEditTimes && activeGroupId === G0_ID && rule}
-            {activeGroupId === G0_ID && rowBtn(`Outdoor mode · ${outdoor ? 'On' : 'Off'}`, ink2, onToggleOutdoor)}
+            {/* SETTINGS — Budhole (ldg) only. Edit set times is crew-wide, so it
+                goes through a warning + confirm before opening the editor. */}
+            {activeGroupId === G0_ID && (
+              <>
+                <div style={{ marginTop: 22 }}>{sectionLabel('Settings')}</div>
+                {onEditTimes && rowBtn('Edit set times', ink2, () => setConfirming('edittimes'))}
+                {onEditTimes && rule}
+                {rowBtn(`Outdoor mode · ${outdoor ? 'On' : 'Off'}`, ink2, onToggleOutdoor)}
+              </>
+            )}
 
             {/* Fine print — destructive actions deprioritized to match the Privacy link */}
             <div style={{ borderTop: `1px solid ${rule2}`, marginTop: 22, paddingTop: 14, display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: 2 }}>
