@@ -176,6 +176,16 @@ export default function ItineraryTab({ onOpenAccount, onExportPdf, outdoor = fal
     borderRadius: rPill, backgroundColor: pal.card, border: `1px solid ${pal.rule}`, color: pal.ink,
     ...sans, fontSize: 14, fontWeight: 700, cursor: 'pointer',
   };
+  // LIVE/SYNC now lives in the banner identity strip (same spot as the Lineup
+  // sync chip). Tap when scrubbed to snap the clock back to live.
+  const isLive = scrubMin === null;
+  const liveChip = (
+    <button type="button" onClick={() => setScrubMin(null)} aria-label={isLive ? 'Timeline is live' : 'Sync the timeline to now'}
+      style={{ display: 'inline-flex', alignItems: 'center', gap: 5, background: 'none', border: 'none', cursor: 'pointer', padding: 0, ...mono, fontSize: 10, fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: isLive ? tmrwGold : 'rgba(255,255,255,0.7)', textShadow: '0 1px 4px rgba(0,0,0,0.7)' }}>
+      <span aria-hidden="true" style={{ width: 7, height: 7, borderRadius: '50%', background: isLive ? tmrwGold : 'transparent', border: isLive ? 'none' : '1.5px solid rgba(255,255,255,0.7)', boxShadow: isLive ? `0 0 6px ${tmrwGold}` : 'none' }} />
+      {isLive ? 'LIVE' : 'SYNC'}
+    </button>
+  );
 
   // Auto-scroll to today's card on mount
   useEffect(() => {
@@ -196,7 +206,7 @@ export default function ItineraryTab({ onOpenAccount, onExportPdf, outdoor = fal
       {/* Shared header shell (identical on both tabs): the sky body fills the
           banner, with the identity strip overlaid and the tab switcher as the
           bottom strip. The scrubber lives in a fixed transport bar at the bottom. */}
-      <TabHeader kicker={kicker} crewName={crewName} departureDate={departureDate} updated={updated}>
+      <TabHeader kicker={kicker} crewName={crewName} departureDate={departureDate} updated={updated} statusChip={liveChip}>
         <SkyHeader
           minute={effectiveMinute}
           dayLabel={dayLabel}
@@ -239,7 +249,7 @@ export default function ItineraryTab({ onOpenAccount, onExportPdf, outdoor = fal
       )}
 
       {/* Spacer so scrollable content clears the fixed bottom transport bar. */}
-      <div aria-hidden="true" style={{ height: 208 }} />
+      <div aria-hidden="true" style={{ height: 184 }} />
 
       {/* Fixed bottom transport bar — mirrors the Lineup TripBar so the two tabs
           read as one chrome: same surface, corner radius (rPill), 680-wide centred
@@ -250,11 +260,9 @@ export default function ItineraryTab({ onOpenAccount, onExportPdf, outdoor = fal
         <div style={{ backgroundColor: pal.bar, borderTop: `1px solid ${pal.rule}`, borderTopLeftRadius: rPill, borderTopRightRadius: rPill, boxShadow: '0 -12px 30px rgba(0,0,0,0.45)', paddingBottom: 'env(safe-area-inset-bottom)' }}>
           <div style={{ maxWidth: 680, margin: '0 auto', padding: '12px 16px 14px', display: 'flex', flexDirection: 'column', gap: 10 }}>
 
-            {/* Row 1 — Tabs · Account · Day, all on one line (scrolls if too
+            {/* Row 1 — Account · Day · Tabs, all on one line (scrolls if too
                 narrow so the bar height never grows). Mirrors the Lineup bar. */}
             <div className="no-scrollbar" style={{ display: 'flex', alignItems: 'center', gap: 9, flexWrap: 'nowrap', overflowX: 'auto' }}>
-              <TabPills tabs={tabs} activeTab={activeTab} onSelectTab={onSelectTab}
-                activeBg={myColor} activeInk={inkFor(person)} chipBg={pal.card} chipBorder={pal.rule} chipInk={pal.ink} />
               {onOpenAccount && (
                 <button
                   onClick={onOpenAccount}
@@ -281,15 +289,15 @@ export default function ItineraryTab({ onOpenAccount, onExportPdf, outdoor = fal
                 <span style={{ color: dayLabelColor, fontWeight: 700 }}>{dayPillLabel}</span>
                 <ChevronDown size={13} color={pal.muted} />
               </button>
+              <TabPills tabs={tabs} activeTab={activeTab} onSelectTab={onSelectTab}
+                activeBg={myColor} activeInk={inkFor(person)} chipBg={pal.card} chipBorder={pal.rule} chipInk={pal.ink} />
             </div>
 
             {/* Row 2 — the Itinerary's transport: the day timeline scrubber. It
                 drives the sky header (top) + agenda (middle) like a media scrubber. */}
             <TimelineScrubber
               minute={effectiveMinute}
-              isLive={scrubMin === null}
               onScrub={setScrubMin}
-              onSync={() => setScrubMin(null)}
               outdoor={outdoor}
             />
           </div>

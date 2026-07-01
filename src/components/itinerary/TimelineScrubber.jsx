@@ -1,7 +1,7 @@
 import { useRef, useState } from 'react';
 import { celestial } from './sky.js';
 import { snap } from '../lineup/time.js';
-import { mono, well, tmrwGold, caption, bar } from '../lineup/theme.js';
+import { mono, well, tmrwGold, caption } from '../lineup/theme.js';
 
 const DAY_MIN = 1440;
 const pct = (min) => (min / DAY_MIN) * 100;
@@ -10,14 +10,14 @@ const pct = (min) => (min / DAY_MIN) * 100;
 // (live clock or scrubbed) and `isLive`. Dragging calls onScrub(min); the Sync
 // control calls onSync() to snap back to the live clock. X-axis pointer drag
 // with pointer capture mirrors the lineup's StageCalendar gesture.
-export default function TimelineScrubber({ minute, isLive, onScrub, onSync, outdoor = false }) {
+export default function TimelineScrubber({ minute, onScrub, outdoor = false }) {
   const trackRef = useRef(null);
   const [pressing, setPressing] = useState(false);
   const body = celestial(outdoor ? 720 : minute);
   // Light surfaces in outdoor mode; dark tokens otherwise.
   const c = outdoor
-    ? { bar: '#cdd6e8', track: '#cfd8ea', text: '#5b677f', gold: '#b8860b' }
-    : { bar, track: well, text: caption, gold: tmrwGold };
+    ? { track: '#cfd8ea', text: '#5b677f', gold: '#b8860b' }
+    : { track: well, text: caption, gold: tmrwGold };
 
   const minuteFromClientX = (clientX) => {
     const r = trackRef.current?.getBoundingClientRect();
@@ -38,17 +38,7 @@ export default function TimelineScrubber({ minute, isLive, onScrub, onSync, outd
 
   return (
     <div style={{ padding: '8px 0 2px' }}>
-      {/* Header row: label + Sync */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 }}>
-        <span style={{ ...mono, fontSize: 9, letterSpacing: '0.18em', color: c.text }}>TIMELINE</span>
-        <button onClick={onSync} aria-label="Sync to now"
-          style={{ display: 'inline-flex', alignItems: 'center', gap: 6, background: 'none', border: 'none', cursor: 'pointer', padding: 0, ...mono, fontSize: 9, letterSpacing: '0.14em', color: isLive ? c.gold : c.text }}>
-          <span style={{ width: 7, height: 7, borderRadius: '50%', background: isLive ? c.gold : 'transparent', border: isLive ? 'none' : `1.5px solid ${c.text}`, boxShadow: isLive ? `0 0 8px ${c.gold}` : 'none' }} />
-          {isLive ? 'LIVE' : 'SYNC'}
-        </button>
-      </div>
-
-      {/* Mini celestial above the thumb */}
+      {/* Mini celestial above the thumb (label + LIVE/SYNC now live in the banner) */}
       <div style={{ position: 'relative', height: 14, marginBottom: 5 }}>
         <div aria-hidden="true" style={{ position: 'absolute', left, top: '50%', transform: 'translate(-50%,-50%)', width: 12, height: 12, borderRadius: '50%', background: body.color, boxShadow: `0 0 8px ${body.glow}` }} />
       </div>
