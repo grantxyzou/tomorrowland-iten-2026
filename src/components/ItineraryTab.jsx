@@ -14,6 +14,7 @@ import TabHeader from './TabHeader.jsx';
 import TimelineScrubber from './itinerary/TimelineScrubber.jsx';
 import AgendaPanel from './itinerary/AgendaPanel.jsx';
 import BottomSheet from './lineup/BottomSheet.jsx';
+import TabPills from './lineup/TabPills.jsx';
 import { sans, rPill, tmrwGold, raised as sheetRaised, chip as sheetChip, muted as sheetMuted, ink as sheetInk } from './lineup/theme.js';
 import { agendaAt, clampDay } from './itinerary/agenda.js';
 import { tintAt, mixSurface } from './itinerary/tint.js';
@@ -124,7 +125,7 @@ const PREFERS_REDUCED_MOTION =
     ? window.matchMedia('(prefers-reduced-motion: reduce)').matches
     : false;
 
-export default function ItineraryTab({ onOpenAccount, onExportPdf, outdoor = false, kicker, crewName, departureDate, updated, tabBar = null }) {
+export default function ItineraryTab({ onOpenAccount, onExportPdf, outdoor = false, kicker, crewName, departureDate, updated, tabs, activeTab, onSelectTab }) {
   const todayIdx = getTodayIndex();
   const refs = useRef([]);
   const { person } = useAuth();
@@ -195,7 +196,7 @@ export default function ItineraryTab({ onOpenAccount, onExportPdf, outdoor = fal
       {/* Shared header shell (identical on both tabs): the sky body fills the
           banner, with the identity strip overlaid and the tab switcher as the
           bottom strip. The scrubber lives in a fixed transport bar at the bottom. */}
-      <TabHeader kicker={kicker} crewName={crewName} departureDate={departureDate} updated={updated} tabBar={tabBar}>
+      <TabHeader kicker={kicker} crewName={crewName} departureDate={departureDate} updated={updated}>
         <SkyHeader
           minute={effectiveMinute}
           dayLabel={dayLabel}
@@ -238,7 +239,7 @@ export default function ItineraryTab({ onOpenAccount, onExportPdf, outdoor = fal
       )}
 
       {/* Spacer so scrollable content clears the fixed bottom transport bar. */}
-      <div aria-hidden="true" style={{ height: 208 }} />
+      <div aria-hidden="true" style={{ height: 262 }} />
 
       {/* Fixed bottom transport bar — mirrors the Lineup TripBar so the two tabs
           read as one chrome: same surface, corner radius (rPill), 680-wide centred
@@ -248,6 +249,10 @@ export default function ItineraryTab({ onOpenAccount, onExportPdf, outdoor = fal
       <div style={{ position: 'fixed', left: 0, right: 0, bottom: 0, zIndex: 45 }}>
         <div style={{ backgroundColor: pal.bar, borderTop: `1px solid ${pal.rule}`, borderTopLeftRadius: rPill, borderTopRightRadius: rPill, boxShadow: '0 -12px 30px rgba(0,0,0,0.45)', paddingBottom: 'env(safe-area-inset-bottom)' }}>
           <div style={{ maxWidth: 680, margin: '0 auto', padding: '12px 16px 14px', display: 'flex', flexDirection: 'column', gap: 10 }}>
+
+            {/* Tab switcher (Itinerary/Lineup) — only when both tabs exist */}
+            <TabPills tabs={tabs} activeTab={activeTab} onSelectTab={onSelectTab}
+              activeBg={myColor} activeInk={inkFor(person)} chipBg={pal.card} chipBorder={pal.rule} chipInk={pal.ink} />
 
             {/* Row 1 — Account · Day (same chips/positions as the Lineup bar) */}
             <div style={{ display: 'flex', alignItems: 'center', gap: 9 }}>
