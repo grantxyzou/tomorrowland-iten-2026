@@ -5,9 +5,9 @@ import { useGroup } from '../../groups/GroupContext.jsx';
 
 const FAB_SIDE_KEY = 'tml2026_fab_side';
 const HOLD_MS = 450; // press-and-hold on the FAB to flip it to the other corner
-// Closed-FAB notification dot palette — one colour per activity kind so the dot
-// tells you *what* is new at a glance (overlap matches the overlaps fan item).
-const NOTIF = { overlap: clashFab, message: '#5b8cff', location: '#36c79b' };
+// Closed-FAB notification dot palette. Overlap matches the overlaps fan item;
+// message is a fixed blue. (Location is tinted by the sharer's own crew colour.)
+const NOTIF = { overlap: clashFab, message: '#5b8cff' };
 
 // The Trip Bar — persistent bottom control bar (Trip Bar spec). Person · Day ·
 // View live in the thumb zone and never move; only the content above swaps. The
@@ -23,8 +23,14 @@ export default function TripBar({
   const myColor = colorFor(activePerson);
   const onAccent = inkFor(activePerson); // legible ink on the person's fill
   const dayLabel = DAYS.find(d => d.id === activeDay)?.label || '';
-  // Closed-FAB notification dots — one colour per activity kind.
-  const anyNew = !!(newActivity.overlap || newActivity.message || newActivity.location);
+  // Closed-FAB notification dots — one colour per activity kind. The location
+  // dot is tinted by whoever turned location on (its crew colour); several
+  // people blend into a soft gradient (capped at 3 so it stays legible).
+  const locColors = newActivity.location || [];
+  const locBg = locColors.length <= 1
+    ? locColors[0]
+    : `linear-gradient(135deg, ${locColors.slice(0, 3).join(', ')})`;
+  const anyNew = !!(newActivity.overlap || newActivity.message || locColors.length);
 
   // Which bottom corner the FAB docks to (remembered), whether it's hidden
   // because the user is scrolling down, and whether the fan-out is open.
@@ -146,9 +152,9 @@ export default function TripBar({
               (overlap / message / location). Only while collapsed. */}
           {!menuOpen && anyNew && (
             <span aria-hidden="true" style={{ position: 'absolute', top: -3, right: -3, display: 'inline-flex', gap: 3, padding: 3, borderRadius: 999, backgroundColor: bar, boxShadow: `0 0 0 2px ${bar}` }}>
-              {newActivity.overlap  && <span style={{ width: 8, height: 8, borderRadius: '50%', backgroundColor: NOTIF.overlap }} />}
-              {newActivity.message  && <span style={{ width: 8, height: 8, borderRadius: '50%', backgroundColor: NOTIF.message }} />}
-              {newActivity.location && <span style={{ width: 8, height: 8, borderRadius: '50%', backgroundColor: NOTIF.location }} />}
+              {newActivity.overlap && <span style={{ width: 8, height: 8, borderRadius: '50%', backgroundColor: NOTIF.overlap }} />}
+              {newActivity.message && <span style={{ width: 8, height: 8, borderRadius: '50%', backgroundColor: NOTIF.message }} />}
+              {locColors.length > 0 && <span style={{ width: 8, height: 8, borderRadius: '50%', background: locBg }} />}
             </span>
           )}
         </button>
