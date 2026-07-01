@@ -26,7 +26,7 @@ import TimeView from './lineup/views/TimeView.jsx';
 import CrewView, { PRESETS } from './lineup/views/CrewView.jsx';
 import { useGroup } from '../groups/GroupContext.jsx';
 
-export default function LineupTab({ onOpenAccount, kicker, crewName, departureDate, updated, tabs, activeTab, onSelectTab, pendingEditTimes, onConsumeEditTimes }) {
+export default function LineupTab({ onOpenAccount, kicker, crewName, departureDate, tabs, activeTab, onSelectTab, pendingEditTimes, onConsumeEditTimes }) {
   const [activeDay, setActiveDay]       = useState('fri');
   // Identity comes from the signed-in session — you are always yourself.
   const { person: activePerson } = useAuth();
@@ -312,7 +312,7 @@ export default function LineupTab({ onOpenAccount, kicker, crewName, departureDa
       {/* Shared header shell (identical on both tabs): the Consciencia wordmark
           fills the banner, the identity strip is overlaid, and the tab switcher
           is the bottom strip. */}
-      <TabHeader kicker={kicker} crewName={crewName} departureDate={departureDate} updated={updated} statusChip={statusChip}>
+      <TabHeader kicker={kicker} crewName={crewName} departureDate={departureDate} statusChip={statusChip}>
         <ConscienciaHeader />
       </TabHeader>
 
