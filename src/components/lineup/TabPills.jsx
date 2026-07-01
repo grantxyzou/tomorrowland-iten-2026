@@ -8,7 +8,7 @@ import { sans, rPill } from './theme.js';
 export default function TabPills({ tabs, activeTab, onSelectTab, activeBg, activeInk, chipBg, chipBorder, chipInk }) {
   if (!tabs || tabs.length < 2) return null;
   return (
-    <div role="tablist" aria-label="Sections" style={{ display: 'flex', gap: 9 }}>
+    <div role="tablist" aria-label="Sections" style={{ display: 'flex', gap: 9, flexShrink: 0 }}>
       {tabs.map(t => {
         const on = t.id === activeTab;
         return (
@@ -20,7 +20,7 @@ export default function TabPills({ tabs, activeTab, onSelectTab, activeBg, activ
             aria-controls="tabpanel"
             onClick={() => onSelectTab(t.id)}
             style={{
-              minHeight: 44, padding: '0 16px', borderRadius: rPill,
+              flexShrink: 0, minHeight: 44, padding: '0 14px', borderRadius: rPill,
               display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
               ...sans, fontSize: 14, fontWeight: 700, cursor: 'pointer',
               backgroundColor: on ? activeBg : chipBg,
