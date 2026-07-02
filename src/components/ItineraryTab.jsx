@@ -236,7 +236,7 @@ export default function ItineraryTab({ onOpenAccount, onExportPdf, outdoor = fal
           control — here the timeline scrubber, where Lineup has its view tabs. */}
       <div style={{ position: 'fixed', left: 0, right: 0, bottom: 0, zIndex: 45 }}>
         <div style={{ backgroundColor: pal.bar, borderTop: `1px solid ${pal.rule}`, borderTopLeftRadius: rPill, borderTopRightRadius: rPill, boxShadow: '0 -12px 30px rgba(0,0,0,0.45)', paddingBottom: 'env(safe-area-inset-bottom)' }}>
-          <div style={{ maxWidth: 680, margin: '0 auto', padding: '12px 16px 14px', display: 'flex', flexDirection: 'column', gap: 10 }}>
+          <div style={{ maxWidth: 680, margin: '0 auto', padding: '12px 16px 14px', minHeight: 157, display: 'flex', flexDirection: 'column', justifyContent: 'space-between', gap: 10 }}>
 
             {/* Row 1 — Tabs · Day · Account, all on one line (scrolls if too
                 narrow so the bar height never grows). Mirrors the Lineup bar. */}
