@@ -198,9 +198,13 @@ export default function ItineraryTab({ onOpenAccount, onExportPdf, outdoor = fal
   // ── Swipe left/right on the card to page days ──────────────
   // Mirrors the OnboardingGate pager: one card stays in layout; on commit the key
   // flips and the incoming card slides in from the swipe direction (`enterDir`).
-  // `touch-action: pan-y` keeps vertical scroll; an 8px axis-lock stops a vertical
+  // `touch-action: pan-y` keeps vertical scroll; the axis-lock stops a vertical
   // scroll that starts on the card from paging. All three day-change paths funnel
   // through `goToDay` so the scrubber, sky header, and agenda stay in sync.
+  // Deliberately not twitchy: horizontal must move ENGAGE px AND clearly beat the
+  // vertical delta before we page, and it takes a COMMIT-px swipe to flip the day.
+  const SWIPE_ENGAGE = 14; // px of horizontal travel before the drag engages
+  const SWIPE_COMMIT = 90; // px of travel to actually change day (else snap back)
   const lastIdx = days.length - 1;
   const goToDay = (idx, dir) => {
     const clamped = clampDay(idx, days.length);
@@ -217,7 +221,9 @@ export default function ItineraryTab({ onOpenAccount, onExportPdf, outdoor = fal
     const dx = e.clientX - d.startX;
     const dy = e.clientY - d.startY;
     if (d.axis === null) {
-      if (Math.abs(dx) > 8 && Math.abs(dx) > Math.abs(dy)) {
+      // Engage horizontal only on a clearly-horizontal drag (beats vertical by 1.5×),
+      // so a slightly-diagonal scroll doesn't grab the card.
+      if (Math.abs(dx) > SWIPE_ENGAGE && Math.abs(dx) > Math.abs(dy) * 1.5) {
         d.axis = 'x'; d.swiped = true;
         e.currentTarget.setPointerCapture?.(e.pointerId);
       } else if (Math.abs(dy) > 8) { d.axis = 'y'; return; }
@@ -232,8 +238,8 @@ export default function ItineraryTab({ onOpenAccount, onExportPdf, outdoor = fal
     if (d.axis === 'x') {
       e.currentTarget.releasePointerCapture?.(e.pointerId);
       const dx = e.clientX - d.startX;
-      if (dx <= -56 && viewIdx < lastIdx) goToDay(viewIdx + 1, 'next');
-      else if (dx >= 56 && viewIdx > 0)   goToDay(viewIdx - 1, 'prev');
+      if (dx <= -SWIPE_COMMIT && viewIdx < lastIdx) goToDay(viewIdx + 1, 'next');
+      else if (dx >= SWIPE_COMMIT && viewIdx > 0)   goToDay(viewIdx - 1, 'prev');
       else setSettling(true); // in-range threshold not met, or past an edge → snap back
     }
     setDragX(0);
