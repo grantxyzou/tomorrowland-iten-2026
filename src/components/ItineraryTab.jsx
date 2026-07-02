@@ -177,7 +177,10 @@ export default function ItineraryTab({ onOpenAccount, onExportPdf, outdoor = fal
   const [paging, setPaging] = useState(null);   // null | { dir:'next'|'prev', from, to }
   const [pageAnim, setPageAnim] = useState(false);
   const [justPaged, setJustPaged] = useState(false);
+  const [surfaceH, setSurfaceH] = useState(null); // locked height, animated across a page turn
   const drag = useRef({ startX: 0, startY: 0, axis: null, swiped: false });
+  const surfaceRef = useRef(null);
+  const trackRef = useRef(null);
   const pageTimer = useRef(null);
   useEffect(() => () => clearTimeout(pageTimer.current), []);
   const [liveMinute, setLiveMinute] = useState(() => {
@@ -210,8 +213,9 @@ export default function ItineraryTab({ onOpenAccount, onExportPdf, outdoor = fal
   // through `goToDay` so the scrubber, sky header, and agenda stay in sync.
   // Deliberately not twitchy: horizontal must move ENGAGE px AND clearly beat the
   // vertical delta before we page, and it takes a COMMIT-px swipe to flip the day.
-  const SWIPE_ENGAGE = 14; // px of horizontal travel before the drag engages
-  const SWIPE_COMMIT = 90; // px of travel to actually change day (else snap back)
+  const SWIPE_ENGAGE = 14;  // px of horizontal travel before the drag engages
+  const SWIPE_COMMIT = 90;  // px of travel to actually change day (else snap back)
+  const PAGE_DUR = 300;     // ms — the commit slide + height animation (a touch slower = smoother)
   const lastIdx = days.length - 1;
   const goToDay = (idx) => { // scrubber / sheet — instant swap with the vertical fx-enter
     setJustPaged(false);
@@ -222,16 +226,24 @@ export default function ItineraryTab({ onOpenAccount, onExportPdf, outdoor = fal
     setViewDayIdx(to);
     setPaging(null);
     setPageAnim(false);
+    setSurfaceH(null);  // release the locked height back to the card's natural height
     setDragX(0);
   };
   const commitPage = (dir, to) => {
     if (PREFERS_REDUCED_MOTION) { setJustPaged(true); setViewDayIdx(to); setDragX(0); return; }
+    // Lock the surface to the outgoing card's height so mounting the track doesn't jump,
+    // then (once the incoming card is measured) animate height + slide together.
+    setSurfaceH(surfaceRef.current?.offsetHeight ?? null);
     setPaging({ dir, from: viewIdx, to });
     setPageAnim(false); // mount the two-card track at the current drag offset…
-    // …then two frames later slide it one card-width to the snapped position.
-    requestAnimationFrame(() => requestAnimationFrame(() => setPageAnim(true)));
+    requestAnimationFrame(() => {
+      // …measure the incoming slot (track child), then next frame slide + grow/shrink.
+      const toChild = trackRef.current?.children[dir === 'next' ? 1 : 0];
+      const toH = toChild?.offsetHeight;
+      requestAnimationFrame(() => { setPageAnim(true); if (toH) setSurfaceH(toH); });
+    });
     clearTimeout(pageTimer.current);
-    pageTimer.current = setTimeout(() => finalizePage(to), 230); // ~dur-base + margin
+    pageTimer.current = setTimeout(() => finalizePage(to), PAGE_DUR + 40);
   };
   const onCardPointerDown = (e) => {
     if (paging) return; // ignore new gestures mid-transition
@@ -284,7 +296,7 @@ export default function ItineraryTab({ onOpenAccount, onExportPdf, outdoor = fal
     ? (paging.dir === 'next' ? [paging.from, paging.to] : [paging.to, paging.from])
     : [viewIdx];
   const trackTransition = paging
-    ? (pageAnim ? 'transform var(--dur-base) var(--ease-out)' : 'none')
+    ? (pageAnim ? `transform ${PAGE_DUR}ms var(--ease-out)` : 'none')
     : (settling ? 'transform var(--dur-base) var(--ease-out)' : 'none');
   const trackTransform = paging
     ? (pageAnim
@@ -352,14 +364,20 @@ export default function ItineraryTab({ onOpenAccount, onExportPdf, outdoor = fal
           through while we handle horizontal. Inside is the track: one slot at rest, two
           during a commit (the outgoing card slides off as the incoming slides in). */}
       <div
+        ref={surfaceRef}
         onPointerDown={onCardPointerDown}
         onPointerMove={onCardPointerMove}
         onPointerUp={onCardPointerUp}
         onPointerCancel={onCardPointerUp}
         onClickCapture={onCardClickCapture}
-        style={{ touchAction: 'pan-y', overflow: 'hidden' }}
+        style={{
+          touchAction: 'pan-y', overflow: 'hidden',
+          height: surfaceH != null ? surfaceH : undefined,
+          // Animate the height alongside the slide so days of different lengths don't snap.
+          transition: (paging && pageAnim && surfaceH != null) ? `height ${PAGE_DUR}ms var(--ease-out)` : 'none',
+        }}
       >
-        <div style={{ display: 'flex', alignItems: 'flex-start', transform: trackTransform, transition: trackTransition }}
+        <div ref={trackRef} style={{ display: 'flex', alignItems: 'flex-start', transform: trackTransform, transition: trackTransition }}
           onTransitionEnd={(e) => { if (!paging && e.propertyName === 'transform') setSettling(false); }}>
           {slots.map((idx) => {
             const d = days[idx];
