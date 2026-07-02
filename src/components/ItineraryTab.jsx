@@ -1,6 +1,6 @@
 import React, { useContext, useEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { ArrowDown, Check, Plane, Car, Clock, Bed, ChevronDown, QrCode, X, FileDown } from 'lucide-react';
+import { ArrowDown, Check, Plane, Car, Clock, Bed, ChevronDown, QrCode, X, FileDown, MapPin, Phone } from 'lucide-react';
 import { days } from '../data/trip.js';
 import { usePresence } from '../hooks/usePresence.js';
 import { useWeather } from '../hooks/useWeather.js';
@@ -82,6 +82,27 @@ const LIGHT = {
 };
 
 const mono = { fontFamily: '"JetBrains Mono", ui-monospace, monospace' };
+
+// ── Card spacing scale ───────────────────────────────────────
+// The one source of truth for DayCard rhythm — theme.js has radii but no spacing
+// tokens, so panels used to hardcode (and drift) their own values. Reference these
+// everywhere so every panel shares the same padding, header gap, and row gap.
+const CARD_PAD_X  = 16;                                  // panel horizontal padding
+const CARD_PAD_Y  = 14;                                  // panel vertical padding
+const CARD_PAD    = `${CARD_PAD_Y}px ${CARD_PAD_X}px`;
+const SECTION_GAP = 10;                                  // section header → its body
+const ROW_GAP     = 8;                                   // between list rows (events/legs/refs)
+
+// Shared LAYOUT for a tappable row (address→Maps, phone→dialer, and future actions):
+// leading icon + text, 44px min tap target, no underline. Typography/colour are set
+// per use so prose rows stay sans and code-ish rows (phone) stay mono.
+const tapRow = {
+  display: 'flex', width: 'fit-content', maxWidth: '100%',
+  alignItems: 'center', gap: 6, minHeight: 44, textDecoration: 'none',
+};
+
+// Google Maps deep link for a named place — opens the Maps app on mobile.
+const mapsHref = (query) => `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(query)}`;
 
 // Surfaces carry the ambient dawn/dusk tint (spec §5); deeper surfaces take more.
 // Text/accent tokens never tint. PalCtx hands the (possibly tinted) surfaces down
@@ -425,7 +446,7 @@ function DateChip({ d, isTmrw, isGap }) {
   const month = isTmrw ? pal.tmrwChipLabel : pal.muted;
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '16px 12px', backgroundColor: bg, color: pal.onDark, minWidth: 80, flexShrink: 0 }}>
+    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: `${CARD_PAD_Y}px 12px`, backgroundColor: bg, color: pal.onDark, minWidth: 80, flexShrink: 0 }}>
       <span style={{ ...mono, fontSize: 10, letterSpacing: '0.2em', textTransform: 'uppercase', color: month }}>{d.month}</span>
       <span style={{ fontSize: 36, fontWeight: 700, letterSpacing: '-0.02em', lineHeight: 1, marginTop: 2 }}>{d.dateNum}</span>
       <span style={{ ...mono, fontSize: 10, letterSpacing: '0.15em', textTransform: 'uppercase', fontWeight: 700, color: label, marginTop: 4 }}>{d.dayOfWeek.slice(0, 3)}</span>
@@ -453,7 +474,7 @@ function HeaderContent({ d, isTmrw, isGap, dateStr }) {
   const noteColor  = isTmrw ? pal.tmrwBodyMuted : pal.muted;
 
   return (
-    <div style={{ flex: 1, padding: '14px 16px', minWidth: 0 }}>
+    <div style={{ flex: 1, padding: CARD_PAD, minWidth: 0 }}>
       {/* Local time — the date chip already shows the day, so the full
           day-of-week label here was redundant. */}
       <div style={{ ...mono, fontSize: 11, letterSpacing: '0.12em', textTransform: 'uppercase', color: labelColor, marginBottom: 4 }}>
@@ -538,7 +559,7 @@ function BookingRefs({ refs, isTmrw, isFlightDay }) {
         onClick={() => setOpen(o => !o)}
         aria-expanded={open}
         aria-label="Booking references"
-        style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '11px 16px', minHeight: 44, background: 'none', border: 'none', cursor: 'pointer' }}
+        style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: `11px ${CARD_PAD_X}px`, minHeight: 44, background: 'none', border: 'none', cursor: 'pointer' }}
       >
         <span style={{ ...mono, fontSize: 10, letterSpacing: '0.18em', textTransform: 'uppercase', color: label, fontWeight: 600 }}>
           Booking Refs
@@ -547,7 +568,7 @@ function BookingRefs({ refs, isTmrw, isFlightDay }) {
       </button>
       {present && (
         <div className="fx-collapse" data-open={open}>
-          <div style={{ padding: '0 16px 12px', display: 'flex', flexDirection: 'column', gap: 6 }}>
+          <div style={{ padding: `0 ${CARD_PAD_X}px ${CARD_PAD_Y}px`, display: 'flex', flexDirection: 'column', gap: ROW_GAP }}>
             {refs.map((r, i) => (
               <div key={i} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                 <span style={{ ...mono, fontSize: 10, color: label, letterSpacing: '0.1em' }}>{r.label}</span>
@@ -575,8 +596,8 @@ function LodgingPanel({ lodging, isTmrw }) {
   const badgeText = lodging.booked ? (isTmrw ? pal.tmrwChipBg : pal.onDark) : (lodging.isGap ? pal.gapAccent : isTmrw ? pal.tmrwGold : pal.accent);
 
   return (
-    <div style={{ borderTop: `1px solid ${border}`, backgroundColor: bg, padding: '14px 16px', position: 'relative', zIndex: 1 }}>
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
+    <div style={{ borderTop: `1px solid ${border}`, backgroundColor: bg, padding: CARD_PAD, position: 'relative', zIndex: 1 }}>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: SECTION_GAP }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
           <Bed size={13} style={{ color: icon }} />
           <span style={{ ...mono, fontSize: 11, letterSpacing: '0.2em', textTransform: 'uppercase', fontWeight: 700, color: label }}>Lodging</span>
@@ -592,9 +613,20 @@ function LodgingPanel({ lodging, isTmrw }) {
         </div>
       </div>
       <div style={{ fontSize: 13, fontWeight: 600, color: name }}>{lodging.name}</div>
-      <div style={{ fontSize: 11, color: sub, marginTop: 2 }}>{lodging.address}</div>
+      {/* Address → Google Maps. Uses the shared tapRow layout; a future travel-
+          address link reuses the exact same pattern. */}
+      {lodging.address && (
+        <a href={mapsHref(`${lodging.name}, ${lodging.address}`)} target="_blank" rel="noopener noreferrer"
+          aria-label={`Open ${lodging.name} in Maps`}
+          style={{ ...tapRow, fontSize: 11, color: sub, gap: 5 }}>
+          <MapPin size={13} style={{ color: icon, flexShrink: 0 }} />
+          {lodging.address}
+        </a>
+      )}
       {lodging.phone && (
-        <a href={`tel:${lodging.phone}`} aria-label={`Call ${lodging.name}`} style={{ ...mono, fontSize: 11, color: icon, display: 'inline-flex', alignItems: 'center', minHeight: 44, textDecoration: 'none' }}>
+        <a href={`tel:${lodging.phone}`} aria-label={`Call ${lodging.name}`}
+          style={{ ...tapRow, ...mono, fontSize: 11, color: icon, gap: 5 }}>
+          <Phone size={13} style={{ flexShrink: 0 }} />
           {lodging.phone}
         </a>
       )}
@@ -617,12 +649,14 @@ function SchedulePanel({ events, isTmrw }) {
   const [ticketOpen, setTicketOpen] = React.useState(false);
 
   return (
-    <div style={{ borderTop: `1px solid ${border}`, backgroundColor: bg, padding: '14px 16px', position: 'relative', zIndex: 1 }}>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 10 }}>
+    <div style={{ borderTop: `1px solid ${border}`, backgroundColor: bg, padding: CARD_PAD, position: 'relative', zIndex: 1 }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: SECTION_GAP }}>
         <Clock size={13} style={{ color: time }} />
         <span style={{ ...mono, fontSize: 11, letterSpacing: '0.2em', textTransform: 'uppercase', fontWeight: 700, color: label }}>Schedule</span>
       </div>
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+      {/* Events list — grows with the day's data; a future "add to schedule" action
+          row slots in here with the same ROW_GAP rhythm. */}
+      <div style={{ display: 'flex', flexDirection: 'column', gap: ROW_GAP }}>
         {events.map((e, i) => (
           <div key={i} style={{ display: 'flex', alignItems: 'baseline', gap: 12 }}>
             <span style={{ ...mono, fontSize: 11, fontWeight: 700, color: time, minWidth: 80, flexShrink: 0 }}>{e.time}</span>
@@ -736,10 +770,10 @@ function TravelPanel({ travel }) {
   const checkColor = isFlight ? pal.acRed : pal.onDark;
 
   return (
-    <div style={{ borderTop: `1px solid ${border}`, backgroundColor: bg, padding: '14px 16px', position: 'relative', overflow: 'hidden', zIndex: 1 }}>
+    <div style={{ borderTop: `1px solid ${border}`, backgroundColor: bg, padding: CARD_PAD, position: 'relative', overflow: 'hidden', zIndex: 1 }}>
       <div style={{ position: 'relative', zIndex: 1 }}>
         {/* Header row */}
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: SECTION_GAP }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
             {isFlight ? <Plane size={13} style={{ color: icon }} />
               : isCar  ? <Car   size={13} style={{ color: icon }} />
@@ -757,7 +791,7 @@ function TravelPanel({ travel }) {
         </div>
 
         {/* Legs */}
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: ROW_GAP }}>
           {travel.legs.map((leg, i) => (
             <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
               <div style={{ ...mono, fontSize: 10, fontWeight: 700, padding: '4px 8px', borderRadius: 3, backgroundColor: chipBg, color: chipText, minWidth: 56, textAlign: 'center', flexShrink: 0 }}>
@@ -772,7 +806,7 @@ function TravelPanel({ travel }) {
         </div>
 
         {/* Fare / cost footer */}
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: 12, paddingTop: 12, borderTop: `1px solid ${innerRule}` }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: SECTION_GAP, paddingTop: SECTION_GAP, borderTop: `1px solid ${innerRule}` }}>
           <span style={{ ...mono, fontSize: 11, color: fareColor }}>{travel.fare}</span>
           {travel.cost && <span style={{ ...mono, fontSize: 12, fontWeight: 700, color: costColor }}>{travel.cost}</span>}
         </div>
