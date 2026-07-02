@@ -127,6 +127,11 @@ const PREFERS_REDUCED_MOTION =
 
 export default function ItineraryTab({ onOpenAccount, onExportPdf, outdoor = false, kicker, crewName, departureDate, tabs, activeTab, onSelectTab }) {
   const todayIdx = getTodayIndex();
+  // The live layer (agenda + scrubber + sky-scrub + LIVE/SYNC chip) is the
+  // on-the-ground festival experience — it only earns its space during the trip.
+  // Off-trip (planning) the date-grouped list leads and the sky quietly auto-runs
+  // off the device clock. `?previewDay=N` flips this on to preview the live tab.
+  const isTripLive = todayIdx >= 0;
   const refs = useRef([]);
   const { person } = useAuth();
   const { colorFor, inkFor } = useGroup();
@@ -135,7 +140,6 @@ export default function ItineraryTab({ onOpenAccount, onExportPdf, outdoor = fal
   // Sky timeline — one value drives everything (spec §1). `liveMinute` ticks from
   // the device clock every 30s; `scrubMin` (null = live) holds a dragged minute.
   const [scrubMin, setScrubMin] = useState(null);
-  const [showFull, setShowFull] = useState(false); // reveal the full day-by-day list under the agenda
   const [daySheetOpen, setDaySheetOpen] = useState(false); // day picker (matches the Lineup day sheet)
   // Which day the agenda shows. Defaults to today during the trip, else Day 1, so
   // the agenda is ALWAYS present and the scrubber always has something to drive.
@@ -151,7 +155,8 @@ export default function ItineraryTab({ onOpenAccount, onExportPdf, outdoor = fal
     }, 30000);
     return () => clearInterval(id);
   }, []);
-  const effectiveMinute = scrubMin ?? liveMinute;
+  // Off-trip there's no scrubber, so the sky/tint/clock just follow the device.
+  const effectiveMinute = isTripLive ? (scrubMin ?? liveMinute) : liveMinute;
   // Outdoor mode = fixed light palette (no tint). Otherwise the dark palette with
   // the ambient dawn/dusk tint applied to surfaces.
   const pal = useMemo(() => (outdoor ? LIGHT : tintedPalette(effectiveMinute)), [outdoor, effectiveMinute]);
@@ -187,15 +192,6 @@ export default function ItineraryTab({ onOpenAccount, onExportPdf, outdoor = fal
     </button>
   );
 
-  // Auto-scroll to today's card on mount
-  useEffect(() => {
-    if (todayIdx >= 0 && refs.current[todayIdx]) {
-      setTimeout(() => {
-        refs.current[todayIdx]?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-      }, 300);
-    }
-  }, [todayIdx]);
-
   return (
     <PalCtx.Provider value={pal}>
       {/* Ambient backdrop — washes the whole tab warm at dawn / cool at dusk
@@ -206,7 +202,7 @@ export default function ItineraryTab({ onOpenAccount, onExportPdf, outdoor = fal
       {/* Shared header shell (identical on both tabs): the sky body fills the
           banner, with the identity strip overlaid and the tab switcher as the
           bottom strip. The scrubber lives in a fixed transport bar at the bottom. */}
-      <TabHeader kicker={kicker} crewName={crewName} departureDate={departureDate} statusChip={liveChip}>
+      <TabHeader kicker={kicker} crewName={crewName} departureDate={departureDate} statusChip={isTripLive ? liveChip : null}>
         <SkyHeader
           minute={effectiveMinute}
           dayLabel={dayLabel}
@@ -215,41 +211,35 @@ export default function ItineraryTab({ onOpenAccount, onExportPdf, outdoor = fal
         />
       </TabHeader>
 
-      {/* Time-relative agenda is the primary view (spec §4): always shown for the
-          selected day, so scrubbing the time always updates it. The day is now
-          chosen from the bottom-bar day pill (matching the Lineup day picker); the
-          full day-by-day list still tucks behind the toggle below. */}
-      <AgendaPanel agenda={agendaAt(viewDay, effectiveMinute)} outdoor={outdoor} />
-
-      <button
-        onClick={() => setShowFull(f => !f)}
-        aria-expanded={showFull}
-        style={{ width: '100%', background: 'none', border: 'none', cursor: 'pointer', ...mono, fontSize: 10, letterSpacing: '0.16em', textTransform: 'uppercase', color: pal.muted, padding: '10px 0 14px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}
-      >
-        Full itinerary
-        <ChevronDown size={12} style={{ transform: showFull ? 'rotate(180deg)' : 'none', transition: 'transform var(--dur-base) var(--ease-in-out)' }} />
-      </button>
-
-      {showFull && (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 16, paddingBottom: 28 }}>
-          {days.map((d, idx) => (
-            <div key={d.dateNum} ref={el => refs.current[idx] = el}
-              className="fx-enter" style={{ animationDelay: `${Math.min(idx, 8) * 45}ms` }}>
-              {d.phase && (
-                <PhaseDivider phase={d.phase} idx={idx} />
-              )}
-              <DayCard
-                d={d}
-                isToday={idx === todayIdx}
-                dateStr={dayToDateStr(d)}
-              />
-            </div>
-          ))}
-        </div>
+      {/* Live layer — only during the trip (spec §4). The time-relative agenda for
+          today's now/soon leads, driven by the scrubbed/live minute. Off-trip it's
+          hidden and the date-grouped list below is the whole view. */}
+      {isTripLive && (
+        <AgendaPanel agenda={agendaAt(viewDay, effectiveMinute)} outdoor={outdoor} />
       )}
 
-      {/* Spacer so scrollable content clears the fixed bottom transport bar. */}
-      <div aria-hidden="true" style={{ height: 184 }} />
+      {/* The date-grouped itinerary is the primary content: every day in chronological
+          order, each a DayCard carrying its own date chip, with phase dividers as
+          lightweight section markers. During the trip it sits below the live agenda. */}
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 16, paddingTop: isTripLive ? 12 : 0, paddingBottom: 28 }}>
+        {days.map((d, idx) => (
+          <div key={d.dateNum} ref={el => refs.current[idx] = el}
+            className="fx-enter" style={{ animationDelay: `${Math.min(idx, 8) * 45}ms` }}>
+            {d.phase && (
+              <PhaseDivider phase={d.phase} idx={idx} />
+            )}
+            <DayCard
+              d={d}
+              isToday={idx === todayIdx}
+              dateStr={dayToDateStr(d)}
+            />
+          </div>
+        ))}
+      </div>
+
+      {/* Spacer so scrollable content clears the fixed bottom bar. Off-trip the bar
+          is a single pill row (no scrubber), so it needs less clearance. */}
+      <div aria-hidden="true" style={{ height: isTripLive ? 184 : 108 }} />
 
       {/* Fixed bottom transport bar — mirrors the Lineup TripBar so the two tabs
           read as one chrome: same surface, corner radius (rPill), 680-wide centred
@@ -294,12 +284,16 @@ export default function ItineraryTab({ onOpenAccount, onExportPdf, outdoor = fal
             </div>
 
             {/* Row 2 — the Itinerary's transport: the day timeline scrubber. It
-                drives the sky header (top) + agenda (middle) like a media scrubber. */}
-            <TimelineScrubber
-              minute={effectiveMinute}
-              onScrub={setScrubMin}
-              outdoor={outdoor}
-            />
+                drives the sky header (top) + agenda (middle) like a media scrubber.
+                Only during the trip, where the live agenda gives it a job; off-trip
+                the bar is just the pill row above. */}
+            {isTripLive && (
+              <TimelineScrubber
+                minute={effectiveMinute}
+                onScrub={setScrubMin}
+                outdoor={outdoor}
+              />
+            )}
           </div>
         </div>
       </div>
@@ -320,7 +314,7 @@ export default function ItineraryTab({ onOpenAccount, onExportPdf, outdoor = fal
               const active = i === viewDayIdx;
               const isToday = i === todayIdx;
               return (
-                <button key={d.dateNum} onClick={() => { setViewDayIdx(i); setDaySheetOpen(false); }} aria-pressed={active}
+                <button key={d.dateNum} onClick={() => { setViewDayIdx(i); setDaySheetOpen(false); setTimeout(() => refs.current[i]?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 60); }} aria-pressed={active}
                   style={{ display: 'flex', alignItems: 'center', gap: 12, minHeight: 56, padding: '10px 14px', borderRadius: 14, border: 'none', cursor: 'pointer', textAlign: 'left', backgroundColor: active ? sheetRaised : sheetChip }}>
                   <span style={{ ...mono, fontSize: 10, fontWeight: 700, letterSpacing: '0.12em', color: isToday ? myColor : sheetMuted, width: 52, flexShrink: 0 }}>
                     {isToday ? 'TODAY' : `DAY ${i + 1}`}
