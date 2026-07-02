@@ -51,12 +51,41 @@ Upstash Redis for all shared state. Google OAuth (auth-code redirect at `/api/oa
   `{tabs, activeTab, onSelectTab}` down to both tabs. TabPills renders nothing when
   `tabs.length < 2` (non-`ldg` crews have only Lineup). Keep `role=tab` /
   `id="tab-<id>"` / `aria-controls="tabpanel"` so it still pairs with `<main>`.
+- The identity strip has a `statusChip` slot (TabHeader): Lineup passes its pick-
+  sync chip (`● LIVE`), Itinerary passes the timeline LIVE/SYNC (moved off the
+  scrubber into the banner). Only the passing tab shows it.
+
+## Bottom bars (keep the two matched — the thing that bites you)
+- Both tabs have a fixed bottom bar: a scrollable pill row (Itinerary·Lineup via
+  `lineup/TabPills.jsx`, Day, Account — same `chipStyle`/`rPill` geometry, mirrored
+  in `TripBar.jsx` and the Itinerary bar in `ItineraryTab.jsx`) + a control row
+  (Lineup: view switch; Itinerary: `TimelineScrubber`). Keep both bars the SAME
+  height: Lineup uses `minHeight: 157` to match the Itinerary scrubber's natural
+  height. Change one bar's height → change the other AND its content spacer/padding.
+- Bottom SHEETS cap at `sheetMaxW` (theme.js = 480) + `margin: 0 auto` so they don't
+  span a wide desktop. Centre with margin, NOT translateX — `.fx-sheet`'s slide-up
+  owns `transform`.
+- Lineup FAB (`TripBar.jsx`): tap morphs +→× (one Plus rotated 45°, not a swap);
+  Party mode + quick actions live in the fan-out; the closed FAB shows colored
+  "new activity" dots diffed against a per-crew `tml2026_fab_seen_<gid>` baseline.
+
+## Account sheet & Edit set times
+- The account/settings sheet is App-level (`SettingsSheet` in `App.jsx`), opened
+  from both bottom bars via `onOpenAccount`; it holds NO Lineup state.
+- "Edit set times" is `ldg`-only and crew-wide (publishes shared set-time overrides),
+  so it goes through a warning+confirm. Since the sheet can't reach LineupTab, it
+  uses a one-shot App→Lineup signal (`pendingEditTimes` → LineupTab consumes it →
+  opens the Time view in edit mode). Don't try to render Lineup views in the sheet.
 
 ## PWA / freshness
 - `public/sw.js` is network-first for navigation/`/api/picks`, SWR for hashed
   assets; `skipWaiting` + `clients.claim`. VERSION is `__BUILD_ID__`, stamped per
   deploy. `src/main.jsx` reloads once on `controllerchange` so a warm PWA picks
   up new deploys without a force-quit.
+- First-run onboarding: `OnboardingGate` (`main.jsx`, between AuthGate & GroupGate)
+  shows swipeable slides when signed-in + `groups.length === 0` (never joined a crew)
+  + not dismissed. Show-once UI uses `tml2026_*` localStorage flags (`_onboarded`,
+  `_tip`, `_fab_side`, `_fab_seen_<gid>`), each guarded with try/catch.
 
 ## Deploy / ops gotchas
 - Public alias: `tomorrowland-iten-2026.vercel.app`. Deployment-Protection (SSO)
