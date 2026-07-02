@@ -52,30 +52,32 @@ Upstash Redis for all shared state. Google OAuth (auth-code redirect at `/api/oa
   `tabs.length < 2` (non-`ldg` crews have only Lineup). Keep `role=tab` /
   `id="tab-<id>"` / `aria-controls="tabpanel"` so it still pairs with `<main>`.
 - The identity strip has a `statusChip` slot (TabHeader): Lineup passes its pick-
-  sync chip (`● LIVE`), Itinerary passes the timeline LIVE/SYNC (moved off the
-  scrubber into the banner) — but ONLY during the trip (see the live-layer gate
-  below); off-trip Itinerary passes `null`. Only the passing tab shows it.
+  sync chip (`● LIVE`), Itinerary passes a static `LIVE` marker but ONLY when
+  `viewingToday` (viewing today during the trip — see the Itinerary section); any
+  other day it passes `null`. Only the passing tab shows it.
 
-## Itinerary tab — date-grouped primary view + trip-gated live layer
-- The PRIMARY (always-on) content is the date-grouped day list: every day in `trip.js`
-  order (chronological), each a `DayCard` with its own date chip, phase dividers as
-  section markers. There is no "Full itinerary" toggle anymore — the list IS the view.
-- The LIVE LAYER — the time-relative agenda (`AgendaPanel`), the `TimelineScrubber`,
-  sky-scrubbing, and the LIVE/SYNC chip — is gated behind `isTripLive = todayIdx >= 0`
-  (`getTodayIndex()`, overridable with `?previewDay=N`). Off-trip it's all hidden and
-  the sky/tint just auto-follow the device clock (`effectiveMinute = liveMinute`); during
-  the festival it surfaces above the list. Don't ungate it — it's dead weight when planning.
-- The Day pill scroll-jumps the list (via `refs.current[i].scrollIntoView`) in both modes.
+## Itinerary tab — one day at a time, picked by the DayScrubber
+- The tab shows ONE day's card at a time — `days[viewIdx]` — NOT a scroll of all days.
+  Which day is chosen by the `DayScrubber` (`itinerary/DayScrubber.jsx`), the row-2
+  control in the bottom bar: a trip-wide timeline of discrete DAY stops (one per
+  `trip.js` day). Tap / drag / arrow-key snaps to a whole day (`role=slider`), and only
+  that day's `DayCard` renders (keyed by `viewIdx` so it replays `fx-enter` on switch).
+- The scrubber picks the DAY, not the time — there is no time-of-day scrubbing anymore.
+  `effectiveMinute = liveMinute` always, so the sky/tint just follow the device clock.
+  `TimelineScrubber.jsx` (the old minute scrubber) is retired/unused; don't re-wire it.
+- The Day pill (row 1) + its sheet are a second, labeled way to pick the day (with city
+  names + Export PDF); it and the scrubber both drive `viewDayIdx`. Keep them in sync.
+- LIVE agenda: `AgendaPanel` + the banner `LIVE` chip show ONLY when `viewingToday`
+  (`isTripLive && viewIdx === todayIdx`, `isTripLive = todayIdx >= 0` from
+  `getTodayIndex()`, `?previewDay=N` to preview). Any other day: card only, no agenda.
 
 ## Bottom bars (keep the two matched — the thing that bites you)
 - Both tabs have a fixed bottom bar: a scrollable pill row (Itinerary·Lineup via
   `lineup/TabPills.jsx`, Day, Account — same `chipStyle`/`rPill` geometry, mirrored
   in `TripBar.jsx` and the Itinerary bar in `ItineraryTab.jsx`) + a control row
-  (Lineup: view switch; Itinerary: `TimelineScrubber`). The 157px height match applies
-  when BOTH have two rows — i.e. Itinerary DURING the trip (`isTripLive`). Off-trip the
-  Itinerary scrubber row is gone, so its bar is the single pill row and intentionally
-  shorter than Lineup's (its spacer drops from 184 to 108). When changing a two-row
-  height, change the other AND its content spacer/padding.
+  (Lineup: view switch; Itinerary: `DayScrubber`, always present). Keep both bars the
+  SAME height: Lineup uses `minHeight: 157` to match the Itinerary scrubber row (content
+  spacer 184). Change one bar's height → change the other AND its content spacer/padding.
 - Bottom SHEETS cap at `sheetMaxW` (theme.js = 480) + `margin: 0 auto` so they don't
   span a wide desktop. Centre with margin, NOT translateX — `.fx-sheet`'s slide-up
   owns `transform`.
