@@ -70,6 +70,12 @@ Upstash Redis for all shared state. Google OAuth (auth-code redirect at `/api/oa
 - LIVE agenda: `AgendaPanel` + the banner `LIVE` chip show ONLY when `viewingToday`
   (`isTripLive && viewIdx === todayIdx`, `isTripLive = todayIdx >= 0` from
   `getTodayIndex()`, `?previewDay=N` to preview). Any other day: card only, no agenda.
+- DayCard COLOR roles (palette `p` in `ItineraryTab.jsx`): surfaces are a deeper-navy
+  lightness ladder so the card floats on the near-black `canvas` (don't collapse the
+  `canvas`→`card` gap back to blue-on-blue). `accent` (red) is RESERVED for the day's
+  status line + the TODAY marker — never times/links/icons. `gold` is the everyday
+  structural tone (schedule times, weekday, all icons); festival days keep the distinct
+  `tmrwGold`, flights keep `acRed`. Links: gold icon + light (`muted`) text.
 - DayCard spacing goes through tokens at the top of `ItineraryTab.jsx` — `CARD_PAD`
   (panel padding), `SECTION_GAP` (header→body), `ROW_GAP` (list rows). Reference them in
   every panel instead of hardcoding, or the panels drift out of rhythm again. Tappable
