@@ -70,6 +70,10 @@ Upstash Redis for all shared state. Google OAuth (auth-code redirect at `/api/oa
 - LIVE agenda: `AgendaPanel` + the banner `LIVE` chip show ONLY when `viewingToday`
   (`isTripLive && viewIdx === todayIdx`, `isTripLive = todayIdx >= 0` from
   `getTodayIndex()`, `?previewDay=N` to preview). Any other day: card only, no agenda.
+- Icons use `@phosphor-icons/react` (NOT lucide) so they match the Lineup tab's family:
+  `weight="fill"` for symbol glyphs (Bed/Clock/MapPin/Phone/Car/Train/AirplaneTilt),
+  `weight="bold"` for carets/checks/X (matching Lineup's usage). Don't reintroduce
+  lucide here. (App.jsx's settings sheet still uses lucide — a separate follow-up.)
 - DayCard COLOR roles (palette `p` in `ItineraryTab.jsx`): surfaces are a deeper-navy
   lightness ladder so the card floats on the near-black `canvas` (don't collapse the
   `canvas`→`card` gap back to blue-on-blue). `accent` (red) is RESERVED for the day's

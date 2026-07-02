@@ -1,6 +1,7 @@
 import React, { useContext, useEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { ArrowDown, Check, Plane, Car, Clock, Bed, ChevronDown, QrCode, X, FileDown, MapPin, Phone } from 'lucide-react';
+// Phosphor (not lucide) so the Itinerary icons match the Lineup tab's icon family.
+import { AirplaneTilt, Car, Train, Check, Clock, Bed, CaretDown, QrCode, X, FileArrowDown, MapPin, Phone } from '@phosphor-icons/react';
 import { days } from '../data/trip.js';
 import { usePresence } from '../hooks/usePresence.js';
 import { useWeather } from '../hooks/useWeather.js';
@@ -283,7 +284,7 @@ export default function ItineraryTab({ onOpenAccount, onExportPdf, outdoor = fal
                   <span aria-hidden="true" style={{ width: 6, height: 6, borderRadius: '50%', backgroundColor: dayLabelColor, flexShrink: 0 }} />
                 )}
                 <span style={{ color: dayLabelColor, fontWeight: 700 }}>{dayPillLabel}</span>
-                <ChevronDown size={13} color={pal.muted} />
+                <CaretDown size={13} color={pal.muted} weight="bold" />
               </button>
               {onOpenAccount && (
                 <button
@@ -296,7 +297,7 @@ export default function ItineraryTab({ onOpenAccount, onExportPdf, outdoor = fal
                     {person?.[0]?.toUpperCase()}
                   </span>
                   <span style={{ maxWidth: 120, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{person}</span>
-                  <ChevronDown size={13} color={pal.muted} />
+                  <CaretDown size={13} color={pal.muted} weight="bold" />
                 </button>
               )}
             </div>
@@ -323,7 +324,7 @@ export default function ItineraryTab({ onOpenAccount, onExportPdf, outdoor = fal
           action={onExportPdf && (
             <button type="button" onClick={() => { setDaySheetOpen(false); onExportPdf(); }}
               style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '7px 12px', borderRadius: rPill, background: sheetChip, border: `1px solid ${sheetRaised}`, cursor: 'pointer', ...mono, fontSize: 10, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: tmrwGold }}>
-              <FileDown size={13} /> Export PDF
+              <FileArrowDown size={13} /> Export PDF
             </button>
           )}>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 8, maxHeight: '60vh', overflowY: 'auto', WebkitOverflowScrolling: 'touch' }}>
@@ -344,7 +345,7 @@ export default function ItineraryTab({ onOpenAccount, onExportPdf, outdoor = fal
                     </span>
                     <span style={{ ...mono, fontSize: 11, color: sheetMuted }}>{d.city}</span>
                   </span>
-                  {active && <Check size={16} strokeWidth={3} color={myColor} style={{ flexShrink: 0 }} />}
+                  {active && <Check size={16} weight="bold" color={myColor} style={{ flexShrink: 0 }} />}
                 </button>
               );
             })}
@@ -573,7 +574,7 @@ function BookingRefs({ refs, isTmrw, isFlightDay }) {
         <span style={{ ...mono, fontSize: 10, letterSpacing: '0.18em', textTransform: 'uppercase', color: label, fontWeight: 600 }}>
           Booking Refs
         </span>
-        <ChevronDown size={12} style={{ color: label, transform: open ? 'rotate(180deg)' : 'none', transition: 'transform var(--dur-base) var(--ease-in-out)' }} />
+        <CaretDown size={12} weight="bold" style={{ color: label, transform: open ? 'rotate(180deg)' : 'none', transition: 'transform var(--dur-base) var(--ease-in-out)' }} />
       </button>
       {present && (
         <div className="fx-collapse" data-open={open}>
@@ -608,14 +609,14 @@ function LodgingPanel({ lodging, isTmrw }) {
     <div style={{ borderTop: `1px solid ${border}`, backgroundColor: bg, padding: CARD_PAD, position: 'relative', zIndex: 1 }}>
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: SECTION_GAP }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-          <Bed size={13} style={{ color: icon }} />
+          <Bed size={14} weight="fill" style={{ color: icon }} />
           <span style={{ ...mono, fontSize: 11, letterSpacing: '0.2em', textTransform: 'uppercase', fontWeight: 700, color: label }}>Lodging</span>
           {lodging.nightLabel && (
             <span style={{ ...mono, fontSize: 10, color: sub, marginLeft: 2 }}>· {lodging.nightLabel}</span>
           )}
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 4, padding: '2px 8px', borderRadius: 3, backgroundColor: badgeBg, border: badgeBorder }}>
-          {lodging.booked && <Check size={9} style={{ color: badgeText }} strokeWidth={3} />}
+          {lodging.booked && <Check size={11} weight="bold" style={{ color: badgeText }} />}
           <span style={{ ...mono, fontSize: 9, letterSpacing: '0.18em', textTransform: 'uppercase', fontWeight: 700, color: badgeText }}>
             {lodging.booked ? 'Booked' : lodging.isGap ? 'TBD' : 'To book'}
           </span>
@@ -628,14 +629,14 @@ function LodgingPanel({ lodging, isTmrw }) {
         <a href={mapsHref(`${lodging.name}, ${lodging.address}`)} target="_blank" rel="noopener noreferrer"
           aria-label={`Open ${lodging.name} in Maps`}
           style={{ ...tapRow, fontSize: 11, color: sub, gap: 5 }}>
-          <MapPin size={13} style={{ color: icon, flexShrink: 0 }} />
+          <MapPin size={14} weight="fill" style={{ color: icon, flexShrink: 0 }} />
           {lodging.address}
         </a>
       )}
       {lodging.phone && (
         <a href={`tel:${lodging.phone}`} aria-label={`Call ${lodging.name}`}
           style={{ ...tapRow, ...mono, fontSize: 11, color: sub, gap: 5 }}>
-          <Phone size={13} style={{ color: icon, flexShrink: 0 }} />
+          <Phone size={14} weight="fill" style={{ color: icon, flexShrink: 0 }} />
           {lodging.phone}
         </a>
       )}
@@ -660,7 +661,7 @@ function SchedulePanel({ events, isTmrw }) {
   return (
     <div style={{ borderTop: `1px solid ${border}`, backgroundColor: bg, padding: CARD_PAD, position: 'relative', zIndex: 1 }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: SECTION_GAP }}>
-        <Clock size={13} style={{ color: time }} />
+        <Clock size={14} weight="fill" style={{ color: time }} />
         <span style={{ ...mono, fontSize: 11, letterSpacing: '0.2em', textTransform: 'uppercase', fontWeight: 700, color: label }}>Schedule</span>
       </div>
       {/* Events list — grows with the day's data; a future "add to schedule" action
@@ -678,7 +679,7 @@ function SchedulePanel({ events, isTmrw }) {
                 // target stays full size but doesn't inflate the baseline row.
                 style={{ flexShrink: 0, alignSelf: 'center', width: 44, height: 44, marginTop: -12, marginBottom: -12, marginRight: -10, display: 'flex', alignItems: 'center', justifyContent: 'center', border: 'none', background: 'none', color: time, cursor: 'pointer' }}
               >
-                <QrCode size={22} />
+                <QrCode size={22} weight="regular" />
               </button>
             )}
           </div>
@@ -734,7 +735,7 @@ function TicketModal({ open, src, onClose }) {
           ref={closeRef} onClick={onClose} aria-label="Close ticket"
           style={{ minWidth: 44, minHeight: 44, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 6, padding: '0 14px', borderRadius: 999, border: `1px solid ${pal.docRule}`, backgroundColor: '#fff', color: pal.docInk, ...mono, fontSize: 12, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', cursor: 'pointer' }}
         >
-          <X size={16} /> Close
+          <X size={16} weight="bold" /> Close
         </button>
       </div>
       {/* Ticket — scales in from centre (.fx-modal). Its rounded corners are
@@ -784,15 +785,15 @@ function TravelPanel({ travel }) {
         {/* Header row */}
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: SECTION_GAP }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-            {isFlight ? <Plane size={13} style={{ color: icon }} />
-              : isCar  ? <Car   size={13} style={{ color: icon }} />
-              :           <ArrowDown size={13} style={{ color: icon }} />}
+            {isFlight ? <AirplaneTilt size={14} weight="fill" style={{ color: icon }} />
+              : isCar  ? <Car          size={14} weight="fill" style={{ color: icon }} />
+              :           <Train        size={14} weight="fill" style={{ color: icon }} />}
             <span style={{ ...mono, fontSize: 11, letterSpacing: '0.2em', textTransform: 'uppercase', fontWeight: 700, color: headLabel }}>
               {isFlight ? 'Flight · Air Canada' : isCar ? 'Drive' : 'Train'}
             </span>
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 4, padding: '2px 8px', borderRadius: 3, backgroundColor: tagBg, border: tagBorder }}>
-            {travel.booked && <Check size={9} style={{ color: checkColor }} strokeWidth={3} />}
+            {travel.booked && <Check size={11} weight="bold" style={{ color: checkColor }} />}
             <span style={{ ...mono, fontSize: 9, letterSpacing: '0.18em', textTransform: 'uppercase', fontWeight: 700, color: tagText }}>
               {travel.tag}
             </span>
