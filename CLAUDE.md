@@ -67,6 +67,12 @@ Upstash Redis for all shared state. Google OAuth (auth-code redirect at `/api/oa
   `TimelineScrubber.jsx` (the old minute scrubber) is retired/unused; don't re-wire it.
 - The Day pill (row 1) + its sheet are a second, labeled way to pick the day (with city
   names + Export PDF); it and the scrubber both drive `viewDayIdx`. Keep them in sync.
+- Swipe left/right on the card pages prev/next day. All three paths (swipe, scrubber, sheet)
+  funnel through `goToDay(idx, dir)` so state stays in sync; `dir` picks the incoming card's
+  directional slide (`day-enter-right`/`-left` in index.css), `null` keeps the vertical
+  `fx-enter`. The gesture mirrors OnboardingGate: `touch-action:pan-y` + an 8px axis-lock so
+  vertical scroll still works, ±56px commit, boundary no-op at day 0/last, and an
+  `onClickCapture` guard so a swipe over a link/button doesn't also fire a tap.
 - LIVE agenda: `AgendaPanel` + the banner `LIVE` chip show ONLY when `viewingToday`
   (`isTripLive && viewIdx === todayIdx`, `isTripLive = todayIdx >= 0` from
   `getTodayIndex()`, `?previewDay=N` to preview). Any other day: card only, no agenda.
