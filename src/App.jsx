@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { Pencil, LogOut } from 'lucide-react';
+import { PencilSimple, SignOut } from '@phosphor-icons/react';
 import { Analytics } from '@vercel/analytics/react';
 import { usePresence } from './hooks/usePresence.js';
 import { DEFAULT_KICKER, DEFAULT_DEPARTURE, days } from './data/trip.js';
@@ -544,10 +544,10 @@ function SettingsSheet({ open, dark, groups, activeGroupId, person, email, onSwi
                 <div style={{ display: 'flex', gap: 10 }}>
                   <button type="button" aria-label="Change my name"
                     onClick={() => { setRenameVal(person || ''); setRenameErr(''); setConfirming('rename'); }} style={pillBtn}>
-                    <Pencil size={16} /> Change name
+                    <PencilSimple size={16} weight="bold" /> Change name
                   </button>
                   <button type="button" aria-label="Sign out" onClick={() => setConfirming('signout')} style={pillBtn}>
-                    <LogOut size={16} /> Sign out
+                    <SignOut size={16} weight="bold" /> Sign out
                   </button>
                 </div>
               </div>
