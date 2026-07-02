@@ -70,6 +70,12 @@ Upstash Redis for all shared state. Google OAuth (auth-code redirect at `/api/oa
 - LIVE agenda: `AgendaPanel` + the banner `LIVE` chip show ONLY when `viewingToday`
   (`isTripLive && viewIdx === todayIdx`, `isTripLive = todayIdx >= 0` from
   `getTodayIndex()`, `?previewDay=N` to preview). Any other day: card only, no agenda.
+- DayCard spacing goes through tokens at the top of `ItineraryTab.jsx` — `CARD_PAD`
+  (panel padding), `SECTION_GAP` (header→body), `ROW_GAP` (list rows). Reference them in
+  every panel instead of hardcoding, or the panels drift out of rhythm again. Tappable
+  rows (lodging address→Maps via `mapsHref`, phone→dialer) share the `tapRow` layout (44px
+  target); reuse `tapRow`+`mapsHref` for future taps (e.g. a travel-address Maps link).
+  These consts sit AFTER `mono` (they spread it) to dodge the module-load TDZ.
 
 ## Bottom bars (keep the two matched — the thing that bites you)
 - Both tabs have a fixed bottom bar: a scrollable pill row (Itinerary·Lineup via
