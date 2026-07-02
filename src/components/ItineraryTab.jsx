@@ -166,6 +166,13 @@ export default function ItineraryTab({ onOpenAccount, onExportPdf, outdoor = fal
   // Which day the tab shows — the DayScrubber's position. Only this day's card
   // renders. Defaults to today during the trip, else Day 1.
   const [viewDayIdx, setViewDayIdx] = useState(() => (todayIdx >= 0 ? todayIdx : 0));
+  // Swipe-to-page state (see the gesture handlers below). `dragX` is the live finger
+  // delta; `settling` runs the snap-back transition; `enterDir` picks the incoming
+  // card's directional slide; `drag` holds per-gesture bookkeeping (no re-render).
+  const [dragX, setDragX] = useState(0);
+  const [settling, setSettling] = useState(false);
+  const [enterDir, setEnterDir] = useState(null); // 'next' | 'prev' | null
+  const drag = useRef({ startX: 0, startY: 0, axis: null, swiped: false });
   const [liveMinute, setLiveMinute] = useState(() => {
     const n = new Date(); return n.getHours() * 60 + n.getMinutes();
   });
@@ -187,6 +194,61 @@ export default function ItineraryTab({ onOpenAccount, onExportPdf, outdoor = fal
   const viewIdx = clampDay(viewDayIdx, days.length);
   const viewDay = days[viewIdx];
   const viewingToday = isTripLive && viewIdx === todayIdx;
+
+  // ── Swipe left/right on the card to page days ──────────────
+  // Mirrors the OnboardingGate pager: one card stays in layout; on commit the key
+  // flips and the incoming card slides in from the swipe direction (`enterDir`).
+  // `touch-action: pan-y` keeps vertical scroll; an 8px axis-lock stops a vertical
+  // scroll that starts on the card from paging. All three day-change paths funnel
+  // through `goToDay` so the scrubber, sky header, and agenda stay in sync.
+  const lastIdx = days.length - 1;
+  const goToDay = (idx, dir) => {
+    const clamped = clampDay(idx, days.length);
+    setEnterDir(clamped === viewIdx ? null : dir); // no directional slide if unchanged
+    setViewDayIdx(clamped);
+  };
+  const onCardPointerDown = (e) => {
+    drag.current = { startX: e.clientX, startY: e.clientY, axis: null, swiped: false };
+    setSettling(false);
+  };
+  const onCardPointerMove = (e) => {
+    const d = drag.current;
+    if (d.axis === 'y') return; // committed to a vertical scroll — let the page own it
+    const dx = e.clientX - d.startX;
+    const dy = e.clientY - d.startY;
+    if (d.axis === null) {
+      if (Math.abs(dx) > 8 && Math.abs(dx) > Math.abs(dy)) {
+        d.axis = 'x'; d.swiped = true;
+        e.currentTarget.setPointerCapture?.(e.pointerId);
+      } else if (Math.abs(dy) > 8) { d.axis = 'y'; return; }
+      else return;
+    }
+    // Rubber-band when dragging past the first/last day.
+    const pastEdge = (dx > 0 && viewIdx === 0) || (dx < 0 && viewIdx === lastIdx);
+    setDragX(pastEdge ? dx * 0.3 : dx);
+  };
+  const onCardPointerUp = (e) => {
+    const d = drag.current;
+    if (d.axis === 'x') {
+      e.currentTarget.releasePointerCapture?.(e.pointerId);
+      const dx = e.clientX - d.startX;
+      if (dx <= -56 && viewIdx < lastIdx) goToDay(viewIdx + 1, 'next');
+      else if (dx >= 56 && viewIdx > 0)   goToDay(viewIdx - 1, 'prev');
+      else setSettling(true); // in-range threshold not met, or past an edge → snap back
+    }
+    setDragX(0);
+    d.axis = null;
+  };
+  // Swallow the click that follows a swipe so a swipe starting on a link/button
+  // (address→Maps, phone, QR, booking-refs) doesn't also activate it. A pure tap
+  // (never crossed the 8px axis-lock) leaves `swiped` false and passes through.
+  const onCardClickCapture = (e) => {
+    if (drag.current.swiped) { e.preventDefault(); e.stopPropagation(); drag.current.swiped = false; }
+  };
+  const dragStyle = (settling || dragX !== 0)
+    ? { transform: `translateX(${dragX}px)`, transition: settling ? 'transform var(--dur-base) var(--ease-out)' : 'none' }
+    : null;
+  const enterClass = enterDir === 'next' ? 'day-enter-right' : enterDir === 'prev' ? 'day-enter-left' : 'fx-enter';
   const dayLabel = `${viewDay.month} ${viewDay.dateNum}`;
   const nextEvent = viewDay.events?.find(e => eventStartMin(e.time) >= effectiveMinute);
   const nextLabel = nextEvent
@@ -243,18 +305,33 @@ export default function ItineraryTab({ onOpenAccount, onExportPdf, outdoor = fal
         <AgendaPanel agenda={agendaAt(viewDay, effectiveMinute)} outdoor={outdoor} />
       )}
 
-      {/* The itinerary shows ONE day at a time — the day the scrubber points at.
-          Keyed by viewIdx so switching days replays the enter animation. Its phase
-          shows as a lightweight header when the day starts a new leg of the trip. */}
-      <div key={viewIdx} className="fx-enter" style={{ paddingTop: viewingToday ? 12 : 0, paddingBottom: 28 }}>
-        {viewDay.phase && (
-          <PhaseDivider phase={viewDay.phase} idx={0} />
-        )}
-        <DayCard
-          d={viewDay}
-          isToday={viewIdx === todayIdx}
-          dateStr={dayToDateStr(viewDay)}
-        />
+      {/* Swipe surface — persists across day changes so it owns the pointer
+          capture; `pan-y` lets vertical scroll through while we handle horizontal.
+          The inner card is keyed by viewIdx (replays the entrance) and carries the
+          live drag transform. */}
+      <div
+        onPointerDown={onCardPointerDown}
+        onPointerMove={onCardPointerMove}
+        onPointerUp={onCardPointerUp}
+        onPointerCancel={onCardPointerUp}
+        onClickCapture={onCardClickCapture}
+        style={{ touchAction: 'pan-y' }}
+      >
+        {/* The itinerary shows ONE day at a time — the day the scrubber points at.
+            Keyed by viewIdx so switching days replays the (directional) entrance;
+            its phase shows as a lightweight header at a new leg of the trip. */}
+        <div key={viewIdx} className={enterClass}
+          onTransitionEnd={(e) => { if (e.propertyName === 'transform') setSettling(false); }}
+          style={{ paddingTop: viewingToday ? 12 : 0, paddingBottom: 28, ...dragStyle }}>
+          {viewDay.phase && (
+            <PhaseDivider phase={viewDay.phase} idx={0} />
+          )}
+          <DayCard
+            d={viewDay}
+            isToday={viewIdx === todayIdx}
+            dateStr={dayToDateStr(viewDay)}
+          />
+        </div>
       </div>
 
       {/* Spacer so content clears the fixed two-row bottom bar (pills + scrubber). */}
@@ -309,7 +386,7 @@ export default function ItineraryTab({ onOpenAccount, onExportPdf, outdoor = fal
               days={days}
               activeIdx={viewIdx}
               todayIdx={todayIdx}
-              onSelect={setViewDayIdx}
+              onSelect={(i) => goToDay(i, null)}
               outdoor={outdoor}
             />
           </div>
@@ -332,7 +409,7 @@ export default function ItineraryTab({ onOpenAccount, onExportPdf, outdoor = fal
               const active = i === viewDayIdx;
               const isToday = i === todayIdx;
               return (
-                <button key={d.dateNum} onClick={() => { setViewDayIdx(i); setDaySheetOpen(false); }} aria-pressed={active}
+                <button key={d.dateNum} onClick={() => { goToDay(i, null); setDaySheetOpen(false); }} aria-pressed={active}
                   style={{ display: 'flex', alignItems: 'center', gap: 12, minHeight: 56, padding: '10px 14px', borderRadius: 14, border: 'none', cursor: 'pointer', textAlign: 'left', backgroundColor: active ? sheetRaised : sheetChip }}>
                   <span style={{ ...mono, fontSize: 10, fontWeight: 700, letterSpacing: '0.12em', color: isToday ? myColor : sheetMuted, width: 52, flexShrink: 0 }}>
                     {isToday ? 'TODAY' : `DAY ${i + 1}`}
