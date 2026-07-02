@@ -53,15 +53,29 @@ Upstash Redis for all shared state. Google OAuth (auth-code redirect at `/api/oa
   `id="tab-<id>"` / `aria-controls="tabpanel"` so it still pairs with `<main>`.
 - The identity strip has a `statusChip` slot (TabHeader): Lineup passes its pick-
   sync chip (`● LIVE`), Itinerary passes the timeline LIVE/SYNC (moved off the
-  scrubber into the banner). Only the passing tab shows it.
+  scrubber into the banner) — but ONLY during the trip (see the live-layer gate
+  below); off-trip Itinerary passes `null`. Only the passing tab shows it.
+
+## Itinerary tab — date-grouped primary view + trip-gated live layer
+- The PRIMARY (always-on) content is the date-grouped day list: every day in `trip.js`
+  order (chronological), each a `DayCard` with its own date chip, phase dividers as
+  section markers. There is no "Full itinerary" toggle anymore — the list IS the view.
+- The LIVE LAYER — the time-relative agenda (`AgendaPanel`), the `TimelineScrubber`,
+  sky-scrubbing, and the LIVE/SYNC chip — is gated behind `isTripLive = todayIdx >= 0`
+  (`getTodayIndex()`, overridable with `?previewDay=N`). Off-trip it's all hidden and
+  the sky/tint just auto-follow the device clock (`effectiveMinute = liveMinute`); during
+  the festival it surfaces above the list. Don't ungate it — it's dead weight when planning.
+- The Day pill scroll-jumps the list (via `refs.current[i].scrollIntoView`) in both modes.
 
 ## Bottom bars (keep the two matched — the thing that bites you)
 - Both tabs have a fixed bottom bar: a scrollable pill row (Itinerary·Lineup via
   `lineup/TabPills.jsx`, Day, Account — same `chipStyle`/`rPill` geometry, mirrored
   in `TripBar.jsx` and the Itinerary bar in `ItineraryTab.jsx`) + a control row
-  (Lineup: view switch; Itinerary: `TimelineScrubber`). Keep both bars the SAME
-  height: Lineup uses `minHeight: 157` to match the Itinerary scrubber's natural
-  height. Change one bar's height → change the other AND its content spacer/padding.
+  (Lineup: view switch; Itinerary: `TimelineScrubber`). The 157px height match applies
+  when BOTH have two rows — i.e. Itinerary DURING the trip (`isTripLive`). Off-trip the
+  Itinerary scrubber row is gone, so its bar is the single pill row and intentionally
+  shorter than Lineup's (its spacer drops from 184 to 108). When changing a two-row
+  height, change the other AND its content spacer/padding.
 - Bottom SHEETS cap at `sheetMaxW` (theme.js = 480) + `margin: 0 auto` so they don't
   span a wide desktop. Centre with margin, NOT translateX — `.fx-sheet`'s slide-up
   owns `transform`.
