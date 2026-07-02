@@ -227,6 +227,10 @@ export default function ItineraryTab({ onOpenAccount, onExportPdf, outdoor = fal
         />
       </TabHeader>
 
+      {/* Breathing room so the first card/agenda doesn't butt flush against the
+          banner's bottom edge (which read as the card being "cut off"). */}
+      <div aria-hidden="true" style={{ height: 16 }} />
+
       {/* Live agenda — only when you're viewing today during the trip: the
           time-relative NOW/COMING-UP for right now. Otherwise hidden. */}
       {viewingToday && (
