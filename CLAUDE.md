@@ -35,8 +35,16 @@ Upstash Redis for all shared state. Google OAuth (auth-code redirect at `/api/oa
   gradient banner (height `HERO_H`, theme.js) with the identity strip (kicker ·
   crew · DEPARTURE IN · countdown) overlaid. Bodies are tab-specific:
   `itinerary/SkyHeader.jsx` (sky+clock) / `lineup/ConscienciaHeader.jsx` (wordmark).
-  Keep them aligned by editing the shell, not per-tab. The banner just scrolls away
-  with the page (no sticky/collapsing behavior anymore).
+  Keep them aligned by editing the shell, not per-tab. The full banner scrolls away
+  with the page; it bleeds UP under the status bar (`margin`/`height`/identity-strip
+  padding all add `env(safe-area-inset-top)`) so the sky fills the safe area — don't
+  drop the safe-area terms or the harsh dark→sky line at the notch returns. Both tab
+  bodies are `absolute inset:0` with bottom-anchored content, so the top-bleed doesn't
+  move the clock/wordmark.
+- Once the banner scrolls past, `TabHeader` reveals a COMPACT fixed header (crew ·
+  statusChip · countdown) via an `IntersectionObserver` on a sentinel at `top:60` in
+  the banner (`scrolled` state). Keep it lightweight (solid bg + hairline, no big blur
+  shadow — it's a fixed layer and we watch scroll-repaint cost). Shared → both tabs.
 - Countdown is ONE helper — `src/lib/countdown.js` `countdownLabel()` (uppercase
   `14 DAYS`). Don't reintroduce a second per-tab copy (that caused the old casing drift).
 - Header type/size/height come from theme.js tokens (`HERO_H`, `hdr*`) — reference
