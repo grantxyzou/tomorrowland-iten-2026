@@ -79,8 +79,11 @@ Upstash Redis for all shared state. Google OAuth (auth-code redirect at `/api/oa
   guard so a swipe over a link/button doesn't also tap it, and a reduced-motion instant-swap
   fallback. The surface height is LOCKED to the outgoing card then animated to the measured
   incoming card's height (via `surfaceRef`/`trackRef`) so days of different lengths don't snap
-  at settle. Tune feel via `SWIPE_ENGAGE`/`SWIPE_COMMIT` + `PAGE_DUR` (300ms, drives the slide,
-  the height anim, and the finalize timer).
+  at settle. Tune feel via `SWIPE_ENGAGE`/`SWIPE_COMMIT` + `PAGE_DUR` (drives the slide, the
+  height anim, and the finalize timer). The track `transform` + surface `overflow:hidden` are
+  gated behind `active` (`paging || settling || dragX!==0`) — at REST the card is plain flow
+  content (no transform/clip), else the always-on composited layer makes vertical scroll feel
+  weird on long cards. Don't reintroduce an idle transform here.
 - LIVE agenda: `AgendaPanel` + the banner `LIVE` chip show ONLY when `viewingToday`
   (`isTripLive && viewIdx === todayIdx`, `isTripLive = todayIdx >= 0` from
   `getTodayIndex()`, `?previewDay=N` to preview). Any other day: card only, no agenda.

@@ -215,7 +215,7 @@ export default function ItineraryTab({ onOpenAccount, onExportPdf, outdoor = fal
   // vertical delta before we page, and it takes a COMMIT-px swipe to flip the day.
   const SWIPE_ENGAGE = 14;  // px of horizontal travel before the drag engages
   const SWIPE_COMMIT = 90;  // px of travel to actually change day (else snap back)
-  const PAGE_DUR = 300;     // ms — the commit slide + height animation (a touch slower = smoother)
+  const PAGE_DUR = 230;     // ms — the commit slide + height animation (snappy but smooth)
   const lastIdx = days.length - 1;
   const goToDay = (idx) => { // scrubber / sheet — instant swap with the vertical fx-enter
     setJustPaged(false);
@@ -298,11 +298,17 @@ export default function ItineraryTab({ onOpenAccount, onExportPdf, outdoor = fal
   const trackTransition = paging
     ? (pageAnim ? `transform ${PAGE_DUR}ms var(--ease-out)` : 'none')
     : (settling ? 'transform var(--dur-base) var(--ease-out)' : 'none');
-  const trackTransform = paging
-    ? (pageAnim
-        ? (paging.dir === 'next' ? 'translateX(-100%)' : 'translateX(0%)')
-        : (paging.dir === 'next' ? `translateX(${dragX}px)` : `translateX(calc(-100% + ${dragX}px))`))
-    : `translateX(${dragX}px)`;
+  // Only transform/clip while a gesture is live — at rest the card must be plain flow
+  // content, or the always-on transform composites the whole (tall) card and makes
+  // vertical scroll feel weird on long cards.
+  const active = !!paging || settling || dragX !== 0;
+  const trackTransform = !active
+    ? undefined
+    : paging
+      ? (pageAnim
+          ? (paging.dir === 'next' ? 'translateX(-100%)' : 'translateX(0%)')
+          : (paging.dir === 'next' ? `translateX(${dragX}px)` : `translateX(calc(-100% + ${dragX}px))`))
+      : `translateX(${dragX}px)`;
   const dayLabel = `${viewDay.month} ${viewDay.dateNum}`;
   const nextEvent = viewDay.events?.find(e => eventStartMin(e.time) >= effectiveMinute);
   const nextLabel = nextEvent
@@ -371,7 +377,10 @@ export default function ItineraryTab({ onOpenAccount, onExportPdf, outdoor = fal
         onPointerCancel={onCardPointerUp}
         onClickCapture={onCardClickCapture}
         style={{
-          touchAction: 'pan-y', overflow: 'hidden',
+          touchAction: 'pan-y',
+          // Clip only while a gesture is live; at rest `visible` avoids wrapping the tall
+          // card in an extra scroll/formatting context (keeps native vertical scroll clean).
+          overflow: active ? 'hidden' : 'visible',
           height: surfaceH != null ? surfaceH : undefined,
           // Animate the height alongside the slide so days of different lengths don't snap.
           transition: (paging && pageAnim && surfaceH != null) ? `height ${PAGE_DUR}ms var(--ease-out)` : 'none',
