@@ -67,13 +67,17 @@ Upstash Redis for all shared state. Google OAuth (auth-code redirect at `/api/oa
   `TimelineScrubber.jsx` (the old minute scrubber) is retired/unused; don't re-wire it.
 - The Day pill (row 1) + its sheet are a second, labeled way to pick the day (with city
   names + Export PDF); it and the scrubber both drive `viewDayIdx`. Keep them in sync.
-- Swipe left/right on the card pages prev/next day. All three paths (swipe, scrubber, sheet)
-  funnel through `goToDay(idx, dir)` so state stays in sync; `dir` picks the incoming card's
-  directional slide (`day-enter-right`/`-left` in index.css), `null` keeps the vertical
-  `fx-enter`. The gesture mirrors OnboardingGate: `touch-action:pan-y` + an axis-lock
-  (`SWIPE_ENGAGE`=14px AND horizontal must beat vertical 1.5× so scroll isn't grabbed),
-  `SWIPE_COMMIT`=90px to flip the day, boundary no-op at day 0/last, and an `onClickCapture`
-  guard so a swipe over a link/button doesn't also fire a tap. Tune feel via those two consts.
+- Swipe left/right on the card pages prev/next day. Committing mounts a transient TWO-card
+  track (`paging` state) that slides one card-width — the outgoing card slides off as the
+  incoming slides in, continuous from the drag (no pop). The track's slots are keyed by day
+  index so the `to` slot (and its loaded weather) PERSISTS across finalize — do not switch to
+  a keyed single-card remount, it reintroduces a flash. The surface has `overflow:hidden` to
+  clip the off-screen slot. Scrubber/sheet changes go through `goToDay(idx)` (instant swap +
+  vertical `fx-enter`); `justPaged` suppresses that entrance on a paged-in card. Gesture
+  mirrors OnboardingGate: `touch-action:pan-y` + axis-lock (`SWIPE_ENGAGE`=14px AND horizontal
+  beats vertical 1.5×), `SWIPE_COMMIT`=90px, boundary no-op at day 0/last, `onClickCapture`
+  guard so a swipe over a link/button doesn't also tap it, and a reduced-motion instant-swap
+  fallback. Tune feel via the two consts + the `pageTimer` 230ms (~`--dur-base`).
 - LIVE agenda: `AgendaPanel` + the banner `LIVE` chip show ONLY when `viewingToday`
   (`isTripLive && viewIdx === todayIdx`, `isTripLive = todayIdx >= 0` from
   `getTodayIndex()`, `?previewDay=N` to preview). Any other day: card only, no agenda.

@@ -132,15 +132,9 @@ button, [role="button"], [role="tab"], [role="option"] {
 .fx-enter { animation: fx-enter 320ms var(--ease-out) both; }
 @keyframes fx-enter { from { opacity: 0; transform: translateY(8px); } }
 
-/* Directional day-paging entrances — the incoming day card slides in from the
-   side the swipe came from (next → from the right, prev → from the left). Opaque
-   (no fade) so the card doesn't blink at the moment the day flips — the blink read
-   as a glitch after dragging a solid card. Reduced motion zeroes it via the global
-   rule below. */
-.day-enter-right { animation: day-enter-right var(--dur-base) var(--ease-out) both; }
-@keyframes day-enter-right { from { transform: translateX(34px); } }
-.day-enter-left  { animation: day-enter-left  var(--dur-base) var(--ease-out) both; }
-@keyframes day-enter-left  { from { transform: translateX(-34px); } }
+/* (Day paging is now a two-card slide driven inline in ItineraryTab — the outgoing
+   card slides off as the incoming slides in, continuous from the drag. No entrance
+   keyframe is needed; reduced motion falls back to an instant swap in JS.) */
 
 /* Hide scrollbar on tab bar */
 .no-scrollbar::-webkit-scrollbar { display: none; }

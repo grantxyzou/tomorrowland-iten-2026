@@ -167,12 +167,19 @@ export default function ItineraryTab({ onOpenAccount, onExportPdf, outdoor = fal
   // renders. Defaults to today during the trip, else Day 1.
   const [viewDayIdx, setViewDayIdx] = useState(() => (todayIdx >= 0 ? todayIdx : 0));
   // Swipe-to-page state (see the gesture handlers below). `dragX` is the live finger
-  // delta; `settling` runs the snap-back transition; `enterDir` picks the incoming
-  // card's directional slide; `drag` holds per-gesture bookkeeping (no re-render).
+  // delta; `settling` runs the snap-back transition. On commit we mount a transient
+  // TWO-card track (`paging`) and slide it one card-width (`pageAnim` flips off→on to
+  // trigger the transition) so the outgoing card slides off as the incoming slides in —
+  // continuous from the drag, no pop. `justPaged` suppresses the vertical fx-enter on
+  // the settled card. `drag` holds per-gesture bookkeeping (no re-render).
   const [dragX, setDragX] = useState(0);
   const [settling, setSettling] = useState(false);
-  const [enterDir, setEnterDir] = useState(null); // 'next' | 'prev' | null
+  const [paging, setPaging] = useState(null);   // null | { dir:'next'|'prev', from, to }
+  const [pageAnim, setPageAnim] = useState(false);
+  const [justPaged, setJustPaged] = useState(false);
   const drag = useRef({ startX: 0, startY: 0, axis: null, swiped: false });
+  const pageTimer = useRef(null);
+  useEffect(() => () => clearTimeout(pageTimer.current), []);
   const [liveMinute, setLiveMinute] = useState(() => {
     const n = new Date(); return n.getHours() * 60 + n.getMinutes();
   });
@@ -206,16 +213,33 @@ export default function ItineraryTab({ onOpenAccount, onExportPdf, outdoor = fal
   const SWIPE_ENGAGE = 14; // px of horizontal travel before the drag engages
   const SWIPE_COMMIT = 90; // px of travel to actually change day (else snap back)
   const lastIdx = days.length - 1;
-  const goToDay = (idx, dir) => {
-    const clamped = clampDay(idx, days.length);
-    setEnterDir(clamped === viewIdx ? null : dir); // no directional slide if unchanged
-    setViewDayIdx(clamped);
+  const goToDay = (idx) => { // scrubber / sheet — instant swap with the vertical fx-enter
+    setJustPaged(false);
+    setViewDayIdx(clampDay(idx, days.length));
+  };
+  const finalizePage = (to) => {
+    setJustPaged(true); // the settled card must not also replay the vertical entrance
+    setViewDayIdx(to);
+    setPaging(null);
+    setPageAnim(false);
+    setDragX(0);
+  };
+  const commitPage = (dir, to) => {
+    if (PREFERS_REDUCED_MOTION) { setJustPaged(true); setViewDayIdx(to); setDragX(0); return; }
+    setPaging({ dir, from: viewIdx, to });
+    setPageAnim(false); // mount the two-card track at the current drag offset…
+    // …then two frames later slide it one card-width to the snapped position.
+    requestAnimationFrame(() => requestAnimationFrame(() => setPageAnim(true)));
+    clearTimeout(pageTimer.current);
+    pageTimer.current = setTimeout(() => finalizePage(to), 230); // ~dur-base + margin
   };
   const onCardPointerDown = (e) => {
+    if (paging) return; // ignore new gestures mid-transition
     drag.current = { startX: e.clientX, startY: e.clientY, axis: null, swiped: false };
     setSettling(false);
   };
   const onCardPointerMove = (e) => {
+    if (paging) return;
     const d = drag.current;
     if (d.axis === 'y') return; // committed to a vertical scroll — let the page own it
     const dx = e.clientX - d.startX;
@@ -234,27 +258,39 @@ export default function ItineraryTab({ onOpenAccount, onExportPdf, outdoor = fal
     setDragX(pastEdge ? dx * 0.3 : dx);
   };
   const onCardPointerUp = (e) => {
+    if (paging) return;
     const d = drag.current;
     if (d.axis === 'x') {
       e.currentTarget.releasePointerCapture?.(e.pointerId);
       const dx = e.clientX - d.startX;
-      if (dx <= -SWIPE_COMMIT && viewIdx < lastIdx) goToDay(viewIdx + 1, 'next');
-      else if (dx >= SWIPE_COMMIT && viewIdx > 0)   goToDay(viewIdx - 1, 'prev');
-      else setSettling(true); // in-range threshold not met, or past an edge → snap back
+      if (dx <= -SWIPE_COMMIT && viewIdx < lastIdx) { d.axis = null; commitPage('next', viewIdx + 1); return; }
+      if (dx >= SWIPE_COMMIT && viewIdx > 0)         { d.axis = null; commitPage('prev', viewIdx - 1); return; }
+      setSettling(true); // in-range threshold not met, or past an edge → snap back
     }
     setDragX(0);
     d.axis = null;
   };
   // Swallow the click that follows a swipe so a swipe starting on a link/button
   // (address→Maps, phone, QR, booking-refs) doesn't also activate it. A pure tap
-  // (never crossed the 8px axis-lock) leaves `swiped` false and passes through.
+  // (never crossed the axis-lock) leaves `swiped` false and passes through.
   const onCardClickCapture = (e) => {
     if (drag.current.swiped) { e.preventDefault(); e.stopPropagation(); drag.current.swiped = false; }
   };
-  const dragStyle = (settling || dragX !== 0)
-    ? { transform: `translateX(${dragX}px)`, transition: settling ? 'transform var(--dur-base) var(--ease-out)' : 'none' }
-    : null;
-  const enterClass = enterDir === 'next' ? 'day-enter-right' : enterDir === 'prev' ? 'day-enter-left' : 'fx-enter';
+  // Track geometry. Idle: one slot carrying the live drag / snap-back transform. Paging:
+  // two slots ([from,to] for next, [to,from] for prev) sliding one card-width; the `to`
+  // slot keeps its key across finalize so it (and its loaded weather) persists — no
+  // remount flash. The swipe surface clips the off-screen slot (overflow hidden).
+  const slots = paging
+    ? (paging.dir === 'next' ? [paging.from, paging.to] : [paging.to, paging.from])
+    : [viewIdx];
+  const trackTransition = paging
+    ? (pageAnim ? 'transform var(--dur-base) var(--ease-out)' : 'none')
+    : (settling ? 'transform var(--dur-base) var(--ease-out)' : 'none');
+  const trackTransform = paging
+    ? (pageAnim
+        ? (paging.dir === 'next' ? 'translateX(-100%)' : 'translateX(0%)')
+        : (paging.dir === 'next' ? `translateX(${dragX}px)` : `translateX(calc(-100% + ${dragX}px))`))
+    : `translateX(${dragX}px)`;
   const dayLabel = `${viewDay.month} ${viewDay.dateNum}`;
   const nextEvent = viewDay.events?.find(e => eventStartMin(e.time) >= effectiveMinute);
   const nextLabel = nextEvent
@@ -311,32 +347,31 @@ export default function ItineraryTab({ onOpenAccount, onExportPdf, outdoor = fal
         <AgendaPanel agenda={agendaAt(viewDay, effectiveMinute)} outdoor={outdoor} />
       )}
 
-      {/* Swipe surface — persists across day changes so it owns the pointer
-          capture; `pan-y` lets vertical scroll through while we handle horizontal.
-          The inner card is keyed by viewIdx (replays the entrance) and carries the
-          live drag transform. */}
+      {/* Swipe surface — persists across day changes so it owns the pointer capture
+          and clips the off-screen slot (overflow hidden). `pan-y` lets vertical scroll
+          through while we handle horizontal. Inside is the track: one slot at rest, two
+          during a commit (the outgoing card slides off as the incoming slides in). */}
       <div
         onPointerDown={onCardPointerDown}
         onPointerMove={onCardPointerMove}
         onPointerUp={onCardPointerUp}
         onPointerCancel={onCardPointerUp}
         onClickCapture={onCardClickCapture}
-        style={{ touchAction: 'pan-y' }}
+        style={{ touchAction: 'pan-y', overflow: 'hidden' }}
       >
-        {/* The itinerary shows ONE day at a time — the day the scrubber points at.
-            Keyed by viewIdx so switching days replays the (directional) entrance;
-            its phase shows as a lightweight header at a new leg of the trip. */}
-        <div key={viewIdx} className={enterClass}
-          onTransitionEnd={(e) => { if (e.propertyName === 'transform') setSettling(false); }}
-          style={{ paddingTop: viewingToday ? 12 : 0, paddingBottom: 28, ...dragStyle }}>
-          {viewDay.phase && (
-            <PhaseDivider phase={viewDay.phase} idx={0} />
-          )}
-          <DayCard
-            d={viewDay}
-            isToday={viewIdx === todayIdx}
-            dateStr={dayToDateStr(viewDay)}
-          />
+        <div style={{ display: 'flex', alignItems: 'flex-start', transform: trackTransform, transition: trackTransition }}
+          onTransitionEnd={(e) => { if (!paging && e.propertyName === 'transform') setSettling(false); }}>
+          {slots.map((idx) => {
+            const d = days[idx];
+            return (
+              <div key={idx}
+                className={(!paging && !justPaged) ? 'fx-enter' : undefined}
+                style={{ flex: '0 0 100%', minWidth: 0, paddingTop: (isTripLive && idx === todayIdx) ? 12 : 0, paddingBottom: 28 }}>
+                {d.phase && <PhaseDivider phase={d.phase} idx={0} />}
+                <DayCard d={d} isToday={idx === todayIdx} dateStr={dayToDateStr(d)} />
+              </div>
+            );
+          })}
         </div>
       </div>
 
@@ -392,7 +427,7 @@ export default function ItineraryTab({ onOpenAccount, onExportPdf, outdoor = fal
               days={days}
               activeIdx={viewIdx}
               todayIdx={todayIdx}
-              onSelect={(i) => goToDay(i, null)}
+              onSelect={(i) => goToDay(i)}
               outdoor={outdoor}
             />
           </div>
@@ -415,7 +450,7 @@ export default function ItineraryTab({ onOpenAccount, onExportPdf, outdoor = fal
               const active = i === viewDayIdx;
               const isToday = i === todayIdx;
               return (
-                <button key={d.dateNum} onClick={() => { goToDay(i, null); setDaySheetOpen(false); }} aria-pressed={active}
+                <button key={d.dateNum} onClick={() => { goToDay(i); setDaySheetOpen(false); }} aria-pressed={active}
                   style={{ display: 'flex', alignItems: 'center', gap: 12, minHeight: 56, padding: '10px 14px', borderRadius: 14, border: 'none', cursor: 'pointer', textAlign: 'left', backgroundColor: active ? sheetRaised : sheetChip }}>
                   <span style={{ ...mono, fontSize: 10, fontWeight: 700, letterSpacing: '0.12em', color: isToday ? myColor : sheetMuted, width: 52, flexShrink: 0 }}>
                     {isToday ? 'TODAY' : `DAY ${i + 1}`}
