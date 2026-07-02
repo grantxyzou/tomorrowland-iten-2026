@@ -29,21 +29,25 @@ const eventStartMin = (t) => timeToMin(String(t).slice(0, 5));
 // flight (Air Canada) day variants keep their own identity, retuned for dark.
 const p = {
   // Surfaces (value-only ladder, lighter = nearer)
-  canvas:  '#0a0e22',  // tab background
+  canvas:  '#05070f',  // tab background — near-black so the card clearly floats
   bar:     '#0c1228',  // bottom nav / sticky bars
-  card:    '#10162e',  // default day card
-  panel:   '#161d3a',  // inner panels (lodging / schedule / travel / refs)
-  raised:  '#1a2347',  // chips, date chip, leg-label pills
+  card:    '#141d38',  // default day card — a real step up from canvas (no blue-on-blue)
+  panel:   '#1a2444',  // inner panels (lodging / schedule / travel / refs)
+  raised:  '#212d54',  // chips, date chip, leg-label pills
   // Text ramp (light on dark)
   ink:       '#eef1fb', // primary
   bodyMuted: '#c2cae5', // secondary
   muted:     '#9aa3c4', // tertiary — labels / captions
   caption:   '#6f7aa6', // muted caption
-  // Accent — the Itinerary's red, brightened to read on dark; spotlight only.
+  // Accent — the Itinerary's red. RESERVED for the day's status line + TODAY only
+  // (never times/links/icons — that overuse flattened the hierarchy).
   accent:    '#ff6a4d',
   accentInk: '#240a04', // dark ink on a bright accent / gold fill
   onDark:    '#eef1fb', // light text on a dark fill
-  rule:      '#1c2342', // hairline divider
+  // Gold — the structural warm tone: schedule times, the weekday, and icons. It's
+  // the everyday counterpart to the festival-only tmrwGold (kept distinct below).
+  gold:      '#e3b34f',
+  rule:      '#2b375e', // hairline divider — lighter now so card borders read as elevation
   pillBg:    'rgba(255,255,255,0.06)', // subtle chip fill (weather pills)
   // Gap days — cool, de-emphasised, dashed.
   gapBg:     '#0c1430',
@@ -78,6 +82,7 @@ const LIGHT = {
   canvas: '#dde3f0', bar: '#cdd6e8', card: '#f4f7fc', panel: '#e8edf6', raised: '#ffffff',
   ink: '#060c1c', bodyMuted: '#2f3a54', muted: '#5b677f', caption: '#6b7690',
   accent: '#a82a13', accentInk: '#ffffff', onDark: '#060c1c', rule: '#c2cdde',
+  gold: '#8a6a12', // dark amber so times/icons stay legible on the light outdoor bg
   gapBg: '#e4e9f3', gapAccent: '#6b7690', pillBg: 'rgba(0,0,0,0.05)',
 };
 
@@ -446,7 +451,7 @@ function DayCard({ d, isToday, dateStr }) {
 function DateChip({ d, isTmrw, isGap }) {
   const pal = usePal();
   const bg    = isGap ? pal.raised : isTmrw ? pal.tmrwChipBg : pal.raised;
-  const label = isGap ? pal.bodyMuted : isTmrw ? pal.tmrwGold : pal.accent;
+  const label = isGap ? pal.bodyMuted : isTmrw ? pal.tmrwGold : pal.gold; // weekday: gold, not red
   const month = isTmrw ? pal.tmrwChipLabel : pal.muted;
 
   return (
@@ -591,7 +596,7 @@ function LodgingPanel({ lodging, isTmrw }) {
   const pal = usePal();
   const bg     = isTmrw ? pal.tmrwPanel : lodging.isGap ? pal.gapBg : pal.panel;
   const border = isTmrw ? pal.tmrwPanelBorder : pal.rule;
-  const icon   = lodging.isGap ? pal.gapAccent : isTmrw ? pal.tmrwGold : pal.accent;
+  const icon   = lodging.isGap ? pal.gapAccent : isTmrw ? pal.tmrwGold : pal.gold; // section + link icons: gold
   const label  = isTmrw ? pal.tmrwBodyText : pal.ink;
   const sub    = isTmrw ? pal.tmrwBodyMuted : pal.muted;
   const name   = lodging.isGap ? pal.bodyMuted : isTmrw ? pal.tmrwBodyText : pal.ink;
@@ -629,8 +634,8 @@ function LodgingPanel({ lodging, isTmrw }) {
       )}
       {lodging.phone && (
         <a href={`tel:${lodging.phone}`} aria-label={`Call ${lodging.name}`}
-          style={{ ...tapRow, ...mono, fontSize: 11, color: icon, gap: 5 }}>
-          <Phone size={13} style={{ flexShrink: 0 }} />
+          style={{ ...tapRow, ...mono, fontSize: 11, color: sub, gap: 5 }}>
+          <Phone size={13} style={{ color: icon, flexShrink: 0 }} />
           {lodging.phone}
         </a>
       )}
@@ -644,7 +649,7 @@ function SchedulePanel({ events, isTmrw }) {
   const bg     = isTmrw ? pal.tmrwPanel : pal.panel;
   const border = isTmrw ? pal.tmrwPanelBorder : pal.rule;
   const label  = isTmrw ? pal.tmrwBodyText : pal.ink;
-  const time   = isTmrw ? pal.tmrwGold : pal.accent;
+  const time   = isTmrw ? pal.tmrwGold : pal.gold; // schedule times: gold, not red
   const text   = isTmrw ? pal.tmrwBodyText : pal.ink;
 
   // Ticket modal: `ticket` is the current src (kept during the exit anim),
@@ -759,7 +764,7 @@ function TravelPanel({ travel }) {
   const pal = usePal();
   const bg         = isFlight ? pal.acBlack : pal.panel;
   const border     = isFlight ? pal.acBlack : pal.rule;
-  const icon       = isFlight ? pal.acRed   : pal.accent;
+  const icon       = isFlight ? pal.acRed   : pal.gold; // travel icon: gold (flight keeps AC red)
   const headLabel  = isFlight ? '#fff'    : pal.ink;
   const fareColor  = isFlight ? pal.acMuted : pal.muted;
   const costColor  = isFlight ? '#fff'    : pal.ink;
