@@ -11,7 +11,7 @@ import { useGroup } from '../groups/GroupContext.jsx';
 import { timeToMin } from './lineup/time.js';
 import SkyHeader from './itinerary/SkyHeader.jsx';
 import TabHeader from './TabHeader.jsx';
-import TimelineScrubber from './itinerary/TimelineScrubber.jsx';
+import DayScrubber from './itinerary/DayScrubber.jsx';
 import AgendaPanel from './itinerary/AgendaPanel.jsx';
 import BottomSheet from './lineup/BottomSheet.jsx';
 import TabPills from './lineup/TabPills.jsx';
@@ -127,43 +127,39 @@ const PREFERS_REDUCED_MOTION =
 
 export default function ItineraryTab({ onOpenAccount, onExportPdf, outdoor = false, kicker, crewName, departureDate, tabs, activeTab, onSelectTab }) {
   const todayIdx = getTodayIndex();
-  // The live layer (agenda + scrubber + sky-scrub + LIVE/SYNC chip) is the
-  // on-the-ground festival experience — it only earns its space during the trip.
-  // Off-trip (planning) the date-grouped list leads and the sky quietly auto-runs
-  // off the device clock. `?previewDay=N` flips this on to preview the live tab.
+  // `isTripLive` = the trip is on right now (today is one of the days). It only
+  // gates the live NOW/COMING-UP agenda, shown when you're viewing today. Day
+  // navigation itself (the DayScrubber) is always on. `?previewDay=N` forces it.
   const isTripLive = todayIdx >= 0;
-  const refs = useRef([]);
   const { person } = useAuth();
   const { colorFor, inkFor } = useGroup();
   const myColor = colorFor(person);
 
-  // Sky timeline — one value drives everything (spec §1). `liveMinute` ticks from
-  // the device clock every 30s; `scrubMin` (null = live) holds a dragged minute.
-  const [scrubMin, setScrubMin] = useState(null);
   const [daySheetOpen, setDaySheetOpen] = useState(false); // day picker (matches the Lineup day sheet)
-  // Which day the agenda shows. Defaults to today during the trip, else Day 1, so
-  // the agenda is ALWAYS present and the scrubber always has something to drive.
+  // Which day the tab shows — the DayScrubber's position. Only this day's card
+  // renders. Defaults to today during the trip, else Day 1.
   const [viewDayIdx, setViewDayIdx] = useState(() => (todayIdx >= 0 ? todayIdx : 0));
   const [liveMinute, setLiveMinute] = useState(() => {
     const n = new Date(); return n.getHours() * 60 + n.getMinutes();
   });
-  // The sky/tint auto-advances from the device clock (discrete 30s tick — no
-  // continuous animation). Scrubbing overrides it on demand via `scrubMin`.
+  // The sky/tint follow the device clock (discrete 30s tick — no continuous
+  // animation). Time-of-day is no longer scrubbed; the scrubber picks the DAY.
   useEffect(() => {
     const id = setInterval(() => {
       const n = new Date(); setLiveMinute(n.getHours() * 60 + n.getMinutes());
     }, 30000);
     return () => clearInterval(id);
   }, []);
-  // Off-trip there's no scrubber, so the sky/tint/clock just follow the device.
-  const effectiveMinute = isTripLive ? (scrubMin ?? liveMinute) : liveMinute;
+  const effectiveMinute = liveMinute;
   // Outdoor mode = fixed light palette (no tint). Otherwise the dark palette with
   // the ambient dawn/dusk tint applied to surfaces.
   const pal = useMemo(() => (outdoor ? LIGHT : tintedPalette(effectiveMinute)), [outdoor, effectiveMinute]);
 
-  // The agenda + sky header reflect the selected day (the scrubber sets the time
-  // within it). dayLabel/nextLabel come from the viewed day, not just "today".
-  const viewDay = days[clampDay(viewDayIdx, days.length)];
+  // The viewed day drives the card, sky header labels, and (if it's today) the
+  // live agenda. dayLabel/nextLabel come from the viewed day, not just "today".
+  const viewIdx = clampDay(viewDayIdx, days.length);
+  const viewDay = days[viewIdx];
+  const viewingToday = isTripLive && viewIdx === todayIdx;
   const dayLabel = `${viewDay.month} ${viewDay.dateNum}`;
   const nextEvent = viewDay.events?.find(e => eventStartMin(e.time) >= effectiveMinute);
   const nextLabel = nextEvent
@@ -181,15 +177,14 @@ export default function ItineraryTab({ onOpenAccount, onExportPdf, outdoor = fal
     borderRadius: rPill, backgroundColor: pal.card, border: `1px solid ${pal.rule}`, color: pal.ink,
     ...sans, fontSize: 14, fontWeight: 700, cursor: 'pointer',
   };
-  // LIVE/SYNC now lives in the banner identity strip (same spot as the Lineup
-  // sync chip). Tap when scrubbed to snap the clock back to live.
-  const isLive = scrubMin === null;
+  // A static LIVE marker in the banner identity strip — shown only while you're
+  // viewing today during the trip (the sky/agenda are genuinely live then).
   const liveChip = (
-    <button type="button" onClick={() => setScrubMin(null)} aria-label={isLive ? 'Timeline is live' : 'Sync the timeline to now'}
-      style={{ display: 'inline-flex', alignItems: 'center', gap: 5, background: 'none', border: 'none', cursor: 'pointer', padding: 0, ...mono, fontSize: 10, fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: isLive ? tmrwGold : 'rgba(255,255,255,0.7)', textShadow: '0 1px 4px rgba(0,0,0,0.7)' }}>
-      <span aria-hidden="true" style={{ width: 7, height: 7, borderRadius: '50%', background: isLive ? tmrwGold : 'transparent', border: isLive ? 'none' : '1.5px solid rgba(255,255,255,0.7)', boxShadow: isLive ? `0 0 6px ${tmrwGold}` : 'none' }} />
-      {isLive ? 'LIVE' : 'SYNC'}
-    </button>
+    <span aria-label="Viewing today, live"
+      style={{ display: 'inline-flex', alignItems: 'center', gap: 5, ...mono, fontSize: 10, fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: tmrwGold, textShadow: '0 1px 4px rgba(0,0,0,0.7)' }}>
+      <span aria-hidden="true" style={{ width: 7, height: 7, borderRadius: '50%', background: tmrwGold, boxShadow: `0 0 6px ${tmrwGold}` }} />
+      LIVE
+    </span>
   );
 
   return (
@@ -202,7 +197,7 @@ export default function ItineraryTab({ onOpenAccount, onExportPdf, outdoor = fal
       {/* Shared header shell (identical on both tabs): the sky body fills the
           banner, with the identity strip overlaid and the tab switcher as the
           bottom strip. The scrubber lives in a fixed transport bar at the bottom. */}
-      <TabHeader kicker={kicker} crewName={crewName} departureDate={departureDate} statusChip={isTripLive ? liveChip : null}>
+      <TabHeader kicker={kicker} crewName={crewName} departureDate={departureDate} statusChip={viewingToday ? liveChip : null}>
         <SkyHeader
           minute={effectiveMinute}
           dayLabel={dayLabel}
@@ -211,35 +206,28 @@ export default function ItineraryTab({ onOpenAccount, onExportPdf, outdoor = fal
         />
       </TabHeader>
 
-      {/* Live layer — only during the trip (spec §4). The time-relative agenda for
-          today's now/soon leads, driven by the scrubbed/live minute. Off-trip it's
-          hidden and the date-grouped list below is the whole view. */}
-      {isTripLive && (
+      {/* Live agenda — only when you're viewing today during the trip: the
+          time-relative NOW/COMING-UP for right now. Otherwise hidden. */}
+      {viewingToday && (
         <AgendaPanel agenda={agendaAt(viewDay, effectiveMinute)} outdoor={outdoor} />
       )}
 
-      {/* The date-grouped itinerary is the primary content: every day in chronological
-          order, each a DayCard carrying its own date chip, with phase dividers as
-          lightweight section markers. During the trip it sits below the live agenda. */}
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 16, paddingTop: isTripLive ? 12 : 0, paddingBottom: 28 }}>
-        {days.map((d, idx) => (
-          <div key={d.dateNum} ref={el => refs.current[idx] = el}
-            className="fx-enter" style={{ animationDelay: `${Math.min(idx, 8) * 45}ms` }}>
-            {d.phase && (
-              <PhaseDivider phase={d.phase} idx={idx} />
-            )}
-            <DayCard
-              d={d}
-              isToday={idx === todayIdx}
-              dateStr={dayToDateStr(d)}
-            />
-          </div>
-        ))}
+      {/* The itinerary shows ONE day at a time — the day the scrubber points at.
+          Keyed by viewIdx so switching days replays the enter animation. Its phase
+          shows as a lightweight header when the day starts a new leg of the trip. */}
+      <div key={viewIdx} className="fx-enter" style={{ paddingTop: viewingToday ? 12 : 0, paddingBottom: 28 }}>
+        {viewDay.phase && (
+          <PhaseDivider phase={viewDay.phase} idx={0} />
+        )}
+        <DayCard
+          d={viewDay}
+          isToday={viewIdx === todayIdx}
+          dateStr={dayToDateStr(viewDay)}
+        />
       </div>
 
-      {/* Spacer so scrollable content clears the fixed bottom bar. Off-trip the bar
-          is a single pill row (no scrubber), so it needs less clearance. */}
-      <div aria-hidden="true" style={{ height: isTripLive ? 184 : 108 }} />
+      {/* Spacer so content clears the fixed two-row bottom bar (pills + scrubber). */}
+      <div aria-hidden="true" style={{ height: 184 }} />
 
       {/* Fixed bottom transport bar — mirrors the Lineup TripBar so the two tabs
           read as one chrome: same surface, corner radius (rPill), 680-wide centred
@@ -283,17 +271,16 @@ export default function ItineraryTab({ onOpenAccount, onExportPdf, outdoor = fal
               )}
             </div>
 
-            {/* Row 2 — the Itinerary's transport: the day timeline scrubber. It
-                drives the sky header (top) + agenda (middle) like a media scrubber.
-                Only during the trip, where the live agenda gives it a job; off-trip
-                the bar is just the pill row above. */}
-            {isTripLive && (
-              <TimelineScrubber
-                minute={effectiveMinute}
-                onScrub={setScrubMin}
-                outdoor={outdoor}
-              />
-            )}
+            {/* Row 2 — the Itinerary's transport: the trip DAY scrubber. Tap/drag/
+                arrow across the trip's days; only the picked day's card shows above.
+                Always present (it's the primary nav), mirroring Lineup's view row. */}
+            <DayScrubber
+              days={days}
+              activeIdx={viewIdx}
+              todayIdx={todayIdx}
+              onSelect={setViewDayIdx}
+              outdoor={outdoor}
+            />
           </div>
         </div>
       </div>
@@ -314,7 +301,7 @@ export default function ItineraryTab({ onOpenAccount, onExportPdf, outdoor = fal
               const active = i === viewDayIdx;
               const isToday = i === todayIdx;
               return (
-                <button key={d.dateNum} onClick={() => { setViewDayIdx(i); setDaySheetOpen(false); setTimeout(() => refs.current[i]?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 60); }} aria-pressed={active}
+                <button key={d.dateNum} onClick={() => { setViewDayIdx(i); setDaySheetOpen(false); }} aria-pressed={active}
                   style={{ display: 'flex', alignItems: 'center', gap: 12, minHeight: 56, padding: '10px 14px', borderRadius: 14, border: 'none', cursor: 'pointer', textAlign: 'left', backgroundColor: active ? sheetRaised : sheetChip }}>
                   <span style={{ ...mono, fontSize: 10, fontWeight: 700, letterSpacing: '0.12em', color: isToday ? myColor : sheetMuted, width: 52, flexShrink: 0 }}>
                     {isToday ? 'TODAY' : `DAY ${i + 1}`}
