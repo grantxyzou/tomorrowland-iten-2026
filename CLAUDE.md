@@ -77,7 +77,10 @@ Upstash Redis for all shared state. Google OAuth (auth-code redirect at `/api/oa
   mirrors OnboardingGate: `touch-action:pan-y` + axis-lock (`SWIPE_ENGAGE`=14px AND horizontal
   beats vertical 1.5×), `SWIPE_COMMIT`=90px, boundary no-op at day 0/last, `onClickCapture`
   guard so a swipe over a link/button doesn't also tap it, and a reduced-motion instant-swap
-  fallback. Tune feel via the two consts + the `pageTimer` 230ms (~`--dur-base`).
+  fallback. The surface height is LOCKED to the outgoing card then animated to the measured
+  incoming card's height (via `surfaceRef`/`trackRef`) so days of different lengths don't snap
+  at settle. Tune feel via `SWIPE_ENGAGE`/`SWIPE_COMMIT` + `PAGE_DUR` (300ms, drives the slide,
+  the height anim, and the finalize timer).
 - LIVE agenda: `AgendaPanel` + the banner `LIVE` chip show ONLY when `viewingToday`
   (`isTripLive && viewIdx === todayIdx`, `isTripLive = todayIdx >= 0` from
   `getTodayIndex()`, `?previewDay=N` to preview). Any other day: card only, no agenda.
